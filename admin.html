@@ -1,0 +1,74 @@
+﻿<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pengaturan Event — Admin Talenta</title>
+  <meta name="description" content="Panel admin untuk mengatur identitas, tema, dan modul website ajang talenta.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body class="admin-body">
+  <aside class="admin-sidebar" id="adminSidebar">
+    <a class="admin-brand" href="admin.html"><span class="admin-brand__mark">TP</span><span>TalentaPanel<small>Event workspace</small></span></a>
+    <nav class="admin-nav" aria-label="Navigasi admin">
+      <p class="admin-nav__label">Workspace</p>
+      <a class="admin-nav__item" href="#"><i data-lucide="layout-dashboard"></i>Ringkasan</a><p class="admin-nav__label admin-nav__label--spaced">Pengaturan Global</p>
+      <a class="admin-nav__item admin-nav__item--active" href="#event-settings"><i data-lucide="palette"></i>Identitas & Tema</a>
+      <a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="menu"></i>Navigasi <span>Segera</span></a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="contact"></i>Kontak & WhatsApp <span>Segera</span></a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="panel-bottom"></i>Footer <span>Segera</span></a><p class="admin-nav__label admin-nav__label--spaced">Kelola Halaman</p><a class="admin-nav__item" href="admin-beranda.html"><i data-lucide="home"></i>Beranda</a>
+      <a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="trophy"></i>Pemenang <span>Segera</span></a>
+    </nav>
+    <div class="admin-sidebar__footer"><span class="admin-avatar">AP</span><div><strong>Admin Pusat</strong><small>Super Admin</small></div></div>
+  </aside>
+
+  <main class="admin-main">
+    <header class="admin-topbar">
+      <button class="admin-icon-btn" id="sidebarToggle" aria-label="Buka menu admin"><i data-lucide="menu"></i></button>
+      <div><p class="admin-breadcrumb">Event / Pengaturan</p><h1>Pengaturan Event</h1></div>
+      <a class="btn btn--outline btn--sm" href="index.html" target="_blank"><i data-lucide="external-link"></i> Lihat website</a>
+    </header>
+
+    <form class="admin-workspace" id="eventSettingsForm">
+      <div class="admin-content" id="event-settings">
+        <section class="admin-card admin-card--hero">
+          <div><span class="admin-kicker">Fondasi event</span><h2>Bangun identitas event Anda</h2><p>Perubahan tema dapat dipratinjau langsung. Penyimpanan saat ini bersifat demonstrasi lokal.</p></div>
+          <span class="admin-status"><span></span> Draft tersimpan lokal</span>
+        </section>
+
+        <section class="admin-card">
+          <div class="admin-card__heading"><span class="admin-step">01</span><div><h2>Identitas utama</h2><p>Informasi ini menjadi identitas website publik.</p></div></div>
+          <div class="admin-form-grid">
+            <div class="admin-field admin-field--wide"><label for="eventName">Nama event</label><input class="form-input" id="eventName" name="eventName" value="Olimpiade Sains Nusantara" required></div>
+            <div class="admin-field"><label for="eventSlug">Slug / subdomain</label><div class="admin-input-suffix"><input id="eventSlug" name="eventSlug" value="osn2026" pattern="[a-z0-9-]+" required><span>.talentaprestasi.id</span></div><small>Huruf kecil, angka, dan tanda hubung.</small></div>
+            <div class="admin-field"><label for="organizerName">Penyelenggara</label><input class="form-input" id="organizerName" name="organizerName" value="Talenta Prestasi Indonesia"></div>
+            <div class="admin-field"><label for="contactEmail">Email</label><input class="form-input" type="email" id="contactEmail" name="contactEmail" value="info@talentaprestasi.id"></div>
+            <div class="admin-field"><label for="contactWhatsapp">WhatsApp</label><input class="form-input" type="tel" id="contactWhatsapp" name="contactWhatsapp" value="+62 899-5452-222"></div>
+          </div>
+        </section>
+
+        <section class="admin-card">
+          <div class="admin-card__heading"><span class="admin-step">02</span><div><h2>Logo & tema</h2><p>Sesuaikan tampilan tanpa menyentuh kode.</p></div></div>
+          <div class="admin-theme-grid">
+            <div class="admin-upload"><input type="file" id="eventLogo" accept="image/png,image/jpeg,image/webp" hidden><button type="button" id="logoUploadButton" class="admin-upload__button"><span class="admin-logo-preview" id="logoPreview">OSN</span><span><strong>Unggah logo event</strong><small>PNG, JPG, atau WebP</small></span><i data-lucide="upload-cloud"></i></button></div>
+            <div class="admin-colors"><label for="primaryColor">Warna utama <span id="primaryHex">#1E4B8C</span></label><input type="color" id="primaryColor" value="#1e4b8c"><label for="accentColor">Warna aksen <span id="accentHex">#C89B3C</span></label><input type="color" id="accentColor" value="#c89b3c"></div>
+          </div>
+          <div class="admin-preview" id="themePreview"><span class="admin-preview__eyebrow">Ajang talenta 2026</span><h3 id="previewName">Olimpiade Sains Nusantara</h3><p id="previewDomain">osn2026.talentaprestasi.id</p><button type="button">Daftar sekarang</button></div>
+        </section>
+
+        <section class="admin-card">
+          <div class="admin-card__heading"><span class="admin-step">03</span><div><h2>Modul website</h2><p>Nonaktifkan modul tanpa menghapus konten yang sudah tersimpan.</p></div></div>
+          <div class="admin-module-list" id="moduleList"></div>
+        </section>
+      </div>
+      <footer class="admin-savebar"><p><i data-lucide="shield-check"></i> Data nonaktif tetap aman dan dapat dipulihkan.</p><div><button class="btn btn--outline" type="button" id="resetSettings">Reset</button><button class="btn btn--primary" type="submit" id="saveSettings"><i data-lucide="save"></i> Simpan perubahan</button></div></footer>
+    </form>
+  </main>
+  <div class="admin-toast" id="adminToast" role="status" aria-live="polite"><i data-lucide="check-circle"></i><span>Perubahan berhasil disimpan.</span></div>
+  <script src="js/admin.js"></script>
+  <script>lucide.createIcons();</script>
+</body>
+</html>
+
