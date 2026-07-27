@@ -45,7 +45,7 @@ Nantinya, Admin hanya perlu melakukan input data melalui antarmuka CMS tanpa men
 ðŸ“¦ Template-Lomba
  â”£ ðŸ“‚ css/
  â”ƒ â”— ðŸ“œ style.css           # Sistem desain utama & variabel tema (Design Tokens)
- â”£ ðŸ“‚ img/                  # Aset gambar (logo, banner)
+ â”£ ðŸ“‚ assets/images/                  # Aset gambar (logo, banner)
  â”£ ðŸ“‚ js/
  â”ƒ â”— ðŸ“œ script.js           # Logika interaksi UI (Navigasi aktif, Tabs, dll)
  â”£ ðŸ“œ index.html            # Beranda (Hero, Jadwal, Highlight Pemenang)
@@ -83,4 +83,80 @@ Saat tim _Backend_ mulai menginjeksi framework (seperti Laravel, Next.js, Django
 
 ## 📌 Dokumentasi Progres
 
-Sebelum melanjutkan pengembangan, AI/developer wajib membaca `README.md` dan `PROGRESS.md`. Panel admin dipisahkan dari dashboard kontingen. Spesifikasi admin terdapat di `ADMIN_SPEC.md` dan setiap perubahan wajib dicatat di `PROGRESS.md`.
+Sebelum melanjutkan pengembangan, AI/developer wajib membaca `README.md` dan `PROGRESS.md`. Panel admin dipisahkan dari dashboard kontingen. Spesifikasi admin terdapat di `docs/ADMIN_SPEC.md` dan setiap perubahan wajib dicatat di `PROGRESS.md`.
+
+---
+
+## Arsitektur Proyek Saat Ini
+
+Proyek menggunakan arsitektur feature-based untuk Vanilla HTML/CSS/JavaScript:
+
+```text
+Web1/
+├── *.html                         # Entry point dan kontrak URL statis
+├── assets/
+│   ├── css/main.css               # Design system dan style aktif
+│   ├── images/                    # Gambar statis
+│   └── js/
+│       ├── core/                  # Helper generik
+│       ├── data/                  # Database dummy dan repositories
+│       ├── shared/                # Runtime publik lintas halaman
+│       └── features/              # Admin shell dan domain fitur
+├── docs/
+│   ├── ADMIN_SPEC.md
+│   └── ARCHITECTURE.md
+├── README.md
+└── PROGRESS.md
+```
+
+Baca `docs/ARCHITECTURE.md` untuk dependency direction, kontrak localStorage, aturan penambahan fitur, dan jalur migrasi ke backend/API.
+
+### Menjalankan Lokal
+
+Gunakan static server dari root proyek agar iframe dan relative URL berjalan konsisten, misalnya VS Code Live Server. Membuka file langsung melalui `file://` dapat memiliki pembatasan browser tertentu.
+
+### Status Data
+
+Data sekarang merupakan demonstrasi berbasis database dummy JavaScript dan override `localStorage`. Ini bukan database produksi. UI telah dipisahkan dari repository sehingga sumber data nantinya dapat diganti REST API tanpa menulis ulang desain editor dan renderer.
+
+---
+
+## Multi-App Workspace
+
+Source utama dipisahkan berdasarkan aplikasi:
+
+- `apps/public/` — template website pengunjung.
+- `apps/admin/` — CMS, shell, dan editor.
+- `apps/portal/` — login/dashboard kontingen.
+- `packages/shared/` — design system, images, database dummy, dan repositories bersama.
+
+Entry utama:
+
+- Public: `apps/public/index.html`
+- Admin: `apps/admin/index.html`
+- Portal: `apps/portal/login.html`
+
+File HTML di root hanya compatibility redirect untuk URL lama. Lihat `docs/ARCHITECTURE.md` untuk aturan dependency.
+
+## Canonical Directory Routing
+
+Root proyek tidak memiliki file HTML. Gunakan static server:
+
+```bash
+npm run dev
+```
+
+Entry canonical:
+
+- Public: `/apps/public/`
+- Admin: `/apps/admin/`
+- Portal: `/apps/portal/login/`
+- Archive Detail: `/apps/public/arsip/detail/?id=...`
+
+Validasi lengkap:
+
+```bash
+npm run check
+```
+
+Jangan menambahkan redirect HTML ke root atau internal link berbentuk `*.html`. Route baru wajib berupa direktori dengan `index.html` dan didaftarkan pada `packages/shared/js/core/paths.js`.

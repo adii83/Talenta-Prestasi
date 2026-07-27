@@ -58,14 +58,14 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menetapkan dokumentasi permanen dan pemisahan tiga area.
 - Menghapus rencana impor Excel pemenang.
 - Membuat prototipe pengaturan identitas, tema, dan toggle modul.
-- Berkas: `README.md`, `PROGRESS.md`, `ADMIN_SPEC.md`, `admin.html`, `css/style.css`, `js/admin.js`.
+- Berkas: `README.md`, `PROGRESS.md`, `docs/ADMIN_SPEC.md`, `admin.html`, `assets/css/main.css`, `assets/js/features/admin-shell/settings-editor.js`.
 
 ### 25 Juli 2026 — Arsitektur Editor Per Halaman
 
 - Membagi pengaturan menjadi Global dan Kelola Halaman.
 - Menetapkan editor Beranda berurutan dari Hero sampai Mitra.
 - Membuat editor Hero lengkap dengan badge, tombol, gambar, toggle, dan preview.
-- Berkas: `ADMIN_SPEC.md`, `PROGRESS.md`, `admin.html`, `admin-beranda.html`, `css/style.css`, `js/home-editor.js`.
+- Berkas: `docs/ADMIN_SPEC.md`, `PROGRESS.md`, `admin.html`, `admin-beranda.html`, `assets/css/main.css`, `assets/js/features/home/editor.js`.
 
 ### 25 Juli 2026 — Penyelarasan Preview Hero
 
@@ -74,7 +74,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Preview Hero membaca warna tersimpan dari Pengaturan Global.
 - Menambahkan mode pratinjau Tablet di antara Desktop dan Mobile.
 - Menyamakan warna label Hero menjadi putih 80% seperti template publik, bukan warna aksen.
-- Berkas: `admin-beranda.html`, `js/home-editor.js`, `css/style.css`.
+- Berkas: `admin-beranda.html`, `assets/js/features/home/editor.js`, `assets/css/main.css`.
 
 ### 25 Juli 2026 — Editor Jadwal dan Ikon Kustom
 
@@ -83,7 +83,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menambahkan sistem ikon upload yang sama pada kedua tombol Hero.
 - Menambahkan preview Jadwal desktop, tablet, dan mobile.
 - Menambahkan migrasi konfigurasi Hero lama ke struktur Hero dan Jadwal baru.
-- Berkas: `admin-beranda.html`, `js/home-editor.js`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+- Berkas: `admin-beranda.html`, `assets/js/features/home/editor.js`, `assets/css/main.css`, `docs/ADMIN_SPEC.md`, `PROGRESS.md`.
 
 ### 25 Juli 2026 — Editor Biaya Pendaftaran
 
@@ -92,7 +92,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menggunakan sistem ikon library/upload yang sama.
 - Preview mengambil navy, primary, dan accent dari tema global serta mempertahankan ornamen template.
 - Menambahkan preview desktop, tablet, dan mobile.
-- Berkas: `admin-beranda.html`, `js/pricing-editor.js`, `js/home-editor.js`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+- Berkas: `admin-beranda.html`, `assets/js/features/home/pricing-editor.js`, `assets/js/features/home/editor.js`, `assets/css/main.css`, `docs/ADMIN_SPEC.md`, `PROGRESS.md`.
 
 ### 25 Juli 2026 — Editor Benefit
 
@@ -101,7 +101,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menambahkan label, unggulan, URL opsional, serta ikon library/upload per kartu.
 - Menambahkan preview desktop, tablet, dan mobile yang mengikuti tema global.
 - Menyamakan grid Benefit mobile menjadi dua kolom (2:2) seperti template publik.
-- Berkas: `admin-beranda.html`, `js/benefit-editor.js`, `js/home-editor.js`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+- Berkas: `admin-beranda.html`, `assets/js/features/home/benefit-editor.js`, `assets/js/features/home/editor.js`, `assets/css/main.css`, `docs/ADMIN_SPEC.md`, `PROGRESS.md`.
 
 ### 25 Juli 2026 — Editor Highlight Pemenang
 
@@ -109,7 +109,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menambahkan simulasi mode otomatis/manual, filter kategori, jumlah, dan metadata.
 - Menambahkan background navy/soft, kartu standard/compact, foto fallback inisial, dan tombol berkustom ikon.
 - Preview memakai Data Demo sementara; produksi akan mengambil data dari Manajemen Pemenang.
-- Berkas: `admin-beranda.html`, `js/winner-highlight-editor.js`, `js/home-editor.js`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+- Berkas: `admin-beranda.html`, `assets/js/features/home/winner-highlight-editor.js`, `assets/js/features/home/editor.js`, `assets/css/main.css`, `docs/ADMIN_SPEC.md`, `PROGRESS.md`.
 
 ### 25 Juli 2026 — Editor Mitra & Partner
 
@@ -118,7 +118,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menambahkan varian sederhana/kartu/monokrom dan preset ukuran logo.
 - Preview responsif: desktop maksimal lima, tablet tiga, mobile dua logo per baris.
 - Seluruh enam section Beranda kini memiliki editor terstruktur.
-- Berkas: `admin-beranda.html`, `js/partner-editor.js`, `js/home-editor.js`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+- Berkas: `admin-beranda.html`, `assets/js/features/home/partner-editor.js`, `assets/js/features/home/editor.js`, `assets/css/main.css`, `docs/ADMIN_SPEC.md`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Editor Unduh Tahap 1
 
@@ -127,7 +127,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menambahkan status, tab default tunggal, reorder naik/turun, dan delete dengan konfirmasi.
 - Menambahkan preview interaktif desktop/tablet/mobile dengan warna primary global.
 - State demo terpisah pada `talenta_download_editor_v1`; dokumen masih data preview Tahap 1.
-- Berkas: `admin-unduh.html`, `js/download-editor.js`, `admin.html`, `admin-beranda.html`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+- Berkas: `admin-unduh.html`, `assets/js/features/downloads/editor.js`, `admin.html`, `admin-beranda.html`, `assets/css/main.css`, `docs/ADMIN_SPEC.md`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Koreksi Konsep Editor Unduh
 
@@ -137,14 +137,14 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menghapus rencana pencarian/filter/upload file dari editor Unduh; file dikelola di Detail Arsip.
 - Memperbaiki blank preview akibat variabel dibaca sebelum inisialisasi dan memakai state baru `talenta_download_editor_v2`.
 - Menyamakan struktur sidebar admin Beranda dan Unduh.
-- Berkas: `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `js/mock-archive-database.js`, `js/download-editor.js`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+- Berkas: `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `assets/js/data/mock-archive-database.js`, `assets/js/features/downloads/editor.js`, `assets/css/main.css`, `docs/ADMIN_SPEC.md`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Penyelarasan Preview Unduh
 
 - Menghapus background segmented-control dan bayangan tab preview yang tidak ada di template publik.
 - Mengembalikan tab berbentuk pill individual: putih ber-border dan primary untuk tab aktif.
 - Menyamakan jarak tab dengan `.unduh-tabs` publik dan memastikan heading mode kiri benar-benar rata kiri.
-- Berkas: `css/style.css`, `PROGRESS.md`.
+- Berkas: `assets/css/main.css`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Stabilitas Navigasi Admin
 
@@ -152,7 +152,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menghapus atribut `class` ganda pada menu aktif.
 - Menyamakan wrapper `page-editor-layout` agar lebar konten tidak meloncat.
 - Menstabilkan dimensi shell admin dan scrollbar sidebar saat navigasi penuh antar-HTML.
-- Berkas: `admin-beranda.html`, `admin-unduh.html`, `css/style.css`, `PROGRESS.md`.
+- Berkas: `admin-beranda.html`, `admin-unduh.html`, `assets/css/main.css`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Router Panel Admin Persisten
 
@@ -160,7 +160,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Mengubah `admin.html` menjadi shell persisten dengan route `?page=settings|home|download`.
 - Sidebar/topbar tidak dimuat ulang; editor halaman berjalan dalam embedded view dengan shell anak disembunyikan.
 - Menambahkan History API, Back/Forward, direct URL, active menu, title, breadcrumb, dan public link dinamis.
-- Berkas: `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `js/admin-router.js`, `css/style.css`, `PROGRESS.md`.
+- Berkas: `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `assets/js/features/admin-shell/router.js`, `assets/css/main.css`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Perluasan Database Dummy Bersama
 
@@ -170,17 +170,17 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Menambahkan helper `getActiveCompetition`, `getArchivedCompetitions`, `getCompetitionById`, `getAllWinners`.
 - Memastikan kompatibilitas mundur: editor Unduh tetap membaca field yang sama.
 - Database sekarang berisi 5 lomba, 14 dokumen, dan 17 pemenang.
-- Berkas: `js/mock-archive-database.js`, `PROGRESS.md`.
+- Berkas: `assets/js/data/mock-archive-database.js`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Manajemen Pemenang (Tahap 2)
 
 - Membuat `admin-pemenang.html` dengan sidebar konsisten, embedded mode, dan outline struktur.
-- Membuat `js/winner-manager.js`: CRUD kategori juara, CRUD pemenang, upload foto max 2MB, label rank custom, reorder, toggle aktif/nonaktif, SK editor, preview responsif.
+- Membuat `assets/js/features/winners/manager.js`: CRUD kategori juara, CRUD pemenang, upload foto max 2MB, label rank custom, reorder, toggle aktif/nonaktif, SK editor, preview responsif.
 - Menambahkan CSS editor dan preview pemenang.
 - Menambahkan route `winners` ke `admin-router.js`.
 - Mengaktifkan link Pemenang di sidebar seluruh halaman admin.
 - State disimpan pada `talenta_winner_manager_v1`.
-- Berkas: `admin-pemenang.html`, `js/winner-manager.js`, `js/admin-router.js`, `css/style.css`, `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `PROGRESS.md`.
+- Berkas: `admin-pemenang.html`, `assets/js/features/winners/manager.js`, `assets/js/features/admin-shell/router.js`, `assets/css/main.css`, `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Koreksi Preview Manajemen Pemenang
 
@@ -188,7 +188,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Memperbaiki metadata yang sebelumnya berdempetan dengan line layout tersendiri.
 - Menyamakan aksen card, foto, tipografi, banner SK, dan heading dengan `pemenang.html`.
 - Preview tablet menjadi 2 kolom; mobile tetap 2 kolom sesuai pola responsif template.
-- Berkas: `js/winner-manager.js`, `css/style.css`, `PROGRESS.md`.
+- Berkas: `assets/js/features/winners/manager.js`, `assets/css/main.css`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Koreksi Responsif Preview Pemenang berdasarkan Template
 
@@ -196,7 +196,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Mobile dikoreksi menjadi 1 card per baris, bukan 2.
 - Tablet kembali mengikuti auto-fill asli, bukan dipaksa 2 kolom.
 - Ukuran H1, SK banner, foto, rank, nama, sekolah, dan metadata disamakan dengan nilai CSS template asli pada setiap simulasi perangkat.
-- Berkas: `css/style.css`, `PROGRESS.md`.
+- Berkas: `assets/css/main.css`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Editor Tampilan Halaman Pemenang (Tahap 3)
 
@@ -206,7 +206,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Judul section, teks aksi `Lihat Pemenang`, jumlah card, dan status section dapat diedit.
 - Preview sekarang mencakup keseluruhan halaman dan menggunakan card Arsip asli (`lomba-card`).
 - Konfigurasi tampilan disimpan pada `talenta_winner_page_v1`, terpisah dari data pemenang.
-- Berkas: `admin-pemenang.html`, `js/winner-manager.js`, `css/style.css`, `PROGRESS.md`.
+- Berkas: `admin-pemenang.html`, `assets/js/features/winners/manager.js`, `assets/css/main.css`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Integrasi Highlight Pemenang Beranda (Tahap 4)
 
@@ -217,7 +217,7 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Foto, rank custom, sekolah, provinsi, dan no. ujian langsung ikut dari Manajemen Pemenang.
 - Menambahkan sinkronisasi event `storage` untuk perubahan dari tab admin lain.
 - Memuat `mock-archive-database.js` sebelum seluruh editor Beranda.
-- Berkas: `admin-beranda.html`, `js/winner-highlight-editor.js`, `PROGRESS.md`.
+- Berkas: `admin-beranda.html`, `assets/js/features/home/winner-highlight-editor.js`, `PROGRESS.md`.
 
 ### 26 Juli 2026 — Koreksi Relasi Highlight Beranda dan Responsif Card Arsip
 
@@ -226,11 +226,11 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Card Highlight memakai struktur `champion-card` yang sama dan mengikuti visibilitas metadata dari `talenta_winner_page_v1`.
 - Mobile Highlight Pemenang memakai 1 champion card per baris sesuai `.champion-grid` template.
 - Mengoreksi analisis card `Pemenang Ajang Talenta Sebelumnya`: karena memakai `.grid--3`, breakpoint <=768px menghasilkan 2 kolom dan tetap 2 kolom pada <=480px.
-- Berkas: `admin-beranda.html`, `js/winner-highlight-editor.js`, `css/style.css`, `PROGRESS.md`.
+- Berkas: `admin-beranda.html`, `assets/js/features/home/winner-highlight-editor.js`, `assets/css/main.css`, `PROGRESS.md`.
 
 ### 27 Juli 2026 — Manajemen dan Preview Halaman Arsip
 
-- Membuat `admin-arsip.html` dan `js/archive-manager.js`.
+- Membuat `admin-arsip.html` dan `assets/js/features/archive/manager.js`.
 - Arsip membaca lomba published dari `MOCK_ARCHIVE_DATABASE`, dengan override lokal `talenta_archive_manager_v1`.
 - Menambahkan tambah/edit/hapus/reorder/toggle lomba tanpa memisahkan dokumen dan pemenang dari objek lombanya.
 - Menambahkan editor status halaman, eyebrow, judul, deskripsi, alignment, dan teks aksi card.
@@ -239,15 +239,15 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Tidak menambahkan filter, search, pagination, atau kategori tahun karena tidak ada pada template.
 - Menambahkan route `admin.html?page=archive` pada router persisten dan mengaktifkan menu Arsip.
 - Validasi statis lulus: ID unik, CRUD/reorder/toggle, class publik, breakpoint, router, dan kontrak database Unduh.
-- Berkas: `admin-arsip.html`, `js/archive-manager.js`, `js/admin-router.js`, `admin.html`, child admin sidebars, `css/style.css`, `PROGRESS.md`.
+- Berkas: `admin-arsip.html`, `assets/js/features/archive/manager.js`, `assets/js/features/admin-shell/router.js`, `admin.html`, child admin sidebars, `assets/css/main.css`, `PROGRESS.md`.
 
 ### 27 Juli 2026 — Editor Detail Arsip dan Penyatuan Data Lintas Halaman
 
-- Membuat `js/archive-data-store.js` sebagai resolver tunggal data Arsip efektif.
+- Membuat `assets/js/data/repositories/archive-repository.js` sebagai resolver tunggal data Arsip efektif.
   - Baseline tetap `MOCK_ARCHIVE_DATABASE`; override admin disimpan pada `talenta_archive_manager_v2`.
   - Migrasi otomatis dari v1 ke v2.
   - Helper: `getEffectiveArchivedCompetitions()`, `getEffectiveCompetitionById(id)`, `saveArchiveAdminState()`.
-- Membuat `admin-arsip-detail.html` dan `js/archive-detail-editor.js` untuk editor Detail Arsip per lomba.
+- Membuat `admin-arsip-detail.html` dan `assets/js/features/archive/detail-editor.js` untuk editor Detail Arsip per lomba.
   - Identitas dan banner (nama, deskripsi, gradient).
   - Section pemenang (toggle, eyebrow, judul, SK, metadata champion card).
   - Section dokumen (toggle, eyebrow, judul, hide/show per dokumen, label custom, pilihan SK).
@@ -257,8 +257,107 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
   - Card Pemenang Sebelumnya sekarang memakai URL `arsip-detail.html?id={id}#pemenang` dan gradient.
 - Menambahkan `archive-data-store.js` pada seluruh halaman admin: Beranda, Unduh, Pemenang, Arsip, Detail Arsip.
 - Validasi lintas halaman lulus: semua admin memuat data store; semua konsumen memakai resolver; class publik dan breakpoint identik template.
-- Berkas: `js/archive-data-store.js`, `admin-arsip-detail.html`, `js/archive-detail-editor.js`, `js/archive-manager.js`, `js/download-editor.js`, `js/winner-manager.js`, `admin-beranda.html`, `admin-unduh.html`, `admin-pemenang.html`, `admin-arsip.html`, `css/style.css`, `PROGRESS.md`.
+- Berkas: `assets/js/data/repositories/archive-repository.js`, `admin-arsip-detail.html`, `assets/js/features/archive/detail-editor.js`, `assets/js/features/archive/manager.js`, `assets/js/features/downloads/editor.js`, `assets/js/features/winners/manager.js`, `admin-beranda.html`, `admin-unduh.html`, `admin-pemenang.html`, `admin-arsip.html`, `assets/css/main.css`, `PROGRESS.md`.
+
+### 27 Juli 2026 — Renderer Publik Arsip dan Detail
+
+- Menjadikan halaman Arsip dan Detail Arsip dinamis dari resolver data efektif yang sama dengan editor admin.
+- Menambahkan filtering data publik, fallback JSON rusak, clone aman, relasi SK, dan penanganan ID lomba tidak ditemukan.
+- Menjaga data nonaktif tidak tampil pada halaman publik tanpa menghapus override admin.
+- Berkas saat dibuat: `arsip.html`, `arsip-detail.html`, renderer publik Arsip, dan repository Arsip.
+
+### 27 Juli 2026 — Manajemen dan Renderer FAQ
+
+- Membuat state FAQ mandiri `talenta_faq_manager_v1` dengan baseline 3 kategori dan 11 pertanyaan.
+- Menambahkan CRUD, reorder, toggle kategori/pertanyaan, pengaturan heading, dan preview responsif.
+- Membuat renderer publik dan accordion aksesibel dengan satu pertanyaan terbuka per kategori.
+- Menambahkan route `admin.html?page=faq` pada shell admin.
+
+### 27 Juli 2026 — Konsolidasi Pengaturan Global dan Runtime Publik
+
+- Menggabungkan Identitas, Tema, Navigasi, Kontak, WhatsApp, dan Footer ke schema v2 `talenta_event_settings_v1`.
+- Menghapus modul website lama yang menduplikasi kontrol navigasi.
+- Menambahkan toggle Unduh, Pemenang, Arsip, dan FAQ tanpa menghapus data editor.
+- Runtime publik menerapkan identitas, warna tema, route guard, desktop/mobile navigation, footer, kontak, dan floating WhatsApp.
+- Menambahkan migrasi schema v1 dan adaptive bottom navigation berdasarkan jumlah menu aktif.
+
+### 27 Juli 2026 — Preview Navigasi, Footer, dan WhatsApp
+
+- Membuat preview Navigasi serta Footer & WhatsApp untuk desktop, tablet, dan mobile.
+- Interaksi preview tidak membuka halaman maupun WhatsApp.
+- Menghapus menu Masuk dari navigasi publik dan mempertahankan Kontak Kami khusus desktop.
+- Mengganti ikon WhatsApp dengan SVG resmi bergaya filled dan menyamakan ukuran/posisi dengan template.
+- Memperbaiki reflow preview ketika toggle navigasi dinonaktifkan.
+
+### 27 Juli 2026 — Action Reset dan Simpan Terpusat
+
+- Menyamakan label `Reset` dan `Simpan perubahan` pada tujuh editor admin.
+- Menambahkan reset Detail Arsip yang hanya menghapus override kompetisi aktif.
+- Memindahkan kedua action ke topbar, tepat sebelum `Lihat halaman`, sesuai koreksi UX.
+- Router mem-proxy action topbar ke tombol native setiap editor iframe sehingga handler lama tetap digunakan.
+- Menyamakan tinggi dan geometri tombol pada desktop, tablet, dan mobile.
+
+### 27 Juli 2026 — Struktur Halaman pada Dropdown Sidebar
+
+- Menghapus panel Struktur internal agar canvas Beranda, Unduh, dan Pemenang lebih lebar.
+- Membuat registry submenu untuk Pengaturan Global, Beranda, Unduh, Pemenang, Arsip, FAQ, dan Detail Arsip.
+- Menambahkan smooth scroll lintas shell/iframe, active-section tracking, serta penutupan sidebar mobile setelah navigasi.
+- Detail Arsip memakai struktur kontekstual di bawah Arsip; kembali ke Arsip selalu merender ulang struktur induk agar tidak stale.
+- Struktur Beranda dikoreksi tepat enam section sampai Mitra & Partner.
+- Memperbaiki target Highlight Pemenang menjadi `winner-highlight-editor` dan scroll Benefit/Mitra di bagian bawah.
+- Memoles scrollbar sidebar menjadi tipis, transparan, hover-aware, dan menempel di tepi kanan tanpa menghilangkan fungsi scroll.
+
+### 27 Juli 2026 — Restrukturisasi Arsitektur Feature-Based
+
+- Mempertahankan seluruh HTML di root sebagai kontrak URL situs statis.
+- Memindahkan implementasi ke `assets/`: CSS, images, core, data/repositories, shared runtime, dan feature modules.
+- Mengelompokkan JavaScript berdasarkan fitur: admin-shell, home, downloads, winners, archive, dan FAQ.
+- Memisahkan database dummy dari repository agar sumber data dapat diganti API tanpa menulis ulang editor/renderer.
+- Memindahkan spesifikasi teknis ke `docs/` dan menambahkan dokumen arsitektur.
+- Mempertahankan seluruh key localStorage dan fungsi global untuk kompatibilitas data demo.
+
+## Status Implementasi Aktual
+
+### Selesai
+
+- Template publik responsif beserta runtime tema/navigasi/footer/WhatsApp.
+- Shell admin persisten, editor Beranda lengkap, Unduh, Pemenang, Arsip, Detail Arsip, dan FAQ.
+- CRUD demo dan renderer publik untuk Arsip serta FAQ.
+- Relasi data efektif lintas Unduh, Pemenang, Beranda, Arsip, dan Detail Arsip.
+- Preview responsif serta action Reset/Simpan terpusat.
+- Navigasi struktur editor melalui dropdown sidebar.
+
+### Belum Dibuat
+
+- Backend, database produksi, autentikasi nyata, REST API, upload file server, dan subdomain nyata.
+- Data masih menggunakan baseline JavaScript dan override localStorage untuk demonstrasi.
+- Pengujian otomatis browser/end-to-end untuk seluruh alur admin dan publik.
 
 ## Langkah Berikutnya
 
-Tinjau alur lengkap Pemenang. Integrasi data yang sama ke halaman publik `pemenang.html` dan `index.html` tetap merupakan tahap public renderer berikutnya. Teknologi backend dan deployment harus disepakati sebelum integrasi server.
+1. Tentukan backend dan kontrak API multi-tenant.
+2. Implementasikan adapter API sesuai kontrak repository saat ini.
+3. Ganti localStorage dengan autentikasi dan penyimpanan server tanpa mengubah UI.
+4. Tambahkan upload media/dokumen produksi serta validasi server.
+5. Tambahkan test unit repository dan test end-to-end route publik/admin.
+
+### 27 Juli 2026 — Koreksi Arsitektur Multi-App
+
+- Mengoreksi restrukturisasi feature-only karena entry template, admin, dan portal masih terlihat bercampur.
+- Memisahkan aplikasi secara fisik menjadi `apps/public`, `apps/admin`, dan `apps/portal`.
+- Menempatkan design system, images, core utility, database dummy, dan repositories di `packages/shared`.
+- Menempatkan seluruh editor admin di `apps/admin/editors` serta shell/feature logic di `apps/admin/js`.
+- Menempatkan renderer/runtime template hanya di `apps/public/js`; tidak ada ketergantungan public terhadap admin.
+- Mempertahankan URL lama dengan compatibility redirect tipis yang meneruskan query dan hash.
+- Memperbarui iframe, History API, public links, Detail Arsip, dan relative asset paths sesuai batas aplikasi.
+
+### 27 Juli 2026 — Finalisasi Root-Zero-HTML dan Canonical Routing
+
+- Menghapus seluruh compatibility redirect HTML dari root; root sekarang memiliki nol file HTML.
+- Mengubah route file-based menjadi directory-index routes untuk Public, Admin Editor, dan Portal.
+- Menetapkan 15 canonical route melalui `TalentaPaths` yang sadar base path/subfolder deployment.
+- Menambahkan builder URL berbasis `URL` dan `URLSearchParams` untuk query serta hash.
+- Mengubah shell Admin, iframe editor, Arsip Detail, renderer publik, dan portal agar memakai route directory.
+- Menambahkan registry route Admin terpusat dan validator route graph.
+- Menambahkan `package.json` dengan script development, route validation, syntax validation, dan format validation.
+- Memastikan tidak ada internal navigation yang bergantung pada filename `.html`.

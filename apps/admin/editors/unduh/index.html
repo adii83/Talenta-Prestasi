@@ -1,0 +1,277 @@
+﻿<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Editor Unduh — Admin Talenta</title>
+    <meta
+      name="description"
+      content="Kelola heading dan periode dokumen halaman Unduh."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../../../../packages/shared/css/main.css" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="../../../../packages/shared/js/core/paths.js"></script>
+  </head>
+  <body class="admin-body">
+    <script>
+      if (new URLSearchParams(location.search).get("embedded") === "1")
+        document.documentElement.classList.add("admin-embedded");
+    </script>
+    <style>
+      .admin-embedded .admin-sidebar,
+      .admin-embedded .admin-topbar {
+        display: none !important;
+      }
+      .admin-embedded .admin-main {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
+      .admin-embedded .admin-savebar {
+        left: 0;
+      }
+    </style>
+    <aside class="admin-sidebar" id="adminSidebar">
+      <a class="admin-brand" href="../../"
+        ><span class="admin-brand__mark">TP</span
+        ><span>TalentaPanel<small>Event workspace</small></span></a
+      >
+      <nav class="admin-nav" aria-label="Navigasi admin">
+        <p class="admin-nav__label">Workspace</p>
+        <a class="admin-nav__item" href="#"
+          ><i data-lucide="layout-dashboard"></i>Ringkasan</a
+        >
+        <p class="admin-nav__label admin-nav__label--spaced">
+          Pengaturan Global
+        </p>
+        <a class="admin-nav__item" href="../../"
+          ><i data-lucide="palette"></i>Identitas & Tema</a
+        ><a class="admin-nav__item" href="#" aria-disabled="true"
+          ><i data-lucide="menu"></i>Navigasi <span>Segera</span></a
+        ><a class="admin-nav__item" href="#" aria-disabled="true"
+          ><i data-lucide="contact"></i>Kontak & WhatsApp <span>Segera</span></a
+        ><a class="admin-nav__item" href="#" aria-disabled="true"
+          ><i data-lucide="panel-bottom"></i>Footer <span>Segera</span></a
+        >
+        <p class="admin-nav__label admin-nav__label--spaced">Kelola Halaman</p>
+        <a class="admin-nav__item" data-page="home" href="../beranda/"
+          ><i data-lucide="home"></i>Beranda</a
+        ><a
+          data-page="download"
+          class="admin-nav__item admin-nav__item--active"
+          href="../../../public/unduh/"
+          ><i data-lucide="file-down"></i>Unduh</a
+        ><a class="admin-nav__item" href="#" aria-disabled="true"
+          ><i data-lucide="trophy"></i>Pemenang</a
+        ><a class="admin-nav__item" href="../?page=archive"
+          ><i data-lucide="archive"></i>Arsip</a
+        ><a class="admin-nav__item" href="#" aria-disabled="true"
+          ><i data-lucide="circle-help"></i>FAQ <span>Segera</span></a
+        >
+      </nav>
+      <div class="admin-sidebar__footer">
+        <span class="admin-avatar">AP</span>
+        <div><strong>Admin Pusat</strong><small>Super Admin</small></div>
+      </div>
+    </aside>
+    <main class="admin-main">
+      <header class="admin-topbar">
+        <button
+          class="admin-icon-btn"
+          id="sidebarToggle"
+          aria-label="Buka menu admin"
+        >
+          <i data-lucide="menu"></i>
+        </button>
+        <div>
+          <p class="admin-breadcrumb">Kelola Halaman / Unduh</p>
+          <h1>Editor Halaman Unduh</h1>
+        </div>
+        <a
+          class="btn btn--outline btn--sm"
+          href="../../../public/unduh/"
+          target="_blank"
+          ><i data-lucide="external-link"></i> Lihat halaman</a
+        >
+      </header>
+      <form class="admin-workspace" id="downloadEditorForm">
+        <div class="page-editor-layout">
+          <aside class="section-outline">
+            <span class="admin-kicker">Struktur halaman</span
+            ><a
+              href="#download-header"
+              class="section-outline__item section-outline__item--active"
+              ><b>01</b
+              ><span>Header Halaman<small>Editor tersedia</small></span></a
+            ><a href="#download-competitions" class="section-outline__item"
+              ><b>02</b
+              ><span>Lomba dari Arsip<small>Pilih & custom tab</small></span></a
+            ><a href="#download-preview-section" class="section-outline__item"
+              ><b>03</b
+              ><span>Preview Dokumen<small>Otomatis dari Arsip</small></span></a
+            >
+          </aside>
+          <div class="page-editor-content">
+            <section class="admin-card admin-card--hero">
+              <div>
+                <span class="admin-kicker">Kelola Halaman</span>
+                <h2>Unduh</h2>
+                <p>
+                  Kelola konten berdasarkan urutan tampilan publik. Navbar dan
+                  footer berada di Pengaturan Global.
+                </p>
+              </div>
+              <span class="admin-status"><span></span> Tahap 1</span>
+            </section>
+            <section class="admin-card" id="download-header">
+              <div class="editor-section-head">
+                <div class="admin-card__heading">
+                  <span class="admin-step">01</span>
+                  <div>
+                    <h2>Header Halaman</h2>
+                    <p>
+                      Heading utama yang muncul di bagian atas halaman Unduh.
+                    </p>
+                  </div>
+                </div>
+                <label class="admin-switch admin-switch--label"
+                  ><input
+                    type="checkbox"
+                    id="downloadActive"
+                    checked
+                  /><span></span><em>Aktif</em></label
+                >
+              </div>
+              <div class="admin-form-grid">
+                <div class="admin-field">
+                  <label for="downloadEyebrow">Subjudul kecil</label
+                  ><input
+                    class="form-input"
+                    id="downloadEyebrow"
+                    value="Unduh"
+                  />
+                </div>
+                <div class="admin-field">
+                  <label for="downloadTitle">Judul utama</label
+                  ><input
+                    class="form-input"
+                    id="downloadTitle"
+                    value="Dokumen & Materi"
+                  />
+                </div>
+                <div class="admin-field admin-field--wide">
+                  <label for="downloadDescription">Deskripsi</label
+                  ><textarea
+                    class="form-input editor-textarea"
+                    id="downloadDescription"
+                  >
+Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
+                </div>
+                <div class="admin-field">
+                  <label for="downloadAlignment">Perataan heading</label
+                  ><select class="form-input" id="downloadAlignment">
+                    <option value="center">Tengah</option>
+                    <option value="left">Kiri</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+            <section class="admin-card" id="download-competitions">
+              <div class="editor-section-head">
+                <div class="admin-card__heading">
+                  <span class="admin-step">02</span>
+                  <div>
+                    <h2>Lomba dari Arsip</h2>
+                    <p>
+                      Pilih lomba; dokumennya otomatis diambil dari Detail
+                      Arsip.
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="archive-source-picker">
+                <div class="admin-field">
+                  <label for="archiveCompetitionSelect">Tambahkan lomba</label
+                  ><select
+                    class="form-input"
+                    id="archiveCompetitionSelect"
+                  ></select>
+                </div>
+                <button
+                  class="btn btn--outline btn--sm"
+                  type="button"
+                  id="addArchiveCompetition"
+                >
+                  <i data-lucide="plus"></i> Tambahkan
+                </button>
+              </div>
+              <div
+                id="downloadCompetitionEditor"
+                class="download-period-list"
+              ></div>
+            </section>
+            <section class="admin-card" id="download-preview-section">
+              <div class="editor-subsection__head">
+                <div>
+                  <h2>Pratinjau Responsif</h2>
+                  <p>
+                    Tab dapat diklik; seluruh dokumen berasal dari database
+                    dummy Arsip.
+                  </p>
+                </div>
+                <div class="preview-switch">
+                  <button
+                    type="button"
+                    class="preview-switch__btn preview-switch__btn--active"
+                    data-download-preview="desktop"
+                    aria-label="Desktop"
+                  >
+                    <i data-lucide="monitor"></i></button
+                  ><button
+                    type="button"
+                    class="preview-switch__btn"
+                    data-download-preview="tablet"
+                    aria-label="Tablet"
+                  >
+                    <i data-lucide="tablet"></i></button
+                  ><button
+                    type="button"
+                    class="preview-switch__btn"
+                    data-download-preview="mobile"
+                    aria-label="Mobile"
+                  >
+                    <i data-lucide="smartphone"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="download-preview-frame" id="downloadPreviewFrame">
+                <div class="download-preview" id="downloadPreview"></div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <div class="admin-savebar">
+          <p><i data-lucide="hard-drive"></i> Penyimpanan demo lokal</p>
+          <div>
+            <button type="button" class="btn btn--outline" id="resetDownload">
+              Reset</button
+            ><button class="btn btn--primary" type="submit">
+              <i data-lucide="save"></i> Simpan perubahan
+            </button>
+          </div>
+        </div>
+      </form>
+    </main>
+    <div class="admin-toast" id="adminToast">
+      <i data-lucide="check-circle"></i><span>Berhasil disimpan.</span>
+    </div>
+    <script src="../../../../packages/shared/js/data/mock-archive-database.js"></script>
+    <script src="../../../../packages/shared/js/data/repositories/archive-repository.js"></script>
+    <script src="../../js/features/downloads/editor.js"></script>
+  </body>
+</html>
