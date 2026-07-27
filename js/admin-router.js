@@ -23,12 +23,42 @@
       public: "pemenang.html",
       src: "admin-pemenang.html?embedded=1",
     },
+    archive: {
+      title: "Manajemen Arsip",
+      crumb: "Kelola Halaman / Arsip",
+      public: "arsip.html",
+      src: "admin-arsip.html?embedded=1",
+    },
+    faq: {
+      title: "Manajemen FAQ",
+      crumb: "Kelola Halaman / FAQ",
+      public: "faq.html",
+      src: "admin-faq.html?embedded=1",
+    },
   };
   const view = document.getElementById("adminRouteView");
   if (!view) return;
   const settings = document.getElementById("settingsRouteView"),
     editor = document.getElementById("editorRouteView"),
-    frame = document.getElementById("adminEditorFrame");
+    frame = document.getElementById("adminEditorFrame"),
+    resetButton = document.getElementById("routeResetButton"),
+    saveButton = document.getElementById("routeSaveButton");
+  function activeDocument() {
+    return editor.hidden ? document : frame.contentDocument;
+  }
+  function nativeActions() {
+    const doc = activeDocument();
+    const bar = doc && doc.querySelector(".admin-savebar");
+    return {
+      reset: bar && bar.querySelector('button[type="button"]'),
+      submit: bar && bar.querySelector('button[type="submit"]'),
+    };
+  }
+  function syncActions() {
+    const actions = nativeActions();
+    resetButton.disabled = !actions.reset;
+    saveButton.disabled = !actions.submit;
+  }
   function routeName() {
     const p = new URLSearchParams(location.search).get("page");
     return routes[p] ? p : "settings";
@@ -36,7 +66,7 @@
   function render(name, push = false) {
     const r = routes[name] || routes.settings;
     if (push) history.pushState({ page: name }, "", `admin.html?page=${name}`);
-    document.title = `${r.title} — TalentaPanel`;
+    document.title = `${r.title} â€” TalentaPanel`;
     document.getElementById("routeTitle").textContent = r.title;
     document.getElementById("routeBreadcrumb").textContent = r.crumb;
     document.getElementById("routePublicLink").href = r.public;
@@ -57,6 +87,7 @@
       }
     }
     lucide.createIcons();
+    syncActions();
   }
   document.querySelectorAll("[data-route]").forEach((a) =>
     a.addEventListener("click", (e) => {
@@ -64,9 +95,13 @@
       render(a.dataset.route, true);
     }),
   );
-  frame.addEventListener("load", () =>
-    view.classList.remove("admin-route-view--loading"),
-  );
+  resetButton.addEventListener("click", () => nativeActions().reset?.click());
+  saveButton.addEventListener("click", () => nativeActions().submit?.click());
+  frame.addEventListener("load", () => {
+    view.classList.remove("admin-route-view--loading");
+    syncActions();
+  });
   addEventListener("popstate", () => render(routeName()));
   render(routeName());
 })();
+

@@ -37,23 +37,25 @@ function initNavigation() {
 }
 
 /* --- ACCORDION (FAQ) --- */
-function initAccordion() {
-  document.querySelectorAll('.accordion__trigger').forEach(trigger => {
+function initAccordion(root = document) {
+  root.querySelectorAll('.accordion__trigger').forEach(trigger => {
+    if (trigger.dataset.accordionBound === '1') return;
+    trigger.dataset.accordionBound = '1';
+    trigger.setAttribute('aria-expanded', trigger.closest('.accordion__item').classList.contains('accordion__item--open') ? 'true' : 'false');
     trigger.addEventListener('click', () => {
       const item = trigger.closest('.accordion__item');
       const content = item.querySelector('.accordion__content');
       const isOpen = item.classList.contains('accordion__item--open');
-      
-      // Close all items in the same accordion
       const accordion = item.closest('.accordion');
-      accordion.querySelectorAll('.accordion__item--open').forEach(openItem => {
-        openItem.classList.remove('accordion__item--open');
-        openItem.querySelector('.accordion__content').style.maxHeight = '0';
+      accordion.querySelectorAll('.accordion__item').forEach(other => {
+        other.classList.remove('accordion__item--open');
+        other.querySelector('.accordion__trigger')?.setAttribute('aria-expanded', 'false');
+        const otherContent = other.querySelector('.accordion__content');
+        if (otherContent) otherContent.style.maxHeight = '0';
       });
-      
-      // Toggle current
       if (!isOpen) {
         item.classList.add('accordion__item--open');
+        trigger.setAttribute('aria-expanded', 'true');
         content.style.maxHeight = content.scrollHeight + 'px';
       }
     });

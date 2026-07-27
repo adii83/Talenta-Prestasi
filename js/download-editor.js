@@ -1,4 +1,4 @@
-﻿const DOWNLOAD_KEY = "talenta_download_editor_v2",
+const DOWNLOAD_KEY = "talenta_download_editor_v2",
   GLOBAL_KEY = "talenta_event_settings_v1";
 let previewCompetitionId = "";
 const defaults = {
@@ -29,7 +29,9 @@ function clone(v) {
   return JSON.parse(JSON.stringify(v));
 }
 function archive(id) {
-  return MOCK_ARCHIVE_DATABASE.competitions.find((x) => x.id === id);
+  return typeof getEffectiveCompetitionById === 'function'
+    ? getEffectiveCompetitionById(id)
+    : MOCK_ARCHIVE_DATABASE.competitions.find((x) => x.id === id);
 }
 function load() {
   const saved = JSON.parse(localStorage.getItem(DOWNLOAD_KEY) || "null");
@@ -145,9 +147,10 @@ function sync() {
 }
 function renderPicker() {
   const selected = new Set(state.competitions.map((x) => x.competitionId)),
-    available = MOCK_ARCHIVE_DATABASE.competitions.filter(
-      (x) => x.status === "published" && !selected.has(x.id),
-    ),
+    allComps = typeof getEffectiveArchivedCompetitions === 'function'
+      ? getEffectiveArchivedCompetitions()
+      : MOCK_ARCHIVE_DATABASE.competitions.filter((x) => x.status === "published"),
+    available = allComps.filter((x) => x.active !== false && !selected.has(x.id)),
     el = document.getElementById("archiveCompetitionSelect");
   el.innerHTML = available.length
     ? available

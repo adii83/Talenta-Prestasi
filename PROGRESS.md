@@ -218,8 +218,41 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Mengoreksi analisis card `Pemenang Ajang Talenta Sebelumnya`: karena memakai `.grid--3`, breakpoint <=768px menghasilkan 2 kolom dan tetap 2 kolom pada <=480px.
 - Berkas: `admin-beranda.html`, `js/winner-highlight-editor.js`, `css/style.css`, `PROGRESS.md`.
 
+
+### 27 Juli 2026 — Manajemen dan Preview Halaman Arsip
+- Membuat `admin-arsip.html` dan `js/archive-manager.js`.
+- Arsip membaca lomba published dari `MOCK_ARCHIVE_DATABASE`, dengan override lokal `talenta_archive_manager_v1`.
+- Menambahkan tambah/edit/hapus/reorder/toggle lomba tanpa memisahkan dokumen dan pemenang dari objek lombanya.
+- Menambahkan editor status halaman, eyebrow, judul, deskripsi, alignment, dan teks aksi card.
+- Preview memakai class publik asli: `section__header`, `grid grid--3`, dan seluruh struktur `lomba-card`.
+- Responsif berdasarkan template: desktop 3 kolom; tablet 2 kolom; mobile tetap 2 kolom. Ukuran thumbnail 180px, body 24px, title 17px, description/action 14px dipertahankan.
+- Tidak menambahkan filter, search, pagination, atau kategori tahun karena tidak ada pada template.
+- Menambahkan route `admin.html?page=archive` pada router persisten dan mengaktifkan menu Arsip.
+- Validasi statis lulus: ID unik, CRUD/reorder/toggle, class publik, breakpoint, router, dan kontrak database Unduh.
+- Berkas: `admin-arsip.html`, `js/archive-manager.js`, `js/admin-router.js`, `admin.html`, child admin sidebars, `css/style.css`, `PROGRESS.md`.
+
+
+### 27 Juli 2026 — Editor Detail Arsip dan Penyatuan Data Lintas Halaman
+- Membuat `js/archive-data-store.js` sebagai resolver tunggal data Arsip efektif.
+  - Baseline tetap `MOCK_ARCHIVE_DATABASE`; override admin disimpan pada `talenta_archive_manager_v2`.
+  - Migrasi otomatis dari v1 ke v2.
+  - Helper: `getEffectiveArchivedCompetitions()`, `getEffectiveCompetitionById(id)`, `saveArchiveAdminState()`.
+- Membuat `admin-arsip-detail.html` dan `js/archive-detail-editor.js` untuk editor Detail Arsip per lomba.
+  - Identitas dan banner (nama, deskripsi, gradient).
+  - Section pemenang (toggle, eyebrow, judul, SK, metadata champion card).
+  - Section dokumen (toggle, eyebrow, judul, hide/show per dokumen, label custom, pilihan SK).
+  - Preview identik template: `.lomba-banner` (280/220/200px), `.sk-banner`, `.winner-section`, `.champion-grid` (auto-fill 200px / 1fr mobile), `.doc-card` (kolom di mobile), `.section--soft`.
+- Menyambungkan `download-editor.js` ke resolver efektif (fungsi `archive()` dan `renderPicker()`).
+- Menyambungkan `winner-manager.js` ke resolver efektif (`renderArchiveSources()` dan `archiveCards()`).
+  - Card Pemenang Sebelumnya sekarang memakai URL `arsip-detail.html?id={id}#pemenang` dan gradient.
+- Menambahkan `archive-data-store.js` pada seluruh halaman admin: Beranda, Unduh, Pemenang, Arsip, Detail Arsip.
+- Validasi lintas halaman lulus: semua admin memuat data store; semua konsumen memakai resolver; class publik dan breakpoint identik template.
+- Berkas: `js/archive-data-store.js`, `admin-arsip-detail.html`, `js/archive-detail-editor.js`, `js/archive-manager.js`, `js/download-editor.js`, `js/winner-manager.js`, `admin-beranda.html`, `admin-unduh.html`, `admin-pemenang.html`, `admin-arsip.html`, `css/style.css`, `PROGRESS.md`.
+
 ## Langkah Berikutnya
 Tinjau alur lengkap Pemenang. Integrasi data yang sama ke halaman publik `pemenang.html` dan `index.html` tetap merupakan tahap public renderer berikutnya. Teknologi backend dan deployment harus disepakati sebelum integrasi server.
+
+
 
 
 

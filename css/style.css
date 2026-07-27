@@ -5233,3 +5233,245 @@ textarea {
 .winner-preview-frame--mobile .winner-preview .champion-grid{grid-template-columns:1fr}.winner-preview-frame--mobile .winner-preview__categories{gap:28px}.winner-preview-frame--mobile .winner-preview__category .winner-group__title{font-size:18px;flex-wrap:wrap}
 /* Arsip public template: grid--3 becomes 2 columns at <=768px and remains 2 at <=480px. */
 .wm-preview-frame--mobile .wm-preview__archives .grid--3{grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.wm-preview-frame--mobile .wm-preview__archives .lomba-card__thumb{height:100px}.wm-preview-frame--mobile .wm-preview__archives .lomba-card__body{padding:14px}.wm-preview-frame--mobile .wm-preview__archives .lomba-card__title{font-size:11px}.wm-preview-frame--mobile .wm-preview__archives .lomba-card__desc{font-size:9px}
+
+/* --- 43. ARCHIVE MANAGER & EXACT PUBLIC PREVIEW --- */
+.archive-manager-list{display:grid;gap:14px;margin-top:20px}.archive-manager-item{border:1px solid #dfe5ec;border-radius:12px;padding:16px;background:#fff}.archive-manager-item__head{display:grid;grid-template-columns:24px 46px 1fr auto 32px;align-items:center;gap:10px;margin-bottom:16px}.archive-manager-item__drag{color:#a4afbc}.archive-manager-item__drag svg{width:18px}.archive-manager-item__icon{width:46px;height:46px;border-radius:9px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.7)}.archive-manager-item__icon svg{width:22px}.archive-manager-item__head strong,.archive-manager-item__head small{display:block}.archive-manager-item__head strong{font-size:13px;color:#1d2939}.archive-manager-item__head small{font-size:10px;color:#8490a2}.repeat-row__actions{display:flex;gap:6px;margin-top:12px}.repeat-row__actions button{display:inline-flex;align-items:center;gap:4px;border:1px solid #dfe5ec;background:#fff;border-radius:7px;padding:6px 9px;font-size:9px;color:#647286}.repeat-row__actions button svg{width:12px}.repeat-row__actions button:disabled{opacity:.35}.archive-preview-frame{width:100%;padding:14px;background:#e9eef4;border-radius:14px;margin-top:18px;transition:max-width .25s;margin-inline:auto}.archive-preview-frame--desktop{max-width:1180px}.archive-preview-frame--tablet{max-width:720px}.archive-preview-frame--mobile{max-width:390px}.archive-preview{background:#fff;padding:96px 24px;min-height:420px}.archive-preview .section__header{margin-bottom:48px}.archive-preview .lomba-card__thumb svg{width:48px;height:48px;stroke-width:1}.archive-preview .lomba-card__action svg{width:14px;height:14px}.archive-preview-frame--tablet .archive-preview{padding:48px 24px}.archive-preview-frame--tablet .archive-preview .t-h1{font-size:32px}.archive-preview-frame--tablet .archive-preview .grid--3{grid-template-columns:repeat(2,minmax(0,1fr))}.archive-preview-frame--mobile .archive-preview{padding:48px 16px}.archive-preview-frame--mobile .archive-preview .t-h1{font-size:32px}.archive-preview-frame--mobile .archive-preview .grid--3{grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}.archive-preview-frame--mobile .archive-preview .lomba-card__thumb{height:180px}.archive-preview-frame--mobile .archive-preview .lomba-card__body{padding:24px}.archive-preview-frame--mobile .archive-preview .lomba-card__title{font-size:17px}.archive-preview-frame--mobile .archive-preview .lomba-card__desc{font-size:14px;line-height:1.6}.archive-preview-frame--mobile .archive-preview .lomba-card__action{font-size:14px}
+@media(max-width:620px){.archive-manager-item__head{grid-template-columns:20px 40px 1fr auto}.archive-manager-item__head>.repeat-row__delete{grid-column:4}.archive-manager-item__icon{width:40px;height:40px}}
+
+/* --- 44. ARCHIVE DETAIL PREVIEW (class publik) --- */
+.archive-detail-preview-frame{width:100%;padding:14px;background:#e9eef4;border-radius:14px;margin-top:18px;transition:max-width .25s;margin-inline:auto}
+.archive-detail-preview-frame--desktop{max-width:1180px}
+.archive-detail-preview-frame--tablet{max-width:720px}
+.archive-detail-preview-frame--mobile{max-width:390px}
+.archive-detail-preview{background:#fff;min-height:420px}
+/* Banner — identik .lomba-banner template */
+.archive-detail-preview .lomba-banner{height:280px}
+.archive-detail-preview .lomba-banner__title{font-size:36px}
+.archive-detail-preview .lomba-banner__desc{font-size:16px}
+/* Breadcrumb */
+.detail-preview__breadcrumb{padding:12px 0;border-bottom:1px solid var(--c-border)}
+.detail-preview__breadcrumb .container{max-width:1200px;margin:0 auto;padding:0 24px}
+.detail-preview__breadcrumb .t-caption{font-size:13px}
+/* Sections */
+.archive-detail-preview .section{padding:72px 0}
+.archive-detail-preview .section--soft{background:var(--c-bg-soft)}
+.archive-detail-preview .container{max-width:1200px;margin:0 auto;padding:0 24px}
+.archive-detail-preview .section__header{margin-bottom:32px}
+/* SK banner */
+.archive-detail-preview .sk-banner{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:24px;background:linear-gradient(135deg,#10233F 0%,#1E4B8C 100%);border-radius:var(--r-card);color:#fff;margin-bottom:32px}
+.archive-detail-preview .sk-banner__left{display:flex;align-items:center;gap:16px}
+.archive-detail-preview .sk-banner__icon{width:48px;height:48px;min-width:48px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.1);border-radius:12px}
+.archive-detail-preview .sk-banner__content h3{font-size:16px;font-weight:700;margin-bottom:4px}
+.archive-detail-preview .sk-banner__content p{font-size:13px;opacity:.8}
+/* Winner section */
+.archive-detail-preview .winner-section{display:flex;flex-direction:column;gap:32px}
+.archive-detail-preview .winner-group{margin-bottom:0}
+.archive-detail-preview .winner-group__title{font-size:20px}
+.archive-detail-preview .champion-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+/* Doc list */
+.archive-detail-preview .doc-card__icon{width:40px;height:40px;min-width:40px;background:var(--c-bg-soft);border-radius:var(--r-btn);display:flex;align-items:center;justify-content:center;color:var(--c-primary)}
+.archive-detail-preview .doc-list{display:flex;flex-direction:column;gap:12px}
+/* Category summary */
+.detail-source-summary{display:grid;gap:7px;margin-top:16px}
+.detail-doc-editor{margin-top:12px}
+/* TABLET overrides */
+.archive-detail-preview-frame--tablet .archive-detail-preview .lomba-banner{height:220px}
+.archive-detail-preview-frame--tablet .archive-detail-preview .lomba-banner__title{font-size:28px}
+.archive-detail-preview-frame--tablet .archive-detail-preview .section{padding:48px 0}
+.archive-detail-preview-frame--tablet .archive-detail-preview .t-h2{font-size:24px}
+.archive-detail-preview-frame--tablet .archive-detail-preview .champion-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+/* MOBILE overrides */
+.archive-detail-preview-frame--mobile .archive-detail-preview .lomba-banner{height:200px}
+.archive-detail-preview-frame--mobile .archive-detail-preview .lomba-banner__title{font-size:24px}
+.archive-detail-preview-frame--mobile .archive-detail-preview .section{padding:48px 0}
+.archive-detail-preview-frame--mobile .archive-detail-preview .t-h2{font-size:20px}
+.archive-detail-preview-frame--mobile .archive-detail-preview .champion-grid{grid-template-columns:1fr}
+.archive-detail-preview-frame--mobile .archive-detail-preview .sk-banner{flex-direction:column;text-align:center;padding:20px}
+.archive-detail-preview-frame--mobile .archive-detail-preview .sk-banner__left{flex-direction:column}
+.archive-detail-preview-frame--mobile .archive-detail-preview .doc-card{flex-direction:column;align-items:flex-start;gap:8px}
+.archive-detail-preview-frame--mobile .archive-detail-preview .doc-card__download{width:100%}
+.archive-detail-preview-frame--mobile .archive-detail-preview .doc-card__download .btn{width:100%}
+.archive-detail-preview-frame--mobile .archive-detail-preview .container{padding:0 16px}
+
+/* Context toolbar Detail Arsip — tetap terlihat saat child topbar disembunyikan */
+.archive-detail-toolbar{position:sticky;top:0;z-index:20;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:16px;padding:14px 22px;margin-bottom:18px;background:rgba(255,255,255,.96);border-bottom:1px solid var(--c-border);box-shadow:0 4px 16px rgba(16,35,63,.06);backdrop-filter:blur(10px)}
+.archive-detail-toolbar__context{min-width:0}
+.archive-detail-toolbar__context span{display:block;font-size:11px;color:var(--c-gray);margin-bottom:2px}
+.archive-detail-toolbar__context strong{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;color:var(--c-ink)}
+@media(max-width:600px){.archive-detail-toolbar{grid-template-columns:auto 1fr;padding:12px 14px;gap:10px}.archive-detail-toolbar>a:last-child{display:none}.archive-detail-toolbar__context span{display:none}.archive-detail-toolbar__context strong{font-size:13px}}
+
+/* Public archive renderer utilities */
+.archive-detail-breadcrumb{padding:var(--sp-2) 0;border-bottom:1px solid var(--c-border);background:var(--c-white)}
+.archive-detail-breadcrumb .t-caption{display:flex;align-items:center;gap:10px;margin:0}
+.archive-detail-breadcrumb a{color:var(--c-primary);font-weight:600}
+.archive-detail-breadcrumb span:last-child{color:var(--c-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.public-empty-state{min-height:320px;display:grid;place-items:center;align-content:center;gap:12px;text-align:center;padding:40px;color:var(--c-gray);border:1px dashed var(--c-border);border-radius:var(--r-card);background:var(--c-bg-soft)}
+.public-empty-state>svg{width:36px;height:36px;color:var(--c-primary)}
+.public-empty-state .t-h2{margin:0;color:var(--c-ink)}
+.public-empty-state p{max-width:520px;margin:0 0 8px}
+.public-empty-state--compact{min-height:120px;padding:24px}
+.lomba-card__thumb>svg{width:48px;height:48px;stroke-width:1}
+.lomba-card__action>svg,.doc-card__download svg{width:14px;height:14px}
+.sk-banner__icon>svg{width:24px;height:24px}
+.champion-card__photo img{width:100%;height:100%;object-fit:cover}
+@media(max-width:480px){.archive-detail-breadcrumb .container{padding-inline:16px}.archive-detail-breadcrumb .t-caption{font-size:11px}.public-empty-state{min-height:240px;padding:28px 18px}}
+
+/* --- FINAL AUTHORITATIVE PREVIEW PARITY ---
+   Nilai di bawah mengikuti cascade template publik; override lama di atas tidak berlaku lagi. */
+/* Pemenang: champion-grid publik auto-fill min 200px; mobile frame sempit menghasilkan 1 kolom. */
+.wm-preview .champion-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px}
+.wm-preview-frame--tablet .wm-preview .champion-grid{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:24px}
+.wm-preview-frame--mobile .wm-preview .champion-grid{grid-template-columns:1fr;gap:24px}
+.wm-preview-frame--mobile .wm-preview .champion-card{padding:24px}
+.wm-preview-frame--mobile .wm-preview .champion-card__photo{width:80px;height:80px;font-size:28px}
+.wm-preview-frame--mobile .wm-preview .champion-card__rank{font-size:12px}
+.wm-preview-frame--mobile .wm-preview .champion-card__name{font-size:16px}
+.wm-preview-frame--mobile .wm-preview .champion-card__school{font-size:13px}
+.wm-preview-frame--mobile .wm-preview .champion-card__meta{font-size:13px}
+/* SK banner tidak memiliki media rule kolom pada template publik: tetap horizontal. */
+.wm-preview-frame--mobile .wm-preview .sk-banner,
+.archive-detail-preview-frame--mobile .archive-detail-preview .sk-banner{display:flex;flex-direction:row;align-items:center;text-align:left;padding:24px 16px}
+.wm-preview-frame--mobile .wm-preview .sk-banner__left,
+.archive-detail-preview-frame--mobile .archive-detail-preview .sk-banner__left{display:flex;flex-direction:row;align-items:center;text-align:left;min-width:0;flex:1}
+/* Arsip/Pemenang Sebelumnya: grid--3 publik 3/2/2. */
+.archive-preview-frame--desktop .archive-preview .grid--3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.archive-preview-frame--tablet .archive-preview .grid--3,
+.archive-preview-frame--mobile .archive-preview .grid--3,
+.wm-preview-frame--tablet .wm-preview__archives .grid--3,
+.wm-preview-frame--mobile .wm-preview__archives .grid--3{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Detail banner publik 280/220/200 dan document mobile vertikal. */
+.archive-detail-preview-frame--desktop .archive-detail-preview .lomba-banner{height:280px}
+.archive-detail-preview-frame--desktop .archive-detail-preview .lomba-banner__title{font-size:36px}
+.archive-detail-preview-frame--tablet .archive-detail-preview .lomba-banner{height:220px}
+.archive-detail-preview-frame--tablet .archive-detail-preview .lomba-banner__title{font-size:28px}
+.archive-detail-preview-frame--mobile .archive-detail-preview .lomba-banner{height:200px}
+.archive-detail-preview-frame--mobile .archive-detail-preview .lomba-banner__title{font-size:24px}
+.archive-detail-preview-frame--mobile .archive-detail-preview .champion-grid{grid-template-columns:1fr}
+.archive-detail-preview-frame--mobile .archive-detail-preview .doc-card{flex-direction:column;align-items:flex-start;gap:var(--sp-1)}
+.archive-detail-preview-frame--mobile .archive-detail-preview .doc-card__download,
+.archive-detail-preview-frame--mobile .archive-detail-preview .doc-card__download .btn{width:100%}
+
+/* --- FAQ MANAGER & EXACT TEMPLATE PREVIEW --- */
+.faq-manager-list{display:grid;gap:16px;margin-top:20px}
+.faq-manager-category{border:1px solid #dfe5ec;border-radius:12px;background:#fff;overflow:hidden}
+.faq-manager-category__head{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;align-items:end;gap:12px;padding:16px;background:#f7f9fc;border-bottom:1px solid #e4e9ef}
+.faq-manager-category__index{width:36px;height:36px;display:grid;place-items:center;border-radius:9px;background:#e8f0fb;color:#1e4b8c;font:700 11px var(--font-mono)}
+.faq-manager-questions{display:grid;gap:12px;padding:16px}
+.faq-manager-question{border:1px solid #e4e9ef;border-radius:10px;padding:14px;display:grid;gap:12px}
+.faq-manager-question>header{display:grid;grid-template-columns:28px 1fr auto auto;align-items:center;gap:9px}
+.faq-manager-question>header>span{width:26px;height:26px;display:grid;place-items:center;border-radius:7px;background:#edf3fb;color:#315d97;font:700 9px var(--font-mono)}
+.faq-manager-question>header>strong{font-size:12px;color:#344054}
+.faq-manager-actions{display:flex;gap:5px}
+.faq-manager-actions button{width:30px;height:30px;display:grid;place-items:center;border:1px solid #dfe5ec;background:#fff;border-radius:7px;color:#647286;cursor:pointer;transition:.18s}
+.faq-manager-actions button:hover:not(:disabled){border-color:#8eb0db;color:#1e4b8c;background:#edf3fb}
+.faq-manager-actions button.is-danger:hover{border-color:#f2b8b5;color:#b42318;background:#fff1f0}
+.faq-manager-actions button:disabled{opacity:.3;cursor:not-allowed}
+.faq-manager-actions svg{width:14px}
+.faq-add-question{display:flex;align-items:center;justify-content:center;gap:7px;min-height:42px;border:1px dashed #b7c6d8;border-radius:9px;background:#f9fbfd;color:#315d97;font-size:11px;font-weight:700;cursor:pointer}
+.faq-add-question:hover{background:#edf3fb;border-color:#8eb0db}
+.faq-add-question svg{width:15px}
+.faq-preview-frame{width:100%;padding:14px;background:#e9eef4;border-radius:14px;margin:18px auto 0;transition:max-width .25s}
+.faq-preview-frame--desktop{max-width:1180px}.faq-preview-frame--tablet{max-width:720px}.faq-preview-frame--mobile{max-width:390px}
+.faq-preview{background:#fff;min-height:420px}
+/* Preview memakai ukuran template publik; mode device hanya mengubah lebar frame dan padding container breakpoint. */
+.faq-preview .section{padding:96px 0}
+.faq-preview .container{width:100%;max-width:1200px;padding:0 24px}
+.faq-preview .accordion__trigger:focus-visible,.accordion__trigger:focus-visible{outline:3px solid rgba(30,75,140,.25);outline-offset:-3px}
+.faq-preview-frame--tablet .faq-preview .section,.faq-preview-frame--mobile .faq-preview .section{padding:48px 0}
+.faq-preview-frame--tablet .faq-preview .container{padding:0 24px}
+.faq-preview-frame--mobile .faq-preview .container{padding:0 16px}
+.faq-preview-frame--tablet .faq-preview .t-h1,.faq-preview-frame--mobile .faq-preview .t-h1{font-size:32px}
+.faq-preview-frame--mobile .faq-preview .accordion__trigger{align-items:flex-start;gap:12px}
+.faq-preview-frame--mobile .faq-preview .accordion__body{overflow-wrap:anywhere}
+@media(max-width:700px){.faq-manager-category__head{grid-template-columns:36px minmax(0,1fr) auto}.faq-manager-category__head>.faq-manager-actions{grid-column:2/4;justify-content:flex-end}.faq-manager-question>header{grid-template-columns:28px 1fr auto}.faq-manager-question>header>.faq-manager-actions{grid-column:2/4;justify-content:flex-end}}
+@media(max-width:480px){.faq-manager-category__head{grid-template-columns:1fr}.faq-manager-category__index{display:none}.faq-manager-category__head>.faq-manager-actions{grid-column:auto}.faq-manager-questions{padding:10px}.faq-manager-question{padding:12px}.faq-manager-question>header{grid-template-columns:1fr auto}.faq-manager-question>header>span{display:none}.faq-manager-question>header>.faq-manager-actions{grid-column:1/3}}
+
+/* --- CONSOLIDATED GLOBAL SETTINGS & ADAPTIVE APP NAV --- */
+.bottom-nav[data-item-count="5"]{max-width:400px}.bottom-nav[data-item-count="4"]{max-width:344px}.bottom-nav[data-item-count="3"]{max-width:280px}.bottom-nav[data-item-count="2"]{max-width:208px}.bottom-nav[data-item-count="1"]{max-width:112px}
+.bottom-nav__item[hidden],.navbar__link[hidden],.floating-wa[hidden]{display:none!important}
+.navbar__logo img,.mobile-header__logo img,.footer__logo img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.global-navigation-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:20px}
+.global-navigation-item{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:12px;padding:14px;border:1px solid #e0e6ed;border-radius:11px;background:#fff}
+.global-navigation-item>span{width:40px;height:40px;display:grid;place-items:center;border-radius:9px;background:#edf3fb;color:#1e4b8c}.global-navigation-item>span svg{width:18px}.global-navigation-item strong{display:block;font-size:13px;color:#1b2735}.global-navigation-item small{display:block;margin-top:2px;color:#718096;font-size:10px}
+.global-preview{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;margin-top:20px;padding:16px;background:#e9eef4;border-radius:14px}
+.global-preview__desktop{grid-column:1}.global-preview-navbar{height:58px;padding:0 18px;display:flex;align-items:center;justify-content:space-between;background:#fff;border-bottom:1px solid #e2e8ef;border-radius:10px}.global-preview-navbar>strong{max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px}.global-preview-navbar nav{display:flex;align-items:center;gap:18px}.global-preview-navbar a{font-size:10px;color:#607084;text-decoration:none}
+.global-preview__phone{grid-column:2;grid-row:1/3;position:relative;min-height:420px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 30px rgba(16,35,63,.12)}.global-preview-mobile-head{height:52px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid #e2e8ef;font-size:12px;font-weight:700}.global-preview-phone-body{height:268px;display:grid;place-items:center;color:#9aa5b3;font-size:11px;background:#fafbfd}.global-preview-bottom{display:flex!important;position:absolute!important;bottom:18px!important;width:calc(100% - 24px)!important;transform:translateX(-50%) scale(.82);transform-origin:bottom center}.global-preview-wa{position:absolute;right:14px;bottom:96px;width:42px;height:42px;border-radius:50%;display:grid;place-items:center;background:#25d366;color:#fff;box-shadow:0 4px 14px rgba(37,211,102,.35)}.global-preview-wa[hidden]{display:none}.global-preview-wa svg{width:20px}
+.global-preview-footer{grid-column:1;padding:36px 28px 20px;border-radius:10px}.global-preview-footer .footer__grid{gap:24px;margin-bottom:28px}.global-preview-footer .footer__desc{font-size:12px}.global-preview-footer .footer__link{font-size:11px}.global-preview-footer .footer__bottom{font-size:10px}
+@media(max-width:900px){.global-preview{grid-template-columns:1fr}.global-preview__desktop,.global-preview__phone,.global-preview-footer{grid-column:1;grid-row:auto}.global-preview__phone{width:300px;justify-self:center}.global-preview-navbar nav{gap:10px}}
+@media(max-width:640px){.global-navigation-grid{grid-template-columns:1fr}.global-preview{padding:10px}.global-preview-navbar{display:none}.global-preview__desktop{display:none}.global-preview__phone{width:100%;max-width:300px}.global-preview-footer{padding:28px 18px 16px}.global-preview-footer .footer__grid{flex-direction:column}}
+@media(prefers-reduced-motion:reduce){.bottom-nav__item::before,.bottom-nav__icon,.bottom-nav__label{transition:none!important}}
+
+/* --- SEPARATED GLOBAL PREVIEWS: NAVIGATION + FOOTER/WHATSAPP --- */
+.global-preview-panel{margin-top:22px;padding-top:20px;border-top:1px solid #e3e8ef}.global-preview-panel .editor-subsection__head{margin-bottom:14px}
+.global-nav-preview-frame,.global-footer-preview-frame{margin:0 auto;padding:14px;background:#e9eef4;border-radius:14px;overflow:hidden;transition:max-width .25s}
+.global-nav-preview-frame--desktop,.global-footer-preview-frame--desktop{max-width:1180px}.global-nav-preview-frame--tablet,.global-footer-preview-frame--tablet{max-width:720px}.global-nav-preview-frame--mobile,.global-footer-preview-frame--mobile{max-width:390px}
+.global-nav-preview{min-height:260px;background:#f8fafc;border-radius:10px;overflow:hidden}.global-nav-preview .navbar{display:flex!important;position:relative;height:68px}.global-nav-preview .navbar__inner{padding-inline:22px}.global-nav-preview .navbar__menu{gap:22px}.global-nav-preview button.navbar__link{border:0;background:transparent;cursor:pointer;font-family:inherit}.global-nav-device-stage{position:relative;min-height:430px;background:#fff;overflow:hidden}.global-nav-mobile-head{display:flex!important;position:relative}.global-nav-device-content{height:310px;display:grid;place-items:center;background:linear-gradient(180deg,#f9fbfd,#eef3f8);color:#9aa7b7;font-size:11px}.global-nav-bottom{display:flex!important;position:absolute!important;bottom:22px!important}.global-nav-bottom .bottom-nav__item{border:0;background:transparent;font-family:inherit;cursor:pointer}.global-nav-preview-frame--tablet .global-nav-preview{max-width:100%}.global-nav-preview-frame--mobile .global-nav-device-stage{min-height:400px}.global-nav-preview-frame--mobile .global-nav-device-content{height:280px}
+.global-footer-stage{position:relative;border-radius:10px;overflow:hidden;background:#fff}.global-footer-preview-frame .global-preview-footer{padding:64px 48px 30px;border-radius:0}.global-footer-preview-frame--tablet .global-preview-footer,.global-footer-preview-frame--mobile .global-preview-footer{padding:48px 24px 24px}.global-footer-preview-frame--tablet .global-preview-footer .footer__grid,.global-footer-preview-frame--mobile .global-preview-footer .footer__grid{flex-direction:column;gap:28px}.global-footer-preview-frame--mobile .global-preview-footer{padding:38px 18px 22px}.global-footer-preview-frame--mobile .global-preview-footer .footer__brand-text{font-size:14px}.global-footer-preview-frame--mobile .global-preview-footer .footer__desc,.global-footer-preview-frame--mobile .global-preview-footer .footer__link{font-size:12px}.global-footer-stage .global-preview-wa{position:absolute;right:22px;bottom:74px;margin:0;border:0;cursor:pointer;z-index:5}.global-footer-preview-frame--tablet .global-preview-wa,.global-footer-preview-frame--mobile .global-preview-wa{right:16px;bottom:70px;width:50px;height:50px}.global-preview-wa--pulse{animation:globalWaPulse .5s ease}.global-preview-wa-feedback{position:absolute;right:18px;bottom:136px;padding:8px 11px;border-radius:8px;background:#10233f;color:#fff;font-size:10px;opacity:0;transform:translateY(8px);pointer-events:none;transition:.2s;z-index:6}.global-preview-wa-feedback--show{opacity:1;transform:translateY(0)}
+@keyframes globalWaPulse{50%{transform:scale(1.16);box-shadow:0 0 0 10px rgba(37,211,102,.16)}}
+@media(max-width:700px){.global-nav-preview .navbar__brand-text{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.global-nav-preview .navbar__menu{gap:12px}.global-nav-preview button.navbar__link{font-size:12px}}
+@media(max-width:480px){.global-nav-preview-frame,.global-footer-preview-frame{padding:8px}.global-preview-panel .editor-subsection__head{align-items:flex-start;gap:12px}.global-footer-preview-frame--mobile .global-preview-footer .footer__grid{margin-bottom:28px}}
+@media(prefers-reduced-motion:reduce){.global-preview-wa--pulse{animation:none}.global-preview-wa-feedback{transition:none}}
+
+/* --- FINAL NAV/WHATSAPP PREVIEW PARITY CORRECTIONS --- */
+.global-nav-preview .navbar__menu{gap:28px}.global-nav-preview button.navbar__link{padding:8px 0;color:var(--c-gray);font-size:15px;font-weight:500;line-height:1.2}.global-nav-preview button.navbar__link:hover{color:var(--c-ink)}.global-nav-preview button.navbar__link--active{color:var(--c-primary)}
+.global-footer-stage .global-preview-wa svg{width:28px!important;height:28px!important;fill:currentColor!important;stroke:none!important}.global-footer-stage .global-preview-wa{color:#fff;padding:0;display:flex;align-items:center;justify-content:center}.global-footer-stage .global-preview-wa:hover{color:#fff}
+@media(max-width:700px){.global-nav-preview .navbar__menu{gap:16px}.global-nav-preview button.navbar__link{font-size:13px}}
+
+/* --- FINAL SETTINGS SCROLL + EXACT WHATSAPP DEVICE PARITY --- */
+/* Settings is a long native panel; editor iframe routes remain viewport-locked. */
+#settingsRouteView{height:calc(100vh - 84px);min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable}
+#settingsRouteView .admin-savebar{position:sticky;left:auto;right:auto;bottom:0;width:100%;margin-top:0}
+#settingsRouteView .admin-content{padding-bottom:34px}
+/* Public template keeps WhatsApp 56x56 and its logo 28x28 at every breakpoint. */
+.global-footer-stage .global-preview-wa,.global-footer-preview-frame--tablet .global-preview-wa,.global-footer-preview-frame--mobile .global-preview-wa{width:56px!important;height:56px!important;min-width:56px!important;min-height:56px!important;padding:0!important}
+.global-footer-stage .global-preview-wa svg,.global-footer-preview-frame--tablet .global-preview-wa svg,.global-footer-preview-frame--mobile .global-preview-wa svg{width:28px!important;height:28px!important;display:block;fill:#fff!important}
+.global-footer-preview-frame--desktop .global-preview-wa{right:24px;bottom:32px}
+.global-footer-preview-frame--tablet .global-preview-wa,.global-footer-preview-frame--mobile .global-preview-wa{right:16px;bottom:104px}
+.global-footer-preview-frame--tablet .global-preview-wa-feedback,.global-footer-preview-frame--mobile .global-preview-wa-feedback{right:16px;bottom:170px}
+@media(max-width:900px){#settingsRouteView{height:calc(100vh - 72px)}}
+@media(max-width:640px){#settingsRouteView .admin-savebar{position:sticky}}
+
+/* --- FINAL SETTINGS TOGGLE STABILITY: SINGLE SCROLL CONTAINER --- */
+/* Undo nested route scrolling; settings follows the main document flow. */
+#settingsRouteView{height:auto!important;min-height:calc(100vh - 84px)!important;overflow:visible!important;scrollbar-gutter:auto!important}
+.admin-router-main:has(#settingsRouteView:not([hidden])){overflow:visible!important}
+#settingsRouteView .admin-savebar{position:fixed!important;left:260px!important;right:0!important;bottom:0!important;width:auto!important;margin:0!important}
+#settingsRouteView .admin-content{padding-bottom:34px}
+@media(max-width:900px){#settingsRouteView{height:auto!important}.admin-router-main:has(#settingsRouteView:not([hidden])){overflow:visible!important}#settingsRouteView .admin-savebar{left:0!important}}
+
+/* Prevent browser scroll anchoring from following resized previews. */
+.global-nav-preview-frame,.global-nav-preview,#globalNavigationList{overflow-anchor:none}
+
+/* --- UNIVERSAL FLOATING EDITOR ACTION BAR --- */
+/* One viewport-level bar; no nested scroll container, so editor rerenders cannot jump the page. */
+.admin-main>form{padding-bottom:96px}
+.admin-savebar{position:fixed!important;left:260px!important;right:0!important;bottom:0!important;width:auto!important;min-height:72px;margin:0!important;padding:12px clamp(18px,3vw,38px);z-index:90;background:rgba(255,255,255,.96);border-top:1px solid #dfe4eb;box-shadow:0 -10px 28px rgba(16,35,63,.08);backdrop-filter:blur(14px)}
+.admin-embedded .admin-savebar{left:0!important}.admin-savebar .btn{min-height:42px}.admin-savebar .btn--outline{background:#fff}
+@media(max-width:900px){.admin-savebar{left:0!important}.admin-main>form{padding-bottom:92px}}
+@media(max-width:640px){.admin-savebar{padding:10px 14px;min-height:68px}.admin-savebar p{display:none}.admin-savebar>div{width:100%;display:grid;grid-template-columns:minmax(96px,.7fr) minmax(160px,1.3fr);gap:10px}.admin-savebar .btn{width:100%;justify-content:center;white-space:nowrap}.admin-main>form{padding-bottom:88px}}
+@media(max-width:380px){.admin-savebar>div{grid-template-columns:92px minmax(0,1fr)}.admin-savebar .btn{padding-inline:10px;font-size:13px}}
+@media(prefers-reduced-motion:reduce){.admin-savebar{backdrop-filter:none}}
+
+/* --- COMPACT FLOATING EDITOR ACTIONS (FINAL) --- */
+.admin-savebar,#settingsRouteView .admin-savebar{position:fixed!important;left:auto!important;right:clamp(18px,3vw,38px)!important;bottom:20px!important;width:auto!important;min-height:0!important;margin:0!important;padding:8px!important;display:flex;align-items:center;justify-content:flex-end;border:1px solid rgba(30,75,140,.16);border-radius:14px;background:rgba(255,255,255,.94);box-shadow:0 14px 38px rgba(16,35,63,.18),0 2px 8px rgba(16,35,63,.08);backdrop-filter:blur(16px);z-index:100}
+.admin-savebar>p{display:none!important}.admin-savebar>div{display:flex!important;width:auto!important;grid-template-columns:none!important;gap:8px!important}.admin-savebar .btn{width:auto!important;min-height:42px;justify-content:center;white-space:nowrap}.admin-savebar .btn--outline{min-width:92px;background:#fff}.admin-savebar .btn--primary{min-width:178px}
+.admin-main>form{padding-bottom:112px!important}
+.admin-embedded .admin-savebar{left:auto!important;right:24px!important}
+@media(max-width:900px){.admin-savebar,#settingsRouteView .admin-savebar,.admin-embedded .admin-savebar{left:auto!important;right:18px!important;bottom:16px!important}.admin-main>form{padding-bottom:104px!important}}
+@media(max-width:520px){.admin-savebar,#settingsRouteView .admin-savebar,.admin-embedded .admin-savebar{left:12px!important;right:12px!important;bottom:12px!important;padding:7px!important}.admin-savebar>div{width:100%!important;display:grid!important;grid-template-columns:minmax(88px,.65fr) minmax(0,1.35fr)!important}.admin-savebar .btn{width:100%!important;min-width:0!important}.admin-main>form{padding-bottom:98px!important}}
+@media(max-width:360px){.admin-savebar .btn{font-size:12px;padding-inline:8px}.admin-savebar .btn svg{width:17px}}
+
+/* --- ROUTER TOPBAR EDITOR ACTIONS (FINAL PLACEMENT) --- */
+.admin-topbar__actions{margin-left:auto;display:flex;align-items:center;justify-content:flex-end;gap:8px}.admin-topbar__actions .btn{white-space:nowrap}.admin-topbar__actions #routeSaveButton{min-width:156px}.admin-topbar__actions button:disabled{opacity:.5;cursor:not-allowed}
+#settingsRouteView .admin-savebar,.admin-embedded .admin-savebar{display:none!important}
+#settingsRouteView .admin-main>form,.admin-embedded .admin-main>form{padding-bottom:32px!important}
+@media(max-width:760px){.admin-topbar{flex-wrap:wrap;height:auto;min-height:84px;padding-block:12px}.admin-topbar__actions{width:100%;order:3;margin-left:0;display:grid;grid-template-columns:.65fr 1.25fr 1fr}.admin-topbar__actions .btn{width:100%;justify-content:center;min-width:0!important}}
+@media(max-width:520px){.admin-topbar__actions{grid-template-columns:.65fr 1.35fr}.admin-topbar__actions #routePublicLink{grid-column:1/-1}.admin-editor-frame{height:calc(100vh - 150px)}}
+
+/* --- TOPBAR ACTION BUTTON SIZE PARITY --- */
+.admin-topbar__actions>.btn{height:44px!important;min-height:44px!important;padding:0 18px!important;border-radius:8px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;line-height:1!important}
+.admin-topbar__actions #routeResetButton{min-width:112px!important}
+.admin-topbar__actions #routeSaveButton{min-width:190px!important}
+.admin-topbar__actions #routePublicLink{min-width:158px!important}
+.admin-topbar__actions>.btn svg{width:20px;height:20px;flex:none}
+@media(max-width:760px){.admin-topbar__actions>.btn{width:100%!important;min-width:0!important;height:42px!important;min-height:42px!important;padding-inline:12px!important}}

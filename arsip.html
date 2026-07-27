@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="id">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Arsip — Olimpiade Sains Nusantara</title>
+  <title>Arsip â€” Olimpiade Sains Nusantara</title>
   <meta name="description" content="Arsip ajang talenta Olimpiade Sains Nusantara dari tahun-tahun sebelumnya. Lihat detail, pemenang, dan dokumen terkait.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -39,66 +39,7 @@
     </a>
   </header>
 
-  <main>
-    <section class="section" id="arsip">
-      <div class="container">
-        <div class="section__header">
-          <p class="t-eyebrow">Arsip</p>
-          <h1 class="t-h1">Arsip Ajang Talenta</h1>
-          <p>Lihat catatan dan hasil dari ajang talenta yang telah berlangsung di tahun-tahun sebelumnya.</p>
-        </div>
-
-        <!-- GRID LOMBA CARDS -->
-        <div class="grid grid--3">
-
-          <a href="arsip-detail.html" class="lomba-card">
-            <div class="lomba-card__thumb">
-              <i data-lucide="graduation-cap" style="width:48px;height:48px;stroke-width:1;"></i>
-            </div>
-            <div class="lomba-card__body">
-              <h3 class="lomba-card__title">Olimpiade Sains Nusantara 2025</h3>
-              <p class="lomba-card__desc">Ajang talenta nasional bidang Matematika dan IPA untuk jenjang SD, SMP, dan SMA se-Indonesia.</p>
-              <span class="lomba-card__action">Lihat Detail <i data-lucide="arrow-right" style="width:14px;height:14px;"></i></span>
-            </div>
-          </a>
-
-          <a href="arsip-detail.html" class="lomba-card">
-            <div class="lomba-card__thumb" style="background: linear-gradient(135deg, #10233F 0%, #2a5fa8 100%);">
-              <i data-lucide="beaker" style="width:48px;height:48px;stroke-width:1;"></i>
-            </div>
-            <div class="lomba-card__body">
-              <h3 class="lomba-card__title">Olimpiade Sains Nusantara 2024</h3>
-              <p class="lomba-card__desc">Edisi kedua dengan penambahan bidang lomba Bahasa Inggris dan Informatika.</p>
-              <span class="lomba-card__action">Lihat Detail <i data-lucide="arrow-right" style="width:14px;height:14px;"></i></span>
-            </div>
-          </a>
-
-          <a href="arsip-detail.html" class="lomba-card">
-            <div class="lomba-card__thumb" style="background: linear-gradient(135deg, #1E4B8C 0%, #10233F 100%);">
-              <i data-lucide="atom" style="width:48px;height:48px;stroke-width:1;"></i>
-            </div>
-            <div class="lomba-card__body">
-              <h3 class="lomba-card__title">Olimpiade Sains Nusantara 2023</h3>
-              <p class="lomba-card__desc">Edisi perdana diikuti oleh lebih dari 5.000 siswa dari 34 provinsi di Indonesia.</p>
-              <span class="lomba-card__action">Lihat Detail <i data-lucide="arrow-right" style="width:14px;height:14px;"></i></span>
-            </div>
-          </a>
-
-          <a href="arsip-detail.html" class="lomba-card">
-            <div class="lomba-card__thumb" style="background: linear-gradient(135deg, #2a5fa8 0%, #1E4B8C 100%);">
-              <i data-lucide="calculator" style="width:48px;height:48px;stroke-width:1;"></i>
-            </div>
-            <div class="lomba-card__body">
-              <h3 class="lomba-card__title">Ajang Talenta Matematika Nasional 2023</h3>
-              <p class="lomba-card__desc">Ajang talenta khusus bidang Matematika dengan tingkat kesulitan bertingkat untuk semua jenjang.</p>
-              <span class="lomba-card__action">Lihat Detail <i data-lucide="arrow-right" style="width:14px;height:14px;"></i></span>
-            </div>
-          </a>
-
-        </div>
-      </div>
-    </section>
-  </main>
+  <main id="archivePublicRoot" aria-live="polite"></main>
 
   <!-- FOOTER -->
   <footer class="footer" id="kontak">
@@ -155,7 +96,15 @@
     </a>
   </nav>
 
+  <script src="js/global-settings-store.js"></script>
+  <script src="js/global-public-runtime.js"></script>
   <script src="js/script.js"></script>
   <script>lucide.createIcons();</script>
+  <script src="js/mock-archive-database.js"></script>
+  <script src="js/archive-data-store.js"></script>
+  <script src="js/archive-public-renderer.js"></script>
 </body>
 </html>
+
+
+
