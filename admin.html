@@ -14,24 +14,15 @@
 <body class="admin-body">
   <aside class="admin-sidebar" id="adminSidebar">
     <a class="admin-brand" href="admin.html"><span class="admin-brand__mark">TP</span><span>TalentaPanel<small>Event workspace</small></span></a>
-    <nav class="admin-nav" aria-label="Navigasi admin">
-      <p class="admin-nav__label">Workspace</p>
-      <a class="admin-nav__item" href="#"><i data-lucide="layout-dashboard"></i>Ringkasan</a><p class="admin-nav__label admin-nav__label--spaced">Pengaturan Global</p>
-      <a class="admin-nav__item admin-nav__item--active" href="#event-settings"><i data-lucide="palette"></i>Identitas & Tema</a>
-      <a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="menu"></i>Navigasi <span>Segera</span></a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="contact"></i>Kontak & WhatsApp <span>Segera</span></a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="panel-bottom"></i>Footer <span>Segera</span></a><p class="admin-nav__label admin-nav__label--spaced">Kelola Halaman</p><a class="admin-nav__item" href="admin-beranda.html"><i data-lucide="home"></i>Beranda</a>
-      <a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="trophy"></i>Pemenang <span>Segera</span></a>
-    </nav>
+    <nav class="admin-nav" aria-label="Navigasi admin"><p class="admin-nav__label">Workspace</p><a class="admin-nav__item" href="#"><i data-lucide="layout-dashboard"></i>Ringkasan</a><p class="admin-nav__label admin-nav__label--spaced">Pengaturan Global</p><a class="admin-nav__item" data-route="settings" href="admin.html?page=settings"><i data-lucide="palette"></i>Identitas & Tema</a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="menu"></i>Navigasi <span>Segera</span></a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="contact"></i>Kontak & WhatsApp <span>Segera</span></a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="panel-bottom"></i>Footer <span>Segera</span></a><p class="admin-nav__label admin-nav__label--spaced">Kelola Halaman</p><a class="admin-nav__item" data-route="home" href="admin.html?page=home"><i data-lucide="home"></i>Beranda</a><a class="admin-nav__item" data-route="download" href="admin.html?page=download"><i data-lucide="file-down"></i>Unduh</a><a class="admin-nav__item" data-route="winners" href="admin.html?page=winners"><i data-lucide="trophy"></i>Pemenang</a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="archive"></i>Arsip <span>Segera</span></a><a class="admin-nav__item" href="#" aria-disabled="true"><i data-lucide="circle-help"></i>FAQ <span>Segera</span></a></nav>
     <div class="admin-sidebar__footer"><span class="admin-avatar">AP</span><div><strong>Admin Pusat</strong><small>Super Admin</small></div></div>
   </aside>
 
-  <main class="admin-main">
-    <header class="admin-topbar">
-      <button class="admin-icon-btn" id="sidebarToggle" aria-label="Buka menu admin"><i data-lucide="menu"></i></button>
-      <div><p class="admin-breadcrumb">Event / Pengaturan</p><h1>Pengaturan Event</h1></div>
-      <a class="btn btn--outline btn--sm" href="index.html" target="_blank"><i data-lucide="external-link"></i> Lihat website</a>
-    </header>
-
-    <form class="admin-workspace" id="eventSettingsForm">
+  <main class="admin-main admin-router-main">
+<header class="admin-topbar"><button class="admin-icon-btn" id="sidebarToggle" aria-label="Buka menu admin"><i data-lucide="menu"></i></button><div><p class="admin-breadcrumb" id="routeBreadcrumb">Event / Pengaturan</p><h1 id="routeTitle">Pengaturan Event</h1></div><a class="btn btn--outline btn--sm" id="routePublicLink" href="index.html" target="_blank"><i data-lucide="external-link"></i> Lihat halaman</a></header>
+<div id="adminRouteView" class="admin-route-view">
+<section id="settingsRouteView" class="admin-route-panel">
+<form class="admin-workspace" id="eventSettingsForm">
       <div class="admin-content" id="event-settings">
         <section class="admin-card admin-card--hero">
           <div><span class="admin-kicker">Fondasi event</span><h2>Bangun identitas event Anda</h2><p>Perubahan tema dapat dipratinjau langsung. Penyimpanan saat ini bersifat demonstrasi lokal.</p></div>
@@ -65,10 +56,17 @@
       </div>
       <footer class="admin-savebar"><p><i data-lucide="shield-check"></i> Data nonaktif tetap aman dan dapat dipulihkan.</p><div><button class="btn btn--outline" type="button" id="resetSettings">Reset</button><button class="btn btn--primary" type="submit" id="saveSettings"><i data-lucide="save"></i> Simpan perubahan</button></div></footer>
     </form>
-  </main>
+</section>
+<section id="editorRouteView" class="admin-route-panel" hidden><iframe id="adminEditorFrame" class="admin-editor-frame" title="Editor halaman"></iframe></section>
+</div>
+</main>
   <div class="admin-toast" id="adminToast" role="status" aria-live="polite"><i data-lucide="check-circle"></i><span>Perubahan berhasil disimpan.</span></div>
-  <script src="js/admin.js"></script>
+  <script src="js/admin.js"></script><script src="js/admin-router.js"></script>
   <script>lucide.createIcons();</script>
 </body>
 </html>
+
+
+
+
 

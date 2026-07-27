@@ -90,3 +90,15 @@ Editor Highlight hanya menyimpan konfigurasi tampilan dan referensi ID; identita
 
 ## Mitra & Partner
 Section Mitra memiliki status, heading, background white/soft, alignment, varian simple/card/mono, preset ukuran small/medium/large, dan pengelompokan kategori opsional. Item mitra berisi status, nama, kategori, logo, alt, label, URL, target tab, dan urutan. Upload mendukung PNG/JPG/WebP/SVG maksimal 2 MB dengan fallback nama dan `object-fit: contain`.
+
+## Halaman Unduh
+Implementasi dibagi menjadi empat tahap:
+1. Header dan periode/tab.
+2. Kategori, pencarian, filter, dan empty state.
+3. Manajemen dokumen dan upload file.
+4. Integrasi renderer ke halaman publik/API.
+
+State Tahap 1 menggunakan `talenta_download_editor_v1`. Periode memiliki ID stabil, status, label, tab default tunggal, urutan, dan jumlah dokumen. Jika default nonaktif/dihapus, periode aktif pertama menjadi default. Navbar/footer tidak termasuk editor halaman.
+
+## Koreksi Arsitektur Unduh ↔ Arsip
+Tab Unduh adalah lomba terpilih dari Arsip, bukan periode bebas atau filter kategori. Dokumen otomatis berasal dari `competition.documents` milik Detail Arsip. Editor Unduh hanya menyimpan `competitionId`, nama tab custom, status, default, urutan, `hiddenDocumentIds`, dan `documentLabelOverrides`. Upload/hapus file dilakukan pada modul Arsip. Prototipe memakai `js/mock-archive-database.js`; state koreksi memakai `talenta_download_editor_v2` agar state model lama tidak merusak editor.

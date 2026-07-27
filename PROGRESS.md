@@ -110,8 +110,128 @@ Dashboard kontingen dan panel admin tidak boleh dicampur.
 - Seluruh enam section Beranda kini memiliki editor terstruktur.
 - Berkas: `admin-beranda.html`, `js/partner-editor.js`, `js/home-editor.js`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
 
+
+### 26 Juli 2026 — Editor Unduh Tahap 1
+- Membuat `admin-unduh.html` dan menambahkan tautan Unduh pada sidebar admin.
+- Membuat editor Header halaman dan CRUD periode/tab.
+- Menambahkan status, tab default tunggal, reorder naik/turun, dan delete dengan konfirmasi.
+- Menambahkan preview interaktif desktop/tablet/mobile dengan warna primary global.
+- State demo terpisah pada `talenta_download_editor_v1`; dokumen masih data preview Tahap 1.
+- Berkas: `admin-unduh.html`, `js/download-editor.js`, `admin.html`, `admin-beranda.html`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Koreksi Konsep Editor Unduh
+- Mengoreksi tab Unduh menjadi lomba dari database Arsip, bukan periode/filter bebas.
+- Membuat `mock-archive-database.js` sebagai sumber statis lomba dan dokumen terkait.
+- Editor menyimpan referensi lomba, nama tab custom, status, urutan, default, visibilitas, dan override nama dokumen.
+- Menghapus rencana pencarian/filter/upload file dari editor Unduh; file dikelola di Detail Arsip.
+- Memperbaiki blank preview akibat variabel dibaca sebelum inisialisasi dan memakai state baru `talenta_download_editor_v2`.
+- Menyamakan struktur sidebar admin Beranda dan Unduh.
+- Berkas: `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `js/mock-archive-database.js`, `js/download-editor.js`, `css/style.css`, `ADMIN_SPEC.md`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Penyelarasan Preview Unduh
+- Menghapus background segmented-control dan bayangan tab preview yang tidak ada di template publik.
+- Mengembalikan tab berbentuk pill individual: putih ber-border dan primary untuk tab aktif.
+- Menyamakan jarak tab dengan `.unduh-tabs` publik dan memastikan heading mode kiri benar-benar rata kiri.
+- Berkas: `css/style.css`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Stabilitas Navigasi Admin
+- Menyamakan markup sidebar Beranda dan Unduh termasuk footer akun.
+- Menghapus atribut `class` ganda pada menu aktif.
+- Menyamakan wrapper `page-editor-layout` agar lebar konten tidak meloncat.
+- Menstabilkan dimensi shell admin dan scrollbar sidebar saat navigasi penuh antar-HTML.
+- Berkas: `admin-beranda.html`, `admin-unduh.html`, `css/style.css`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Router Panel Admin Persisten
+- Memulihkan sidebar Beranda yang sempat terganti teks path lokal akibat kegagalan variabel PowerShell `$HOME`.
+- Mengubah `admin.html` menjadi shell persisten dengan route `?page=settings|home|download`.
+- Sidebar/topbar tidak dimuat ulang; editor halaman berjalan dalam embedded view dengan shell anak disembunyikan.
+- Menambahkan History API, Back/Forward, direct URL, active menu, title, breadcrumb, dan public link dinamis.
+- Berkas: `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `js/admin-router.js`, `css/style.css`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Perluasan Database Dummy Bersama
+- Menambahkan lomba aktif `osn-2026` dengan status `active` beserta 5 dokumen dan 6 pemenang.
+- Menambahkan `winnerCategories`, `skDocument`, `icon`, dan `description` pada seluruh lomba.
+- Menambahkan pemenang dummy pada lomba arsip `osn-2025`, `osn-2024`, dan `matematika-2023`.
+- Menambahkan helper `getActiveCompetition`, `getArchivedCompetitions`, `getCompetitionById`, `getAllWinners`.
+- Memastikan kompatibilitas mundur: editor Unduh tetap membaca field yang sama.
+- Database sekarang berisi 5 lomba, 14 dokumen, dan 17 pemenang.
+- Berkas: `js/mock-archive-database.js`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Manajemen Pemenang (Tahap 2)
+- Membuat `admin-pemenang.html` dengan sidebar konsisten, embedded mode, dan outline struktur.
+- Membuat `js/winner-manager.js`: CRUD kategori juara, CRUD pemenang, upload foto max 2MB, label rank custom, reorder, toggle aktif/nonaktif, SK editor, preview responsif.
+- Menambahkan CSS editor dan preview pemenang.
+- Menambahkan route `winners` ke `admin-router.js`.
+- Mengaktifkan link Pemenang di sidebar seluruh halaman admin.
+- State disimpan pada `talenta_winner_manager_v1`.
+- Berkas: `admin-pemenang.html`, `js/winner-manager.js`, `js/admin-router.js`, `css/style.css`, `admin.html`, `admin-beranda.html`, `admin-unduh.html`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Koreksi Preview Manajemen Pemenang
+- Mengganti markup preview buatan dengan class template publik asli: `section__header`, `sk-banner`, `winner-group`, `champion-grid`, dan `champion-card`.
+- Memperbaiki metadata yang sebelumnya berdempetan dengan line layout tersendiri.
+- Menyamakan aksen card, foto, tipografi, banner SK, dan heading dengan `pemenang.html`.
+- Preview tablet menjadi 2 kolom; mobile tetap 2 kolom sesuai pola responsif template.
+- Berkas: `js/winner-manager.js`, `css/style.css`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Koreksi Responsif Preview Pemenang berdasarkan Template
+- Menemukan kesalahan analisis selector: `.winner-group__grid` bukan grid yang dipakai `pemenang.html`; template memakai `.champion-grid` dengan `auto-fill minmax(200px, 1fr)`.
+- Mobile dikoreksi menjadi 1 card per baris, bukan 2.
+- Tablet kembali mengikuti auto-fill asli, bukan dipaksa 2 kolom.
+- Ukuran H1, SK banner, foto, rank, nama, sekolah, dan metadata disamakan dengan nilai CSS template asli pada setiap simulasi perangkat.
+- Berkas: `css/style.css`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Editor Tampilan Halaman Pemenang (Tahap 3)
+- Menambahkan status halaman, eyebrow, judul, deskripsi, dan perataan heading.
+- Menambahkan toggle SK banner dan 6 kontrol metadata card (foto, sekolah, no. ujian, kecamatan, kabupaten, provinsi).
+- Menambahkan section Pemenang Sebelumnya yang otomatis membaca lomba published dari database Arsip.
+- Judul section, teks aksi `Lihat Pemenang`, jumlah card, dan status section dapat diedit.
+- Preview sekarang mencakup keseluruhan halaman dan menggunakan card Arsip asli (`lomba-card`).
+- Konfigurasi tampilan disimpan pada `talenta_winner_page_v1`, terpisah dari data pemenang.
+- Berkas: `admin-pemenang.html`, `js/winner-manager.js`, `css/style.css`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Integrasi Highlight Pemenang Beranda (Tahap 4)
+- Menghapus `DEMO_WINNERS` hardcode dari editor Highlight Pemenang.
+- Highlight kini membaca lomba aktif dari database dummy dan override `talenta_winner_manager_v1` dari Manajemen Pemenang.
+- Filter kategori dinamis mengikuti kategori juara custom admin, bukan SD/SMP/SMA hardcode.
+- Mode otomatis mengikuti urutan kategori dan pemenang; mode manual memilih pemenang dari data pusat.
+- Foto, rank custom, sekolah, provinsi, dan no. ujian langsung ikut dari Manajemen Pemenang.
+- Menambahkan sinkronisasi event `storage` untuk perubahan dari tab admin lain.
+- Memuat `mock-archive-database.js` sebelum seluruh editor Beranda.
+- Berkas: `admin-beranda.html`, `js/winner-highlight-editor.js`, `PROGRESS.md`.
+
+
+### 26 Juli 2026 — Koreksi Relasi Highlight Beranda dan Responsif Card Arsip
+- Menghapus mode pemilihan, jumlah tampil, filter kategori, variasi card, dan kontrol metadata dari Highlight Beranda karena semuanya menduplikasi sumber Pemenang.
+- Highlight sekarang membawa seluruh kategori aktif beserta seluruh pemenang aktif dalam urutan Manajemen Pemenang.
+- Card Highlight memakai struktur `champion-card` yang sama dan mengikuti visibilitas metadata dari `talenta_winner_page_v1`.
+- Mobile Highlight Pemenang memakai 1 champion card per baris sesuai `.champion-grid` template.
+- Mengoreksi analisis card `Pemenang Ajang Talenta Sebelumnya`: karena memakai `.grid--3`, breakpoint <=768px menghasilkan 2 kolom dan tetap 2 kolom pada <=480px.
+- Berkas: `admin-beranda.html`, `js/winner-highlight-editor.js`, `css/style.css`, `PROGRESS.md`.
+
 ## Langkah Berikutnya
-Integrasikan konfigurasi seluruh editor Beranda ke `index.html`, lalu lanjutkan Pengaturan Global yang belum lengkap. Teknologi backend dan deployment harus disepakati sebelum integrasi server.
+Tinjau alur lengkap Pemenang. Integrasi data yang sama ke halaman publik `pemenang.html` dan `index.html` tetap merupakan tahap public renderer berikutnya. Teknologi backend dan deployment harus disepakati sebelum integrasi server.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
