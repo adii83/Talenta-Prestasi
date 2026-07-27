@@ -104,4 +104,3 @@
   addEventListener("popstate", () => render(routeName()));
   render(routeName());
 })();
-

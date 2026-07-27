@@ -1,367 +1,534 @@
-﻿<!DOCTYPE html>
+﻿<!doctype html>
 <html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Unduh â€” Olimpiade Sains Nusantara</title>
-  <meta name="description" content="Unduh dokumen resmi, juknis, kisi-kisi, dan materi persiapan Olimpiade Sains Nusantara.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Unduh â€” Olimpiade Sains Nusantara</title>
+    <meta
+      name="description"
+      content="Unduh dokumen resmi, juknis, kisi-kisi, dan materi persiapan Olimpiade Sains Nusantara."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  </head>
+  <body>
+    <!-- NAVBAR (Desktop) -->
+    <nav class="navbar" role="navigation" aria-label="Menu utama">
+      <div class="navbar__inner">
+        <a href="index.html" class="navbar__brand">
+          <div class="navbar__logo">OSN</div>
+          <span class="navbar__brand-text">Olimpiade Sains Nusantara</span>
+        </a>
+        <div class="navbar__menu">
+          <a href="index.html" class="navbar__link">Beranda</a>
+          <a href="unduh.html" class="navbar__link">Unduh</a>
+          <a href="pemenang.html" class="navbar__link">Pemenang</a>
+          <a href="arsip.html" class="navbar__link">Arsip</a>
+          <a href="faq.html" class="navbar__link">FAQ</a>
+          <a href="#kontak" class="navbar__link navbar__link--desktop-only"
+            >Kontak Kami</a
+          >
+        </div>
+      </div>
+    </nav>
 
-  <!-- NAVBAR (Desktop) -->
-  <nav class="navbar" role="navigation" aria-label="Menu utama">
-    <div class="navbar__inner">
-      <a href="index.html" class="navbar__brand">
-        <div class="navbar__logo">OSN</div>
-        <span class="navbar__brand-text">Olimpiade Sains Nusantara</span>
+    <!-- MOBILE HEADER -->
+    <header class="mobile-header">
+      <a href="index.html" class="mobile-header__brand">
+        <div class="mobile-header__logo">OSN</div>
+        <span class="mobile-header__text">Olimpiade Sains Nusantara</span>
       </a>
-      <div class="navbar__menu">
-        <a href="index.html" class="navbar__link">Beranda</a>
-        <a href="unduh.html" class="navbar__link">Unduh</a>
-        <a href="pemenang.html" class="navbar__link">Pemenang</a>
-        <a href="arsip.html" class="navbar__link">Arsip</a>
-        <a href="faq.html" class="navbar__link">FAQ</a>
-        <a href="#kontak" class="navbar__link navbar__link--desktop-only">Kontak Kami</a>
-      </div>
-    </div>
-  </nav>
+    </header>
 
-  <!-- MOBILE HEADER -->
-  <header class="mobile-header">
-    <a href="index.html" class="mobile-header__brand">
-      <div class="mobile-header__logo">OSN</div>
-      <span class="mobile-header__text">Olimpiade Sains Nusantara</span>
-    </a>
-  </header>
+    <main>
+      <section class="section" id="unduh">
+        <div class="container">
+          <div class="section__header">
+            <p class="t-eyebrow">Unduh</p>
+            <h1 class="t-h1">Dokumen &amp; Materi</h1>
+            <p>
+              Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.
+            </p>
+          </div>
 
-  <main>
-    <section class="section" id="unduh">
+          <!-- UNDUH TABS -->
+          <div class="unduh-tabs">
+            <button
+              class="unduh-tab unduh-tab--active"
+              type="button"
+              data-tab="tab-sekarang"
+            >
+              Lomba Sekarang
+            </button>
+            <button class="unduh-tab" type="button" data-tab="tab-osn2025">
+              OSN 2025
+            </button>
+            <button class="unduh-tab" type="button" data-tab="tab-osn2024">
+              OSN 2024
+            </button>
+            <button class="unduh-tab" type="button" data-tab="tab-osn2023">
+              OSN 2023
+            </button>
+            <button class="unduh-tab" type="button" data-tab="tab-osn2022">
+              OSN 2022
+            </button>
+          </div>
+
+          <!-- TAB PANEL: Lomba Sekarang -->
+          <div
+            class="unduh-tab-panel unduh-tab-panel--active"
+            id="tab-sekarang"
+          >
+            <!-- DOC LIST -->
+            <div class="doc-list" id="docList">
+              <article class="doc-card" data-category="Juknis">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Petunjuk Teknis Olimpiade Sains Nusantara 2026
+                    <span class="doc-card__tag">Juknis</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">2.4 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+
+              <article class="doc-card" data-category="Kisi-kisi">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Kisi-kisi Matematika SD/MI
+                    <span class="doc-card__tag">Kisi-kisi</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">1.1 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+
+              <article class="doc-card" data-category="Kisi-kisi">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Kisi-kisi IPA SMP/MTs
+                    <span class="doc-card__tag">Kisi-kisi</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">980 KB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+
+              <article class="doc-card" data-category="Pengumuman">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Surat Edaran Perpanjangan Pendaftaran
+                    <span class="doc-card__tag">Pengumuman</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">340 KB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+
+              <article class="doc-card" data-category="Materi">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Bank Soal Latihan IPA SMA/MA
+                    <span class="doc-card__tag">Materi</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">4.7 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <!-- TAB PANEL: OSN 2025 -->
+          <div class="unduh-tab-panel" id="tab-osn2025">
+            <div class="doc-list">
+              <article class="doc-card" data-category="SK Pemenang">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    SK Penetapan Pemenang OSN 2025
+                    <span class="doc-card__tag">SK Pemenang</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">1.2 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+
+              <article class="doc-card" data-category="Kisi-kisi">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Kisi-kisi Soal OSN 2025
+                    <span class="doc-card__tag">Kisi-kisi</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">890 KB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+
+              <article class="doc-card" data-category="Materi">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Soal &amp; Pembahasan OSN 2025
+                    <span class="doc-card__tag">Materi</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">3.6 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <!-- TAB PANEL: OSN 2024 -->
+          <div class="unduh-tab-panel" id="tab-osn2024">
+            <div class="doc-list">
+              <article class="doc-card" data-category="Juknis">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Petunjuk Teknis OSN 2024
+                    <span class="doc-card__tag">Juknis</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">2.1 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+
+              <article class="doc-card" data-category="Materi">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Soal &amp; Pembahasan OSN 2024
+                    <span class="doc-card__tag">Materi</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">3.2 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <!-- TAB PANEL: OSN 2023 -->
+          <div class="unduh-tab-panel" id="tab-osn2023">
+            <div class="doc-list">
+              <article class="doc-card" data-category="Juknis">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Petunjuk Teknis OSN 2023
+                    <span class="doc-card__tag">Juknis</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">1.8 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+            </div>
+          </div>
+
+          <!-- TAB PANEL: OSN 2022 -->
+          <div class="unduh-tab-panel" id="tab-osn2022">
+            <div class="doc-list">
+              <article class="doc-card" data-category="Juknis">
+                <div class="doc-card__icon">
+                  <i
+                    data-lucide="file-text"
+                    style="width: 20px; height: 20px; stroke-width: 1.5"
+                  ></i>
+                </div>
+                <div class="doc-card__info">
+                  <p class="doc-card__name">
+                    Petunjuk Teknis OSN 2022
+                    <span class="doc-card__tag">Juknis</span>
+                  </p>
+                  <p class="doc-card__size">
+                    PDF Â· <span class="t-mono">1.5 MB</span>
+                  </p>
+                </div>
+                <div class="doc-card__download">
+                  <a href="#" class="btn btn--outline btn--sm">
+                    <i
+                      data-lucide="download"
+                      style="width: 14px; height: 14px"
+                    ></i>
+                    Unduh
+                  </a>
+                </div>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer" id="kontak">
       <div class="container">
-        <div class="section__header">
-          <p class="t-eyebrow">Unduh</p>
-          <h1 class="t-h1">Dokumen &amp; Materi</h1>
-          <p>Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</p>
-        </div>
-
-        <!-- UNDUH TABS -->
-        <div class="unduh-tabs">
-          <button class="unduh-tab unduh-tab--active" type="button" data-tab="tab-sekarang">Lomba Sekarang</button>
-          <button class="unduh-tab" type="button" data-tab="tab-osn2025">OSN 2025</button>
-          <button class="unduh-tab" type="button" data-tab="tab-osn2024">OSN 2024</button>
-          <button class="unduh-tab" type="button" data-tab="tab-osn2023">OSN 2023</button>
-          <button class="unduh-tab" type="button" data-tab="tab-osn2022">OSN 2022</button>
-        </div>
-
-        <!-- TAB PANEL: Lomba Sekarang -->
-        <div class="unduh-tab-panel unduh-tab-panel--active" id="tab-sekarang">
-          <!-- DOC LIST -->
-          <div class="doc-list" id="docList">
-            <article class="doc-card" data-category="Juknis">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Petunjuk Teknis Olimpiade Sains Nusantara 2026
-                  <span class="doc-card__tag">Juknis</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">2.4 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-
-            <article class="doc-card" data-category="Kisi-kisi">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Kisi-kisi Matematika SD/MI
-                  <span class="doc-card__tag">Kisi-kisi</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">1.1 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-
-            <article class="doc-card" data-category="Kisi-kisi">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Kisi-kisi IPA SMP/MTs
-                  <span class="doc-card__tag">Kisi-kisi</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">980 KB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-
-            <article class="doc-card" data-category="Pengumuman">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Surat Edaran Perpanjangan Pendaftaran
-                  <span class="doc-card__tag">Pengumuman</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">340 KB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-
-            <article class="doc-card" data-category="Materi">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Bank Soal Latihan IPA SMA/MA
-                  <span class="doc-card__tag">Materi</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">4.7 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
+        <div class="footer__grid">
+          <div>
+            <div class="footer__brand">
+              <div class="footer__logo">OSN</div>
+              <span class="footer__brand-text">Olimpiade Sains Nusantara</span>
+            </div>
+            <p class="footer__desc">
+              Ajang talenta tingkat nasional untuk siswa SD, SMP, dan SMA
+              se-Indonesia. Diselenggarakan secara profesional dan transparan.
+            </p>
+          </div>
+          <div>
+            <h4 class="footer__heading">Kontak</h4>
+            <div class="footer__links">
+              <span class="footer__link">info@olimpiadesainsnusantara.id</span>
+              <span class="footer__link t-mono">+62 899-5452-222</span>
+              <span class="footer__link">Jl. Pendidikan No. 1, Jakarta</span>
+            </div>
           </div>
         </div>
-
-        <!-- TAB PANEL: OSN 2025 -->
-        <div class="unduh-tab-panel" id="tab-osn2025">
-          <div class="doc-list">
-            <article class="doc-card" data-category="SK Pemenang">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  SK Penetapan Pemenang OSN 2025
-                  <span class="doc-card__tag">SK Pemenang</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">1.2 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-
-            <article class="doc-card" data-category="Kisi-kisi">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Kisi-kisi Soal OSN 2025
-                  <span class="doc-card__tag">Kisi-kisi</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">890 KB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-
-            <article class="doc-card" data-category="Materi">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Soal &amp; Pembahasan OSN 2025
-                  <span class="doc-card__tag">Materi</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">3.6 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-          </div>
-        </div>
-
-        <!-- TAB PANEL: OSN 2024 -->
-        <div class="unduh-tab-panel" id="tab-osn2024">
-          <div class="doc-list">
-            <article class="doc-card" data-category="Juknis">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Petunjuk Teknis OSN 2024
-                  <span class="doc-card__tag">Juknis</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">2.1 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-
-            <article class="doc-card" data-category="Materi">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Soal &amp; Pembahasan OSN 2024
-                  <span class="doc-card__tag">Materi</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">3.2 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-          </div>
-        </div>
-
-        <!-- TAB PANEL: OSN 2023 -->
-        <div class="unduh-tab-panel" id="tab-osn2023">
-          <div class="doc-list">
-            <article class="doc-card" data-category="Juknis">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Petunjuk Teknis OSN 2023
-                  <span class="doc-card__tag">Juknis</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">1.8 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-          </div>
-        </div>
-
-        <!-- TAB PANEL: OSN 2022 -->
-        <div class="unduh-tab-panel" id="tab-osn2022">
-          <div class="doc-list">
-            <article class="doc-card" data-category="Juknis">
-              <div class="doc-card__icon">
-                <i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5;"></i>
-              </div>
-              <div class="doc-card__info">
-                <p class="doc-card__name">
-                  Petunjuk Teknis OSN 2022
-                  <span class="doc-card__tag">Juknis</span>
-                </p>
-                <p class="doc-card__size">PDF Â· <span class="t-mono">1.5 MB</span></p>
-              </div>
-              <div class="doc-card__download">
-                <a href="#" class="btn btn--outline btn--sm">
-                  <i data-lucide="download" style="width:14px;height:14px;"></i> Unduh
-                </a>
-              </div>
-            </article>
-          </div>
-        </div>
-
-      </div>
-    </section>
-  </main>
-
-  <!-- FOOTER -->
-  <footer class="footer" id="kontak">
-    <div class="container">
-      <div class="footer__grid">
-        <div>
-          <div class="footer__brand">
-            <div class="footer__logo">OSN</div>
-            <span class="footer__brand-text">Olimpiade Sains Nusantara</span>
-          </div>
-          <p class="footer__desc">Ajang talenta tingkat nasional untuk siswa SD, SMP, dan SMA se-Indonesia. Diselenggarakan secara profesional dan transparan.</p>
-        </div>
-        <div>
-          <h4 class="footer__heading">Kontak</h4>
-          <div class="footer__links">
-            <span class="footer__link">info@olimpiadesainsnusantara.id</span>
-            <span class="footer__link t-mono">+62 899-5452-222</span>
-            <span class="footer__link">Jl. Pendidikan No. 1, Jakarta</span>
-          </div>
+        <div class="footer__bottom">
+          <p>&copy; 2026 Olimpiade Sains Nusantara. Seluruh hak dilindungi.</p>
         </div>
       </div>
-      <div class="footer__bottom">
-        <p>&copy; 2026 Olimpiade Sains Nusantara. Seluruh hak dilindungi.</p>
-      </div>
-    </div>
-  </footer>
+    </footer>
 
-  <!-- FLOATING WHATSAPP -->
-  <a href="https://wa.me/62899545222?text=Halo%20kak%2C%20minta%20info%20tentang%20lomba%20ini" class="floating-wa" target="_blank" rel="noopener" aria-label="Chat WhatsApp">
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
-  </a>
+    <!-- FLOATING WHATSAPP -->
+    <a
+      href="https://wa.me/62899545222?text=Halo%20kak%2C%20minta%20info%20tentang%20lomba%20ini"
+      class="floating-wa"
+      target="_blank"
+      rel="noopener"
+      aria-label="Chat WhatsApp"
+    >
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path
+          d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+        />
+      </svg>
+    </a>
 
-  <!-- BOTTOM NAV (Mobile) -->
-  <nav class="bottom-nav" aria-label="Menu mobile">
-    <a href="index.html" class="bottom-nav__item">
-      <i data-lucide="home" class="bottom-nav__icon" style="stroke-width:1.75;"></i>
-      <span class="bottom-nav__label">Beranda</span>
-    </a>
-    <a href="unduh.html" class="bottom-nav__item">
-      <i data-lucide="download" class="bottom-nav__icon" style="stroke-width:1.75;"></i>
-      <span class="bottom-nav__label">Unduh</span>
-    </a>
-    <a href="pemenang.html" class="bottom-nav__item">
-      <i data-lucide="trophy" class="bottom-nav__icon" style="stroke-width:1.75;"></i>
-      <span class="bottom-nav__label">Pemenang</span>
-    </a>
-    <a href="arsip.html" class="bottom-nav__item">
-      <i data-lucide="archive" class="bottom-nav__icon" style="stroke-width:1.75;"></i>
-      <span class="bottom-nav__label">Arsip</span>
-    </a>
-    <a href="faq.html" class="bottom-nav__item">
-      <i data-lucide="help-circle" class="bottom-nav__icon" style="stroke-width:1.75;"></i>
-      <span class="bottom-nav__label">FAQ</span>
-    </a>
-  </nav>
+    <!-- BOTTOM NAV (Mobile) -->
+    <nav class="bottom-nav" aria-label="Menu mobile">
+      <a href="index.html" class="bottom-nav__item">
+        <i
+          data-lucide="home"
+          class="bottom-nav__icon"
+          style="stroke-width: 1.75"
+        ></i>
+        <span class="bottom-nav__label">Beranda</span>
+      </a>
+      <a href="unduh.html" class="bottom-nav__item">
+        <i
+          data-lucide="download"
+          class="bottom-nav__icon"
+          style="stroke-width: 1.75"
+        ></i>
+        <span class="bottom-nav__label">Unduh</span>
+      </a>
+      <a href="pemenang.html" class="bottom-nav__item">
+        <i
+          data-lucide="trophy"
+          class="bottom-nav__icon"
+          style="stroke-width: 1.75"
+        ></i>
+        <span class="bottom-nav__label">Pemenang</span>
+      </a>
+      <a href="arsip.html" class="bottom-nav__item">
+        <i
+          data-lucide="archive"
+          class="bottom-nav__icon"
+          style="stroke-width: 1.75"
+        ></i>
+        <span class="bottom-nav__label">Arsip</span>
+      </a>
+      <a href="faq.html" class="bottom-nav__item">
+        <i
+          data-lucide="help-circle"
+          class="bottom-nav__icon"
+          style="stroke-width: 1.75"
+        ></i>
+        <span class="bottom-nav__label">FAQ</span>
+      </a>
+    </nav>
 
-  <script src="js/global-settings-store.js"></script>
-  <script src="js/global-public-runtime.js"></script>
-  <script src="js/script.js"></script>
-  <script>lucide.createIcons();</script>
-</body>
+    <script src="js/global-settings-store.js"></script>
+    <script src="js/global-public-runtime.js"></script>
+    <script src="js/script.js"></script>
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
 </html>
-

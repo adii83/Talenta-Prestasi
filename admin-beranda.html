@@ -22,7 +22,19 @@
       if (new URLSearchParams(location.search).get("embedded") === "1")
         document.documentElement.classList.add("admin-embedded");
     </script>
-    <style>.admin-embedded .admin-sidebar,.admin-embedded .admin-topbar{display:none!important}.admin-embedded .admin-main{margin-left:0!important;width:100%!important}.admin-embedded .admin-savebar{left:0}</style>
+    <style>
+      .admin-embedded .admin-sidebar,
+      .admin-embedded .admin-topbar {
+        display: none !important;
+      }
+      .admin-embedded .admin-main {
+        margin-left: 0 !important;
+        width: 100% !important;
+      }
+      .admin-embedded .admin-savebar {
+        left: 0;
+      }
+    </style>
     <aside class="admin-sidebar" id="adminSidebar">
       <a class="admin-brand" href="admin.html"
         ><span class="admin-brand__mark">TP</span
@@ -159,8 +171,7 @@
                     class="form-input editor-textarea"
                     id="heroDescription"
                   >
-Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.</textarea
-                  >
+Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.</textarea>
                 </div>
                 <div class="admin-field">
                   <label for="heroImage">Gambar utama</label
@@ -284,8 +295,7 @@ Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah
                     class="form-input editor-textarea"
                     id="scheduleDescription"
                   >
-Pastikan kamu tidak melewatkan setiap tahapan penting dalam ajang talenta ini.</textarea
-                  >
+Pastikan kamu tidak melewatkan setiap tahapan penting dalam ajang talenta ini.</textarea>
                 </div>
               </div>
               <div class="editor-subsection">
@@ -530,8 +540,7 @@ Pastikan kamu tidak melewatkan setiap tahapan penting dalam ajang talenta ini.</
                     class="form-input editor-textarea"
                     id="benefitDescription"
                   >
-Lebih dari sekadar ajang talenta â€” ini adalah kesempatan untuk berkembang.</textarea
-                  >
+Lebih dari sekadar ajang talenta â€” ini adalah kesempatan untuk berkembang.</textarea>
                 </div>
                 <div class="admin-field">
                   <label for="benefitBackground">Background section</label
@@ -660,8 +669,7 @@ Lebih dari sekadar ajang talenta â€” ini adalah kesempatan untuk berkembang
                     class="form-input editor-textarea"
                     id="winnerDescription"
                   >
-Berikut adalah pemenang ajang talenta nasional tahun ini.</textarea
-                  >
+Berikut adalah pemenang ajang talenta nasional tahun ini.</textarea>
                 </div>
                 <div class="admin-field">
                   <label for="winnerBackground">Background</label
@@ -875,7 +883,8 @@ Berikut adalah pemenang ajang talenta nasional tahun ini.</textarea
     <div class="admin-toast" id="adminToast" role="status" aria-live="polite">
       <i data-lucide="check-circle"></i><span>Tersimpan.</span>
     </div>
-    <script src="js/mock-archive-database.js"></script><script src="js/archive-data-store.js"></script>
+    <script src="js/mock-archive-database.js"></script>
+    <script src="js/archive-data-store.js"></script>
     <script src="js/home-editor.js"></script>
     <script src="js/pricing-editor.js"></script>
     <script src="js/benefit-editor.js"></script>
@@ -886,7 +895,3 @@ Berikut adalah pemenang ajang talenta nasional tahun ini.</textarea
     </script>
   </body>
 </html>
-
-
-
-

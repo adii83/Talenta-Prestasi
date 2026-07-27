@@ -29,7 +29,7 @@ function clone(v) {
   return JSON.parse(JSON.stringify(v));
 }
 function archive(id) {
-  return typeof getEffectiveCompetitionById === 'function'
+  return typeof getEffectiveCompetitionById === "function"
     ? getEffectiveCompetitionById(id)
     : MOCK_ARCHIVE_DATABASE.competitions.find((x) => x.id === id);
 }
@@ -147,10 +147,15 @@ function sync() {
 }
 function renderPicker() {
   const selected = new Set(state.competitions.map((x) => x.competitionId)),
-    allComps = typeof getEffectiveArchivedCompetitions === 'function'
-      ? getEffectiveArchivedCompetitions()
-      : MOCK_ARCHIVE_DATABASE.competitions.filter((x) => x.status === "published"),
-    available = allComps.filter((x) => x.active !== false && !selected.has(x.id)),
+    allComps =
+      typeof getEffectiveArchivedCompetitions === "function"
+        ? getEffectiveArchivedCompetitions()
+        : MOCK_ARCHIVE_DATABASE.competitions.filter(
+            (x) => x.status === "published",
+          ),
+    available = allComps.filter(
+      (x) => x.active !== false && !selected.has(x.id),
+    ),
     el = document.getElementById("archiveCompetitionSelect");
   el.innerHTML = available.length
     ? available

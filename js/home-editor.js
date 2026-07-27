@@ -1,34 +1,448 @@
-﻿const HOME_KEY='talenta_home_editor_v1',GLOBAL_KEY='talenta_event_settings_v1';
-const THEME_DEFAULTS={primaryColor:'#1e4b8c',accentColor:'#c89b3c',navyColor:'#10233f'};
-const ICONS=['arrow-right','download','external-link','user-plus','file-text','send','clipboard-list','monitor','laptop','trophy','calendar-days','clock','flag','book-open'];
-const heroDefaults={active:true,eyebrow:'PENDAFTARAN DIBUKA',title:'Olimpiade Sains Nusantara 2026',description:'Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.',image:'img/garuda.png',imageAlt:'Garuda Logo',badges:[{label:'SD / MI',active:true},{label:'SMP / MTs',active:true},{label:'SMA / MA / SMK',active:true}],buttons:[iconItem('Daftar Sekarang','https://infokhs.umm.ac.id/','arrow-right','primary',true),iconItem('Unduh Juknis','unduh.html','download','outline',false)]};
-const scheduleDefaults={active:true,eyebrow:'Jadwal Penting',title:'Catat Tanggal Pentingnya',description:'Pastikan kamu tidak melewatkan setiap tahapan penting dalam ajang talenta ini.',cards:[scheduleItem('Pendaftaran','15 Jul — 30 Agt 2026','clipboard-list'),scheduleItem('Technical Meeting','05 Sep 2026','monitor'),scheduleItem('Simulasi CBT','08 Sep 2026','laptop'),scheduleItem('Pelaksanaan','12 — 13 Sep 2026','trophy')]};
-function iconItem(label,url,icon,style,newTab){return{label,url,style,newTab,active:true,iconMode:'library',libraryIcon:icon,uploadedIcon:'',iconAlt:''}}
-function scheduleItem(label,date,icon){return{label,date,description:'',active:true,iconMode:'library',libraryIcon:icon,uploadedIcon:'',iconAlt:''}}
-function loadState(){const old=JSON.parse(localStorage.getItem(HOME_KEY)||'null');if(!old)return{hero:structuredClone(heroDefaults),schedule:structuredClone(scheduleDefaults)};const hero=old.hero||old;hero.buttons=(hero.buttons||heroDefaults.buttons).map((b,i)=>({...heroDefaults.buttons[i]||heroDefaults.buttons[0],...b,libraryIcon:b.libraryIcon||b.icon||'arrow-right'}));return{hero:{...structuredClone(heroDefaults),...hero},schedule:{...structuredClone(scheduleDefaults),...(old.schedule||{})}}}
-let state=loadState();
-document.addEventListener('DOMContentLoaded',()=>{bind();sync();renderAll();lucide.createIcons()});
-function bind(){document.getElementById('sidebarToggle').onclick=()=>document.getElementById('adminSidebar').classList.toggle('admin-sidebar--open');bindText(['heroEyebrow','heroTitle','heroDescription','heroImageAlt'],state.hero,renderHero);bindText(['scheduleEyebrow','scheduleTitle','scheduleDescription'],state.schedule,renderSchedule);bindToggle('heroActive',state.hero,renderHero);bindToggle('scheduleActive',state.schedule,renderSchedule);bindImage('heroImage',2,data=>{state.hero.image=data;renderHero()});document.getElementById('addBadge').onclick=()=>{state.hero.badges.push({label:'Badge baru',active:true});renderBadges();renderHero()};document.getElementById('addScheduleCard').onclick=()=>{state.schedule.cards.push(scheduleItem('Tahapan baru','Tanggal belum diatur','calendar-days'));renderScheduleCards();renderSchedule()};document.getElementById('homeEditorForm').onsubmit=e=>{e.preventDefault();localStorage.setItem(HOME_KEY,JSON.stringify(state));toast('Pengaturan Beranda berhasil disimpan.')};document.getElementById('resetHome').onclick=()=>{if(confirm('Reset seluruh konfigurasi Beranda?')){localStorage.removeItem(HOME_KEY);location.reload()}};bindPreview('[data-preview]','homePreviewFrame','home-preview-frame');bindPreview('[data-schedule-preview]','schedulePreviewFrame','schedule-preview-frame','schedulePreview')}
-function bindText(ids,obj,render){ids.forEach(id=>document.getElementById(id).oninput=e=>{obj[id.replace(/^(hero|schedule)/,'').replace(/^./,c=>c.toLowerCase())]=e.target.value;render()})}
-function bindToggle(id,obj,render){document.getElementById(id).onchange=e=>{obj.active=e.target.checked;e.target.parentElement.querySelector('em').textContent=e.target.checked?'Aktif':'Nonaktif';render()}}
-function bindImage(id,maxMb,done){document.getElementById(id).onchange=e=>readImage(e.target.files[0],maxMb,done)}
-function bindPreview(selector,frameId,prefix,dataName='preview'){document.querySelectorAll(selector).forEach(b=>b.onclick=()=>{document.querySelectorAll(selector).forEach(x=>x.classList.remove('preview-switch__btn--active'));b.classList.add('preview-switch__btn--active');const f=document.getElementById(frameId),mode=b.dataset[dataName];f.classList.remove(prefix+'--tablet',prefix+'--mobile');if(mode!=='desktop')f.classList.add(prefix+'--'+mode)})}
-function sync(){const h=state.hero,s=state.schedule;Object.entries({heroActive:h.active,heroEyebrow:h.eyebrow,heroTitle:h.title,heroDescription:h.description,heroImageAlt:h.imageAlt,scheduleActive:s.active,scheduleEyebrow:s.eyebrow,scheduleTitle:s.title,scheduleDescription:s.description}).forEach(([id,v])=>{const el=document.getElementById(id);if(el.type==='checkbox')el.checked=v;else el.value=v})}
-function renderAll(){renderBadges();renderButtons();renderScheduleCards();renderSummaries();renderHero();renderSchedule()}
-function renderBadges(){const root=document.getElementById('badgeEditor');root.innerHTML='';state.hero.badges.forEach((item,i)=>{const el=document.createElement('div');el.className='repeat-row';el.innerHTML=`<span class="repeat-row__grip"><i data-lucide="grip-vertical"></i></span><input class="form-input" value="${esc(item.label)}"><label class="admin-switch"><input type="checkbox" ${item.active?'checked':''}><span></span><em>${item.active?'Aktif':'Nonaktif'}</em></label><button type="button" class="repeat-row__delete"><i data-lucide="trash-2"></i></button>`;el.querySelector('.form-input').oninput=e=>{item.label=e.target.value;renderHero()};wireItemToggle(el,item,renderHero);el.querySelector('button').onclick=()=>removeItem(state.hero.badges,i,'badge',renderBadges,renderHero);root.appendChild(el)});icons()}
-function iconControl(item,uid){return`<div class="icon-control"><div class="icon-control__preview" id="preview-${uid}">${iconMarkup(item)}</div><div class="icon-control__fields"><label>Sumber ikon</label><select class="form-input" data-icon-mode><option value="library" ${item.iconMode==='library'?'selected':''}>Pustaka ikon</option><option value="upload" ${item.iconMode==='upload'?'selected':''}>Upload sendiri</option></select><select class="form-input" data-library-icon>${ICONS.map(x=>`<option ${x===item.libraryIcon?'selected':''}>${x}</option>`).join('')}</select><div class="icon-upload-row"><label class="btn btn--outline btn--sm">Upload ikon<input type="file" data-icon-upload accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>${item.uploadedIcon?'<button type="button" class="icon-remove" data-icon-remove>Hapus upload</button>':''}</div><input class="form-input" data-icon-alt placeholder="Alt text ikon" value="${esc(item.iconAlt||'')}"></div></div>`}
-function wireIcon(el,item,render){const mode=el.querySelector('[data-icon-mode]'),library=el.querySelector('[data-library-icon]');const refresh=()=>{el.querySelector('.icon-control__preview').innerHTML=iconMarkup(item);library.hidden=item.iconMode!=='library';render();icons()};mode.onchange=()=>{item.iconMode=mode.value;refresh()};library.onchange=()=>{item.libraryIcon=library.value;refresh()};el.querySelector('[data-icon-upload]').onchange=e=>readImage(e.target.files[0],1,data=>{item.uploadedIcon=data;item.iconMode='upload';mode.value='upload';refresh()});el.querySelector('[data-icon-alt]').oninput=e=>item.iconAlt=e.target.value;const remove=el.querySelector('[data-icon-remove]');if(remove)remove.onclick=()=>{item.uploadedIcon='';item.iconMode='library';mode.value='library';refresh()};library.hidden=item.iconMode!=='library'}
-function renderButtons(){const root=document.getElementById('buttonEditor');root.innerHTML='';state.hero.buttons.forEach((btn,i)=>{const el=document.createElement('div');el.className='action-editor__card';el.innerHTML=`<div class="action-editor__title"><strong>Tombol ${i+1}</strong>${toggleHtml(btn)}</div><div class="admin-form-grid"><div class="admin-field"><label>Teks tombol</label><input class="form-input" data-k="label" value="${esc(btn.label)}"></div><div class="admin-field"><label>URL tujuan</label><input class="form-input" data-k="url" value="${esc(btn.url)}"></div><div class="admin-field"><label>Gaya</label><select class="form-input" data-k="style"><option value="primary" ${btn.style==='primary'?'selected':''}>Utama</option><option value="outline" ${btn.style==='outline'?'selected':''}>Outline</option></select></div></div>${iconControl(btn,'hero-'+i)}<label class="editor-check"><input type="checkbox" data-newtab ${btn.newTab?'checked':''}> Buka di tab baru</label>`;el.querySelectorAll('[data-k]').forEach(x=>x.oninput=()=>{btn[x.dataset.k]=x.value;renderHero()});wireItemToggle(el,btn,renderHero);el.querySelector('[data-newtab]').onchange=e=>btn.newTab=e.target.checked;wireIcon(el,btn,renderHero);root.appendChild(el)});icons()}
-function renderScheduleCards(){const root=document.getElementById('scheduleCardEditor');root.innerHTML='';state.schedule.cards.forEach((card,i)=>{const el=document.createElement('article');el.className='schedule-editor-card';el.innerHTML=`<div class="schedule-editor-card__head"><span class="admin-step">${String(i+1).padStart(2,'0')}</span><strong>Kartu Jadwal</strong>${toggleHtml(card)}<button type="button" class="repeat-row__delete"><i data-lucide="trash-2"></i></button></div><div class="admin-form-grid"><div class="admin-field"><label>Nama tahapan</label><input class="form-input" data-k="label" value="${esc(card.label)}"></div><div class="admin-field"><label>Tanggal / waktu</label><input class="form-input" data-k="date" value="${esc(card.date)}"></div><div class="admin-field admin-field--wide"><label>Deskripsi opsional</label><input class="form-input" data-k="description" value="${esc(card.description)}" placeholder="Kosongkan jika tidak diperlukan"></div></div>${iconControl(card,'schedule-'+i)}`;el.querySelectorAll('[data-k]').forEach(x=>x.oninput=()=>{card[x.dataset.k]=x.value;renderSchedule()});wireItemToggle(el,card,renderSchedule);wireIcon(el,card,renderSchedule);el.querySelector('.repeat-row__delete').onclick=()=>removeItem(state.schedule.cards,i,'kartu jadwal',renderScheduleCards,renderSchedule);root.appendChild(el)});icons()}
-function renderHero(){const root=document.getElementById('homePreview'),h=state.hero,t=theme();applyTheme(root,t);if(!h.active)return disabled(root,'Hero');root.innerHTML=`<div class="home-preview__copy"><span>${esc(h.eyebrow)}</span><h2>${esc(h.title)}</h2><img class="home-preview__mobile-image" src="${h.image}" alt="${esc(h.imageAlt)}"><p>${esc(h.description)}</p><div class="home-preview__badges">${h.badges.filter(x=>x.active).map(x=>`<b>${esc(x.label)}</b>`).join('')}</div><div class="home-preview__buttons">${h.buttons.filter(x=>x.active).map(x=>`<a class="${x.style==='outline'?'is-outline':''}">${esc(x.label)} ${iconMarkup(x)}</a>`).join('')}</div></div><img class="home-preview__image" src="${h.image}" alt="${esc(h.imageAlt)}">`;icons()}
-function renderSchedule(){const root=document.getElementById('schedulePreview'),s=state.schedule,t=theme();applyTheme(root,t);if(!s.active)return disabled(root,'Jadwal Penting');const cards=s.cards.filter(x=>x.active);root.innerHTML=`<header><span>${esc(s.eyebrow)}</span><h2>${esc(s.title)}</h2><p>${esc(s.description)}</p></header><div class="schedule-preview__grid" style="--card-count:${Math.min(cards.length,4)}">${cards.map(c=>`<article><div class="schedule-preview__icon">${iconMarkup(c)}</div><strong>${esc(c.label)}</strong><time>${esc(c.date)}</time>${c.description?`<p>${esc(c.description)}</p>`:''}</article>`).join('')}</div>`;icons()}
-function renderSummaries(){const data=[];document.getElementById('sectionSummaries').innerHTML=data.map(x=>`<section class="admin-card section-summary" id="${x[0]}"><span class="admin-step">${x[1]}</span><span class="section-summary__icon"><i data-lucide="${x[4]}"></i></span><div><h2>${x[2]}</h2><p>${x[3]}</p></div><span class="section-summary__next">Tahap berikutnya</span></section>`).join('')}
-function toggleHtml(x){return`<label class="admin-switch"><input type="checkbox" ${x.active?'checked':''}><span></span><em>${x.active?'Aktif':'Nonaktif'}</em></label>`}function wireItemToggle(el,item,render){const t=el.querySelector('.admin-switch input');t.onchange=()=>{item.active=t.checked;t.parentElement.querySelector('em').textContent=t.checked?'Aktif':'Nonaktif';render()}}
-function iconMarkup(x){if(x.iconMode==='upload'&&x.uploadedIcon)return`<img src="${x.uploadedIcon}" alt="${esc(x.iconAlt||'Ikon kustom')}">`;return`<i data-lucide="${x.libraryIcon||x.icon||'circle'}"></i>`}
-function readImage(file,maxMb,done){if(!file)return;if(!['image/png','image/jpeg','image/webp','image/svg+xml'].includes(file.type))return toast('Format gambar tidak didukung.',true);if(file.size>maxMb*1024*1024)return toast(`Ukuran maksimal ${maxMb} MB.`,true);const r=new FileReader();r.onload=()=>done(r.result);r.readAsDataURL(file)}
-function removeItem(arr,i,name,...renders){if(confirm(`Hapus ${name} ini secara permanen?`)){arr.splice(i,1);renders.forEach(f=>f())}}function disabled(root,name){root.innerHTML=`<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>${name} dinonaktifkan</strong><span>Data tetap tersimpan dan dapat diaktifkan kembali.</span></div>`;icons()}
-function theme(){return{...THEME_DEFAULTS,...JSON.parse(localStorage.getItem(GLOBAL_KEY)||'null')}}function applyTheme(el,t){el.style.setProperty('--preview-primary',t.primaryColor);el.style.setProperty('--preview-accent',t.accentColor);el.style.setProperty('--preview-navy',t.navyColor||THEME_DEFAULTS.navyColor)}function icons(){lucide.createIcons()}function esc(v=''){return String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}function toast(msg,error=false){const t=document.getElementById('adminToast');t.querySelector('span').textContent=msg;t.classList.toggle('admin-toast--error',error);t.classList.add('admin-toast--show');setTimeout(()=>t.classList.remove('admin-toast--show'),2800)}
-
-
-
-
+﻿const HOME_KEY = "talenta_home_editor_v1",
+  GLOBAL_KEY = "talenta_event_settings_v1";
+const THEME_DEFAULTS = {
+  primaryColor: "#1e4b8c",
+  accentColor: "#c89b3c",
+  navyColor: "#10233f",
+};
+const ICONS = [
+  "arrow-right",
+  "download",
+  "external-link",
+  "user-plus",
+  "file-text",
+  "send",
+  "clipboard-list",
+  "monitor",
+  "laptop",
+  "trophy",
+  "calendar-days",
+  "clock",
+  "flag",
+  "book-open",
+];
+const heroDefaults = {
+  active: true,
+  eyebrow: "PENDAFTARAN DIBUKA",
+  title: "Olimpiade Sains Nusantara 2026",
+  description:
+    "Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.",
+  image: "img/garuda.png",
+  imageAlt: "Garuda Logo",
+  badges: [
+    { label: "SD / MI", active: true },
+    { label: "SMP / MTs", active: true },
+    { label: "SMA / MA / SMK", active: true },
+  ],
+  buttons: [
+    iconItem(
+      "Daftar Sekarang",
+      "https://infokhs.umm.ac.id/",
+      "arrow-right",
+      "primary",
+      true,
+    ),
+    iconItem("Unduh Juknis", "unduh.html", "download", "outline", false),
+  ],
+};
+const scheduleDefaults = {
+  active: true,
+  eyebrow: "Jadwal Penting",
+  title: "Catat Tanggal Pentingnya",
+  description:
+    "Pastikan kamu tidak melewatkan setiap tahapan penting dalam ajang talenta ini.",
+  cards: [
+    scheduleItem("Pendaftaran", "15 Jul — 30 Agt 2026", "clipboard-list"),
+    scheduleItem("Technical Meeting", "05 Sep 2026", "monitor"),
+    scheduleItem("Simulasi CBT", "08 Sep 2026", "laptop"),
+    scheduleItem("Pelaksanaan", "12 — 13 Sep 2026", "trophy"),
+  ],
+};
+function iconItem(label, url, icon, style, newTab) {
+  return {
+    label,
+    url,
+    style,
+    newTab,
+    active: true,
+    iconMode: "library",
+    libraryIcon: icon,
+    uploadedIcon: "",
+    iconAlt: "",
+  };
+}
+function scheduleItem(label, date, icon) {
+  return {
+    label,
+    date,
+    description: "",
+    active: true,
+    iconMode: "library",
+    libraryIcon: icon,
+    uploadedIcon: "",
+    iconAlt: "",
+  };
+}
+function loadState() {
+  const old = JSON.parse(localStorage.getItem(HOME_KEY) || "null");
+  if (!old)
+    return {
+      hero: structuredClone(heroDefaults),
+      schedule: structuredClone(scheduleDefaults),
+    };
+  const hero = old.hero || old;
+  hero.buttons = (hero.buttons || heroDefaults.buttons).map((b, i) => ({
+    ...(heroDefaults.buttons[i] || heroDefaults.buttons[0]),
+    ...b,
+    libraryIcon: b.libraryIcon || b.icon || "arrow-right",
+  }));
+  return {
+    hero: { ...structuredClone(heroDefaults), ...hero },
+    schedule: { ...structuredClone(scheduleDefaults), ...(old.schedule || {}) },
+  };
+}
+let state = loadState();
+document.addEventListener("DOMContentLoaded", () => {
+  bind();
+  sync();
+  renderAll();
+  lucide.createIcons();
+});
+function bind() {
+  document.getElementById("sidebarToggle").onclick = () =>
+    document
+      .getElementById("adminSidebar")
+      .classList.toggle("admin-sidebar--open");
+  bindText(
+    ["heroEyebrow", "heroTitle", "heroDescription", "heroImageAlt"],
+    state.hero,
+    renderHero,
+  );
+  bindText(
+    ["scheduleEyebrow", "scheduleTitle", "scheduleDescription"],
+    state.schedule,
+    renderSchedule,
+  );
+  bindToggle("heroActive", state.hero, renderHero);
+  bindToggle("scheduleActive", state.schedule, renderSchedule);
+  bindImage("heroImage", 2, (data) => {
+    state.hero.image = data;
+    renderHero();
+  });
+  document.getElementById("addBadge").onclick = () => {
+    state.hero.badges.push({ label: "Badge baru", active: true });
+    renderBadges();
+    renderHero();
+  };
+  document.getElementById("addScheduleCard").onclick = () => {
+    state.schedule.cards.push(
+      scheduleItem("Tahapan baru", "Tanggal belum diatur", "calendar-days"),
+    );
+    renderScheduleCards();
+    renderSchedule();
+  };
+  document.getElementById("homeEditorForm").onsubmit = (e) => {
+    e.preventDefault();
+    localStorage.setItem(HOME_KEY, JSON.stringify(state));
+    toast("Pengaturan Beranda berhasil disimpan.");
+  };
+  document.getElementById("resetHome").onclick = () => {
+    if (confirm("Reset seluruh konfigurasi Beranda?")) {
+      localStorage.removeItem(HOME_KEY);
+      location.reload();
+    }
+  };
+  bindPreview("[data-preview]", "homePreviewFrame", "home-preview-frame");
+  bindPreview(
+    "[data-schedule-preview]",
+    "schedulePreviewFrame",
+    "schedule-preview-frame",
+    "schedulePreview",
+  );
+}
+function bindText(ids, obj, render) {
+  ids.forEach(
+    (id) =>
+      (document.getElementById(id).oninput = (e) => {
+        obj[
+          id
+            .replace(/^(hero|schedule)/, "")
+            .replace(/^./, (c) => c.toLowerCase())
+        ] = e.target.value;
+        render();
+      }),
+  );
+}
+function bindToggle(id, obj, render) {
+  document.getElementById(id).onchange = (e) => {
+    obj.active = e.target.checked;
+    e.target.parentElement.querySelector("em").textContent = e.target.checked
+      ? "Aktif"
+      : "Nonaktif";
+    render();
+  };
+}
+function bindImage(id, maxMb, done) {
+  document.getElementById(id).onchange = (e) =>
+    readImage(e.target.files[0], maxMb, done);
+}
+function bindPreview(selector, frameId, prefix, dataName = "preview") {
+  document.querySelectorAll(selector).forEach(
+    (b) =>
+      (b.onclick = () => {
+        document
+          .querySelectorAll(selector)
+          .forEach((x) => x.classList.remove("preview-switch__btn--active"));
+        b.classList.add("preview-switch__btn--active");
+        const f = document.getElementById(frameId),
+          mode = b.dataset[dataName];
+        f.classList.remove(prefix + "--tablet", prefix + "--mobile");
+        if (mode !== "desktop") f.classList.add(prefix + "--" + mode);
+      }),
+  );
+}
+function sync() {
+  const h = state.hero,
+    s = state.schedule;
+  Object.entries({
+    heroActive: h.active,
+    heroEyebrow: h.eyebrow,
+    heroTitle: h.title,
+    heroDescription: h.description,
+    heroImageAlt: h.imageAlt,
+    scheduleActive: s.active,
+    scheduleEyebrow: s.eyebrow,
+    scheduleTitle: s.title,
+    scheduleDescription: s.description,
+  }).forEach(([id, v]) => {
+    const el = document.getElementById(id);
+    if (el.type === "checkbox") el.checked = v;
+    else el.value = v;
+  });
+}
+function renderAll() {
+  renderBadges();
+  renderButtons();
+  renderScheduleCards();
+  renderSummaries();
+  renderHero();
+  renderSchedule();
+}
+function renderBadges() {
+  const root = document.getElementById("badgeEditor");
+  root.innerHTML = "";
+  state.hero.badges.forEach((item, i) => {
+    const el = document.createElement("div");
+    el.className = "repeat-row";
+    el.innerHTML = `<span class="repeat-row__grip"><i data-lucide="grip-vertical"></i></span><input class="form-input" value="${esc(item.label)}"><label class="admin-switch"><input type="checkbox" ${item.active ? "checked" : ""}><span></span><em>${item.active ? "Aktif" : "Nonaktif"}</em></label><button type="button" class="repeat-row__delete"><i data-lucide="trash-2"></i></button>`;
+    el.querySelector(".form-input").oninput = (e) => {
+      item.label = e.target.value;
+      renderHero();
+    };
+    wireItemToggle(el, item, renderHero);
+    el.querySelector("button").onclick = () =>
+      removeItem(state.hero.badges, i, "badge", renderBadges, renderHero);
+    root.appendChild(el);
+  });
+  icons();
+}
+function iconControl(item, uid) {
+  return `<div class="icon-control"><div class="icon-control__preview" id="preview-${uid}">${iconMarkup(item)}</div><div class="icon-control__fields"><label>Sumber ikon</label><select class="form-input" data-icon-mode><option value="library" ${item.iconMode === "library" ? "selected" : ""}>Pustaka ikon</option><option value="upload" ${item.iconMode === "upload" ? "selected" : ""}>Upload sendiri</option></select><select class="form-input" data-library-icon>${ICONS.map((x) => `<option ${x === item.libraryIcon ? "selected" : ""}>${x}</option>`).join("")}</select><div class="icon-upload-row"><label class="btn btn--outline btn--sm">Upload ikon<input type="file" data-icon-upload accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>${item.uploadedIcon ? '<button type="button" class="icon-remove" data-icon-remove>Hapus upload</button>' : ""}</div><input class="form-input" data-icon-alt placeholder="Alt text ikon" value="${esc(item.iconAlt || "")}"></div></div>`;
+}
+function wireIcon(el, item, render) {
+  const mode = el.querySelector("[data-icon-mode]"),
+    library = el.querySelector("[data-library-icon]");
+  const refresh = () => {
+    el.querySelector(".icon-control__preview").innerHTML = iconMarkup(item);
+    library.hidden = item.iconMode !== "library";
+    render();
+    icons();
+  };
+  mode.onchange = () => {
+    item.iconMode = mode.value;
+    refresh();
+  };
+  library.onchange = () => {
+    item.libraryIcon = library.value;
+    refresh();
+  };
+  el.querySelector("[data-icon-upload]").onchange = (e) =>
+    readImage(e.target.files[0], 1, (data) => {
+      item.uploadedIcon = data;
+      item.iconMode = "upload";
+      mode.value = "upload";
+      refresh();
+    });
+  el.querySelector("[data-icon-alt]").oninput = (e) =>
+    (item.iconAlt = e.target.value);
+  const remove = el.querySelector("[data-icon-remove]");
+  if (remove)
+    remove.onclick = () => {
+      item.uploadedIcon = "";
+      item.iconMode = "library";
+      mode.value = "library";
+      refresh();
+    };
+  library.hidden = item.iconMode !== "library";
+}
+function renderButtons() {
+  const root = document.getElementById("buttonEditor");
+  root.innerHTML = "";
+  state.hero.buttons.forEach((btn, i) => {
+    const el = document.createElement("div");
+    el.className = "action-editor__card";
+    el.innerHTML = `<div class="action-editor__title"><strong>Tombol ${i + 1}</strong>${toggleHtml(btn)}</div><div class="admin-form-grid"><div class="admin-field"><label>Teks tombol</label><input class="form-input" data-k="label" value="${esc(btn.label)}"></div><div class="admin-field"><label>URL tujuan</label><input class="form-input" data-k="url" value="${esc(btn.url)}"></div><div class="admin-field"><label>Gaya</label><select class="form-input" data-k="style"><option value="primary" ${btn.style === "primary" ? "selected" : ""}>Utama</option><option value="outline" ${btn.style === "outline" ? "selected" : ""}>Outline</option></select></div></div>${iconControl(btn, "hero-" + i)}<label class="editor-check"><input type="checkbox" data-newtab ${btn.newTab ? "checked" : ""}> Buka di tab baru</label>`;
+    el.querySelectorAll("[data-k]").forEach(
+      (x) =>
+        (x.oninput = () => {
+          btn[x.dataset.k] = x.value;
+          renderHero();
+        }),
+    );
+    wireItemToggle(el, btn, renderHero);
+    el.querySelector("[data-newtab]").onchange = (e) =>
+      (btn.newTab = e.target.checked);
+    wireIcon(el, btn, renderHero);
+    root.appendChild(el);
+  });
+  icons();
+}
+function renderScheduleCards() {
+  const root = document.getElementById("scheduleCardEditor");
+  root.innerHTML = "";
+  state.schedule.cards.forEach((card, i) => {
+    const el = document.createElement("article");
+    el.className = "schedule-editor-card";
+    el.innerHTML = `<div class="schedule-editor-card__head"><span class="admin-step">${String(i + 1).padStart(2, "0")}</span><strong>Kartu Jadwal</strong>${toggleHtml(card)}<button type="button" class="repeat-row__delete"><i data-lucide="trash-2"></i></button></div><div class="admin-form-grid"><div class="admin-field"><label>Nama tahapan</label><input class="form-input" data-k="label" value="${esc(card.label)}"></div><div class="admin-field"><label>Tanggal / waktu</label><input class="form-input" data-k="date" value="${esc(card.date)}"></div><div class="admin-field admin-field--wide"><label>Deskripsi opsional</label><input class="form-input" data-k="description" value="${esc(card.description)}" placeholder="Kosongkan jika tidak diperlukan"></div></div>${iconControl(card, "schedule-" + i)}`;
+    el.querySelectorAll("[data-k]").forEach(
+      (x) =>
+        (x.oninput = () => {
+          card[x.dataset.k] = x.value;
+          renderSchedule();
+        }),
+    );
+    wireItemToggle(el, card, renderSchedule);
+    wireIcon(el, card, renderSchedule);
+    el.querySelector(".repeat-row__delete").onclick = () =>
+      removeItem(
+        state.schedule.cards,
+        i,
+        "kartu jadwal",
+        renderScheduleCards,
+        renderSchedule,
+      );
+    root.appendChild(el);
+  });
+  icons();
+}
+function renderHero() {
+  const root = document.getElementById("homePreview"),
+    h = state.hero,
+    t = theme();
+  applyTheme(root, t);
+  if (!h.active) return disabled(root, "Hero");
+  root.innerHTML = `<div class="home-preview__copy"><span>${esc(h.eyebrow)}</span><h2>${esc(h.title)}</h2><img class="home-preview__mobile-image" src="${h.image}" alt="${esc(h.imageAlt)}"><p>${esc(h.description)}</p><div class="home-preview__badges">${h.badges
+    .filter((x) => x.active)
+    .map((x) => `<b>${esc(x.label)}</b>`)
+    .join("")}</div><div class="home-preview__buttons">${h.buttons
+    .filter((x) => x.active)
+    .map(
+      (x) =>
+        `<a class="${x.style === "outline" ? "is-outline" : ""}">${esc(x.label)} ${iconMarkup(x)}</a>`,
+    )
+    .join(
+      "",
+    )}</div></div><img class="home-preview__image" src="${h.image}" alt="${esc(h.imageAlt)}">`;
+  icons();
+}
+function renderSchedule() {
+  const root = document.getElementById("schedulePreview"),
+    s = state.schedule,
+    t = theme();
+  applyTheme(root, t);
+  if (!s.active) return disabled(root, "Jadwal Penting");
+  const cards = s.cards.filter((x) => x.active);
+  root.innerHTML = `<header><span>${esc(s.eyebrow)}</span><h2>${esc(s.title)}</h2><p>${esc(s.description)}</p></header><div class="schedule-preview__grid" style="--card-count:${Math.min(cards.length, 4)}">${cards.map((c) => `<article><div class="schedule-preview__icon">${iconMarkup(c)}</div><strong>${esc(c.label)}</strong><time>${esc(c.date)}</time>${c.description ? `<p>${esc(c.description)}</p>` : ""}</article>`).join("")}</div>`;
+  icons();
+}
+function renderSummaries() {
+  const data = [];
+  document.getElementById("sectionSummaries").innerHTML = data
+    .map(
+      (x) =>
+        `<section class="admin-card section-summary" id="${x[0]}"><span class="admin-step">${x[1]}</span><span class="section-summary__icon"><i data-lucide="${x[4]}"></i></span><div><h2>${x[2]}</h2><p>${x[3]}</p></div><span class="section-summary__next">Tahap berikutnya</span></section>`,
+    )
+    .join("");
+}
+function toggleHtml(x) {
+  return `<label class="admin-switch"><input type="checkbox" ${x.active ? "checked" : ""}><span></span><em>${x.active ? "Aktif" : "Nonaktif"}</em></label>`;
+}
+function wireItemToggle(el, item, render) {
+  const t = el.querySelector(".admin-switch input");
+  t.onchange = () => {
+    item.active = t.checked;
+    t.parentElement.querySelector("em").textContent = t.checked
+      ? "Aktif"
+      : "Nonaktif";
+    render();
+  };
+}
+function iconMarkup(x) {
+  if (x.iconMode === "upload" && x.uploadedIcon)
+    return `<img src="${x.uploadedIcon}" alt="${esc(x.iconAlt || "Ikon kustom")}">`;
+  return `<i data-lucide="${x.libraryIcon || x.icon || "circle"}"></i>`;
+}
+function readImage(file, maxMb, done) {
+  if (!file) return;
+  if (
+    !["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(
+      file.type,
+    )
+  )
+    return toast("Format gambar tidak didukung.", true);
+  if (file.size > maxMb * 1024 * 1024)
+    return toast(`Ukuran maksimal ${maxMb} MB.`, true);
+  const r = new FileReader();
+  r.onload = () => done(r.result);
+  r.readAsDataURL(file);
+}
+function removeItem(arr, i, name, ...renders) {
+  if (confirm(`Hapus ${name} ini secara permanen?`)) {
+    arr.splice(i, 1);
+    renders.forEach((f) => f());
+  }
+}
+function disabled(root, name) {
+  root.innerHTML = `<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>${name} dinonaktifkan</strong><span>Data tetap tersimpan dan dapat diaktifkan kembali.</span></div>`;
+  icons();
+}
+function theme() {
+  return {
+    ...THEME_DEFAULTS,
+    ...JSON.parse(localStorage.getItem(GLOBAL_KEY) || "null"),
+  };
+}
+function applyTheme(el, t) {
+  el.style.setProperty("--preview-primary", t.primaryColor);
+  el.style.setProperty("--preview-accent", t.accentColor);
+  el.style.setProperty(
+    "--preview-navy",
+    t.navyColor || THEME_DEFAULTS.navyColor,
+  );
+}
+function icons() {
+  lucide.createIcons();
+}
+function esc(v = "") {
+  return String(v).replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+  );
+}
+function toast(msg, error = false) {
+  const t = document.getElementById("adminToast");
+  t.querySelector("span").textContent = msg;
+  t.classList.toggle("admin-toast--error", error);
+  t.classList.add("admin-toast--show");
+  setTimeout(() => t.classList.remove("admin-toast--show"), 2800);
+}

@@ -1,79 +1,134 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Login — Olimpiade Sains Nusantara</title>
-  <meta name="description" content="Masuk ke akun kontingen Anda untuk mendaftarkan peserta Olimpiade Sains Nusantara.">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
-</head>
-<body class="auth-body">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login — Olimpiade Sains Nusantara</title>
+    <meta
+      name="description"
+      content="Masuk ke akun kontingen Anda untuk mendaftarkan peserta Olimpiade Sains Nusantara."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/style.css" />
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  </head>
+  <body class="auth-body">
+    <main class="auth-page">
+      <div class="auth-card">
+        <div class="auth-card__header">
+          <div class="auth-card__logo">OSN</div>
+          <h1 class="t-h2">Masuk ke Akun</h1>
+          <p class="t-caption" style="margin-top: var(--sp-1)">
+            Gunakan akun kontingen yang telah diberikan panitia.
+          </p>
+        </div>
 
-  <main class="auth-page">
-    <div class="auth-card">
-      <div class="auth-card__header">
-        <div class="auth-card__logo">OSN</div>
-        <h1 class="t-h2">Masuk ke Akun</h1>
-        <p class="t-caption" style="margin-top:var(--sp-1);">Gunakan akun kontingen yang telah diberikan panitia.</p>
+        <!-- LOGIN FORM -->
+        <form id="loginForm">
+          <div class="form-group">
+            <label class="form-label" for="loginEmail">Username / Email</label>
+            <input
+              type="text"
+              id="loginEmail"
+              class="form-input"
+              placeholder="Masukkan username atau email"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="loginPassword">Password</label>
+            <input
+              type="password"
+              id="loginPassword"
+              class="form-input"
+              placeholder="Masukkan password"
+            />
+          </div>
+          <a
+            href="dashboard.html"
+            class="btn btn--primary"
+            style="width: 100%; margin-top: var(--sp-3)"
+          >
+            <i data-lucide="log-in" style="width: 16px; height: 16px"></i>
+            Masuk
+          </a>
+          <div class="auth-toggle">
+            Belum punya akun?
+            <a href="#" id="showRegister">Daftarkan Sekolah</a>
+          </div>
+        </form>
+
+        <!-- REGISTER FORM -->
+        <form id="registerForm" style="display: none">
+          <div class="form-group">
+            <label class="form-label" for="regNama"
+              >Nama Penanggung Jawab</label
+            >
+            <input
+              type="text"
+              id="regNama"
+              class="form-input"
+              placeholder="Nama lengkap penanggung jawab"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regWA">No. WhatsApp</label>
+            <input
+              type="tel"
+              id="regWA"
+              class="form-input t-mono"
+              placeholder="08xxxxxxxxxx"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regSekolah">Nama Sekolah</label>
+            <input
+              type="text"
+              id="regSekolah"
+              class="form-input"
+              placeholder="Nama lengkap sekolah"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regKota">Kabupaten / Kota</label>
+            <input
+              type="text"
+              id="regKota"
+              class="form-input"
+              placeholder="Contoh: Kota Bandung"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="regProvinsi">Provinsi</label>
+            <input
+              type="text"
+              id="regProvinsi"
+              class="form-input"
+              placeholder="Contoh: Jawa Barat"
+            />
+          </div>
+          <button
+            type="button"
+            class="btn btn--primary"
+            style="width: 100%; margin-top: var(--sp-3)"
+          >
+            <i data-lucide="user-plus" style="width: 16px; height: 16px"></i>
+            Daftarkan Sekolah
+          </button>
+          <div class="auth-toggle">
+            Sudah punya akun? <a href="#" id="showLogin">Masuk di sini</a>
+          </div>
+        </form>
       </div>
+    </main>
 
-      <!-- LOGIN FORM -->
-      <form id="loginForm">
-        <div class="form-group">
-          <label class="form-label" for="loginEmail">Username / Email</label>
-          <input type="text" id="loginEmail" class="form-input" placeholder="Masukkan username atau email">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="loginPassword">Password</label>
-          <input type="password" id="loginPassword" class="form-input" placeholder="Masukkan password">
-        </div>
-        <a href="dashboard.html" class="btn btn--primary" style="width:100%; margin-top:var(--sp-3);">
-          <i data-lucide="log-in" style="width:16px;height:16px;"></i>
-          Masuk
-        </a>
-        <div class="auth-toggle">
-          Belum punya akun? <a href="#" id="showRegister">Daftarkan Sekolah</a>
-        </div>
-      </form>
-
-      <!-- REGISTER FORM -->
-      <form id="registerForm" style="display:none;">
-        <div class="form-group">
-          <label class="form-label" for="regNama">Nama Penanggung Jawab</label>
-          <input type="text" id="regNama" class="form-input" placeholder="Nama lengkap penanggung jawab">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="regWA">No. WhatsApp</label>
-          <input type="tel" id="regWA" class="form-input t-mono" placeholder="08xxxxxxxxxx">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="regSekolah">Nama Sekolah</label>
-          <input type="text" id="regSekolah" class="form-input" placeholder="Nama lengkap sekolah">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="regKota">Kabupaten / Kota</label>
-          <input type="text" id="regKota" class="form-input" placeholder="Contoh: Kota Bandung">
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="regProvinsi">Provinsi</label>
-          <input type="text" id="regProvinsi" class="form-input" placeholder="Contoh: Jawa Barat">
-        </div>
-        <button type="button" class="btn btn--primary" style="width:100%; margin-top:var(--sp-3);">
-          <i data-lucide="user-plus" style="width:16px;height:16px;"></i>
-          Daftarkan Sekolah
-        </button>
-        <div class="auth-toggle">
-          Sudah punya akun? <a href="#" id="showLogin">Masuk di sini</a>
-        </div>
-      </form>
-    </div>
-  </main>
-
-  <script src="js/script.js"></script>
-  <script>lucide.createIcons();</script>
-</body>
+    <script src="js/script.js"></script>
+    <script>
+      lucide.createIcons();
+    </script>
+  </body>
 </html>

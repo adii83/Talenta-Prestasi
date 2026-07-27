@@ -1,14 +1,235 @@
-﻿const STORAGE_KEY=GLOBAL_SETTINGS_KEY;
-let globalState=getGlobalSettings(),globalPreviewActive='home';
-const navigationItems=[['download','Unduh','download','unduh.html'],['winners','Pemenang','trophy','pemenang.html'],['archive','Arsip','archive','arsip.html'],['faq','FAQ','circle-help','faq.html']];
-document.addEventListener('DOMContentLoaded',()=>{const form=document.getElementById('eventSettingsForm'),byId=id=>document.getElementById(id);
- function fill(){const i=globalState.identity,t=globalState.theme,c=globalState.contact,f=globalState.footer,values={eventName:i.eventName,eventSlug:i.eventSlug,organizerName:i.organizerName,primaryColor:t.primaryColor,accentColor:t.accentColor,contactEmail:c.email,contactWhatsapp:c.whatsappDisplay,whatsappNumber:c.whatsappNumber,whatsappMessage:c.whatsappMessage,contactAddress:c.address,footerBrand:f.brandName,footerHeading:f.contactHeading,footerDescription:f.description,footerCopyright:f.copyright};Object.entries(values).forEach(([id,v])=>{const e=byId(id);if(e)e.value=v||''});if(i.logo)setLogo(i.logo)}
- function renderNavigation(){byId('globalNavigationList').innerHTML=navigationItems.map(([id,label,icon])=>`<div class="global-navigation-item"><span><i data-lucide="${icon}"></i></span><div><strong>${label}</strong><small>Menu dan halaman publik ${label}</small></div><label class="admin-switch admin-switch--label"><input type="checkbox" data-global-navigation="${id}" ${globalState.navigation[id]!==false?'checked':''}><span></span><em>${globalState.navigation[id]!==false?'Aktif':'Nonaktif'}</em></label></div>`).join('');document.querySelectorAll('[data-global-navigation]').forEach(input=>input.onchange=()=>{const scrollX=window.scrollX,scrollY=window.scrollY;globalState.navigation[input.dataset.globalNavigation]=input.checked;input.parentElement.querySelector('em').textContent=input.checked?'Aktif':'Nonaktif';if(!input.checked&&globalPreviewActive===input.dataset.globalNavigation)globalPreviewActive='home';renderPreview();requestAnimationFrame(()=>window.scrollTo(scrollX,scrollY))});lucide.createIcons()}
- function readForm(){globalState.identity={...globalState.identity,eventName:eventName.value,eventSlug:eventSlug.value,organizerName:organizerName.value,logo:document.querySelector('#logoPreview img')?.src||globalState.identity.logo||''};globalState.theme={primaryColor:primaryColor.value,accentColor:accentColor.value};globalState.contact={email:contactEmail.value,whatsappDisplay:contactWhatsapp.value,whatsappNumber:normalizeWhatsappNumber(whatsappNumber.value||contactWhatsapp.value),whatsappMessage:whatsappMessage.value,address:contactAddress.value};globalState.footer={brandName:footerBrand.value,contactHeading:footerHeading.value,description:footerDescription.value,copyright:footerCopyright.value}}
- function navMarkup(active){const frame=byId('globalNavPreviewFrame'),isDesktop=frame.classList.contains('global-nav-preview-frame--desktop'),brand=globalState.identity.eventName||'Nama Event',short=brand.split(/\s+/).map(x=>x[0]).slice(0,3).join('').toUpperCase();if(isDesktop)return`<nav class="navbar global-nav-desktop"><div class="navbar__inner"><span class="navbar__brand"><span class="navbar__logo">${short}</span><span class="navbar__brand-text">${brand}</span></span><div class="navbar__menu">${active.map(([id,label])=>`<button type="button" class="navbar__link ${id===globalPreviewActive?'navbar__link--active':''}" data-preview-page="${id}">${label}</button>`).join('')}<button type="button" class="navbar__link navbar__link--desktop-only ${globalPreviewActive==='contact'?'navbar__link--active':''}" data-preview-page="contact">Kontak Kami</button></div></div></nav>`;return`<div class="global-nav-device-stage"><header class="mobile-header global-nav-mobile-head"><span class="mobile-header__brand"><span class="mobile-header__logo">${short}</span><span class="mobile-header__text">${brand}</span></span></header><div class="global-nav-device-content"><span>Preview konten halaman</span></div><nav class="bottom-nav global-nav-bottom" data-item-count="${active.length}">${active.map(([id,label,icon])=>`<button type="button" class="bottom-nav__item ${id===globalPreviewActive?'bottom-nav__item--active':''}" data-preview-page="${id}"><i data-lucide="${icon}" class="bottom-nav__icon"></i><span class="bottom-nav__label">${label}</span></button>`).join('')}</nav></div>`}
- function renderPreview(){readForm();const active=[['home','Beranda','home','index.html'],...navigationItems].filter(([id])=>id==='home'||globalState.navigation[id]!==false),brand=globalState.identity.eventName||'Nama Event',short=brand.split(/\s+/).map(x=>x[0]).slice(0,3).join('').toUpperCase();primaryHex.textContent=primaryColor.value.toUpperCase();accentHex.textContent=accentColor.value.toUpperCase();themePreview.style.setProperty('--preview-primary',primaryColor.value);themePreview.style.setProperty('--preview-accent',accentColor.value);previewName.textContent=brand;previewDomain.textContent=`${eventSlug.value||'event'}.talentaprestasi.id`;byId('globalNavPreview').innerHTML=navMarkup(active);document.querySelectorAll('[data-preview-page]').forEach(button=>button.onclick=()=>{globalPreviewActive=button.dataset.previewPage;renderPreview()});globalPreviewWa.hidden=!globalState.contact.whatsappNumber;globalPreviewFooterLogo.textContent=short;globalPreviewFooterBrand.textContent=globalState.footer.brandName||brand;globalPreviewFooterDescription.textContent=globalState.footer.description;globalPreviewFooterHeading.textContent=globalState.footer.contactHeading;globalPreviewFooterLinks.innerHTML=`<span class="footer__link">${globalState.contact.email}</span><span class="footer__link t-mono">${globalState.contact.whatsappDisplay}</span><span class="footer__link">${globalState.contact.address}</span>`;globalPreviewCopyright.textContent=globalState.footer.copyright;lucide.createIcons()}
- function bindDevices(selector,frame,prefix){document.querySelectorAll(selector).forEach(btn=>btn.onclick=()=>{document.querySelectorAll(selector).forEach(x=>x.classList.toggle('preview-switch__btn--active',x===btn));byId(frame).className=`${prefix} ${prefix}--${btn.dataset[selector.includes('nav')?'globalNavDevice':'globalFooterDevice']}`;renderPreview()})}
- fill();renderNavigation();document.querySelectorAll('#eventSettingsForm input:not([type=file]):not([data-global-navigation]),#eventSettingsForm textarea').forEach(e=>e.addEventListener('input',renderPreview));bindDevices('[data-global-nav-device]','globalNavPreviewFrame','global-nav-preview-frame');bindDevices('[data-global-footer-device]','globalFooterPreviewFrame','global-footer-preview-frame');globalPreviewWa.onclick=()=>{globalPreviewWa.classList.remove('global-preview-wa--pulse');void globalPreviewWa.offsetWidth;globalPreviewWa.classList.add('global-preview-wa--pulse');globalPreviewWaFeedback.classList.add('global-preview-wa-feedback--show');setTimeout(()=>globalPreviewWaFeedback.classList.remove('global-preview-wa-feedback--show'),1800)};logoUploadButton.onclick=()=>eventLogo.click();eventLogo.onchange=e=>{const file=e.target.files[0];if(!file||file.size>2*1024*1024)return showToast('Logo maksimal berukuran 2 MB.',true);const r=new FileReader();r.onload=()=>{globalState.identity.logo=r.result;setLogo(r.result);renderPreview()};r.readAsDataURL(file)};form.onsubmit=e=>{e.preventDefault();readForm();globalState=saveGlobalSettings(globalState);showToast('Pengaturan global berhasil disimpan.')};resetSettings.onclick=()=>{if(confirm('Reset seluruh pengaturan global ke template awal?')){globalState=resetGlobalSettings();location.reload()}};sidebarToggle.onclick=()=>adminSidebar.classList.toggle('admin-sidebar--open');renderPreview();lucide.createIcons()});
-function setLogo(source){document.getElementById('logoPreview').innerHTML=`<img src="${source}" alt="Pratinjau logo event">`}
-function showToast(message,error=false){const toast=document.getElementById('adminToast');toast.querySelector('span').textContent=message;toast.classList.toggle('admin-toast--error',error);toast.classList.add('admin-toast--show');setTimeout(()=>toast.classList.remove('admin-toast--show'),3000)}
-
+﻿const STORAGE_KEY = GLOBAL_SETTINGS_KEY;
+let globalState = getGlobalSettings(),
+  globalPreviewActive = "home";
+const navigationItems = [
+  ["download", "Unduh", "download", "unduh.html"],
+  ["winners", "Pemenang", "trophy", "pemenang.html"],
+  ["archive", "Arsip", "archive", "arsip.html"],
+  ["faq", "FAQ", "circle-help", "faq.html"],
+];
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("eventSettingsForm"),
+    byId = (id) => document.getElementById(id);
+  function fill() {
+    const i = globalState.identity,
+      t = globalState.theme,
+      c = globalState.contact,
+      f = globalState.footer,
+      values = {
+        eventName: i.eventName,
+        eventSlug: i.eventSlug,
+        organizerName: i.organizerName,
+        primaryColor: t.primaryColor,
+        accentColor: t.accentColor,
+        contactEmail: c.email,
+        contactWhatsapp: c.whatsappDisplay,
+        whatsappNumber: c.whatsappNumber,
+        whatsappMessage: c.whatsappMessage,
+        contactAddress: c.address,
+        footerBrand: f.brandName,
+        footerHeading: f.contactHeading,
+        footerDescription: f.description,
+        footerCopyright: f.copyright,
+      };
+    Object.entries(values).forEach(([id, v]) => {
+      const e = byId(id);
+      if (e) e.value = v || "";
+    });
+    if (i.logo) setLogo(i.logo);
+  }
+  function renderNavigation() {
+    byId("globalNavigationList").innerHTML = navigationItems
+      .map(
+        ([id, label, icon]) =>
+          `<div class="global-navigation-item"><span><i data-lucide="${icon}"></i></span><div><strong>${label}</strong><small>Menu dan halaman publik ${label}</small></div><label class="admin-switch admin-switch--label"><input type="checkbox" data-global-navigation="${id}" ${globalState.navigation[id] !== false ? "checked" : ""}><span></span><em>${globalState.navigation[id] !== false ? "Aktif" : "Nonaktif"}</em></label></div>`,
+      )
+      .join("");
+    document.querySelectorAll("[data-global-navigation]").forEach(
+      (input) =>
+        (input.onchange = () => {
+          const scrollX = window.scrollX,
+            scrollY = window.scrollY;
+          globalState.navigation[input.dataset.globalNavigation] =
+            input.checked;
+          input.parentElement.querySelector("em").textContent = input.checked
+            ? "Aktif"
+            : "Nonaktif";
+          if (
+            !input.checked &&
+            globalPreviewActive === input.dataset.globalNavigation
+          )
+            globalPreviewActive = "home";
+          renderPreview();
+          requestAnimationFrame(() => window.scrollTo(scrollX, scrollY));
+        }),
+    );
+    lucide.createIcons();
+  }
+  function readForm() {
+    globalState.identity = {
+      ...globalState.identity,
+      eventName: eventName.value,
+      eventSlug: eventSlug.value,
+      organizerName: organizerName.value,
+      logo:
+        document.querySelector("#logoPreview img")?.src ||
+        globalState.identity.logo ||
+        "",
+    };
+    globalState.theme = {
+      primaryColor: primaryColor.value,
+      accentColor: accentColor.value,
+    };
+    globalState.contact = {
+      email: contactEmail.value,
+      whatsappDisplay: contactWhatsapp.value,
+      whatsappNumber: normalizeWhatsappNumber(
+        whatsappNumber.value || contactWhatsapp.value,
+      ),
+      whatsappMessage: whatsappMessage.value,
+      address: contactAddress.value,
+    };
+    globalState.footer = {
+      brandName: footerBrand.value,
+      contactHeading: footerHeading.value,
+      description: footerDescription.value,
+      copyright: footerCopyright.value,
+    };
+  }
+  function navMarkup(active) {
+    const frame = byId("globalNavPreviewFrame"),
+      isDesktop = frame.classList.contains("global-nav-preview-frame--desktop"),
+      brand = globalState.identity.eventName || "Nama Event",
+      short = brand
+        .split(/\s+/)
+        .map((x) => x[0])
+        .slice(0, 3)
+        .join("")
+        .toUpperCase();
+    if (isDesktop)
+      return `<nav class="navbar global-nav-desktop"><div class="navbar__inner"><span class="navbar__brand"><span class="navbar__logo">${short}</span><span class="navbar__brand-text">${brand}</span></span><div class="navbar__menu">${active.map(([id, label]) => `<button type="button" class="navbar__link ${id === globalPreviewActive ? "navbar__link--active" : ""}" data-preview-page="${id}">${label}</button>`).join("")}<button type="button" class="navbar__link navbar__link--desktop-only ${globalPreviewActive === "contact" ? "navbar__link--active" : ""}" data-preview-page="contact">Kontak Kami</button></div></div></nav>`;
+    return `<div class="global-nav-device-stage"><header class="mobile-header global-nav-mobile-head"><span class="mobile-header__brand"><span class="mobile-header__logo">${short}</span><span class="mobile-header__text">${brand}</span></span></header><div class="global-nav-device-content"><span>Preview konten halaman</span></div><nav class="bottom-nav global-nav-bottom" data-item-count="${active.length}">${active.map(([id, label, icon]) => `<button type="button" class="bottom-nav__item ${id === globalPreviewActive ? "bottom-nav__item--active" : ""}" data-preview-page="${id}"><i data-lucide="${icon}" class="bottom-nav__icon"></i><span class="bottom-nav__label">${label}</span></button>`).join("")}</nav></div>`;
+  }
+  function renderPreview() {
+    readForm();
+    const active = [
+        ["home", "Beranda", "home", "index.html"],
+        ...navigationItems,
+      ].filter(([id]) => id === "home" || globalState.navigation[id] !== false),
+      brand = globalState.identity.eventName || "Nama Event",
+      short = brand
+        .split(/\s+/)
+        .map((x) => x[0])
+        .slice(0, 3)
+        .join("")
+        .toUpperCase();
+    primaryHex.textContent = primaryColor.value.toUpperCase();
+    accentHex.textContent = accentColor.value.toUpperCase();
+    themePreview.style.setProperty("--preview-primary", primaryColor.value);
+    themePreview.style.setProperty("--preview-accent", accentColor.value);
+    previewName.textContent = brand;
+    previewDomain.textContent = `${eventSlug.value || "event"}.talentaprestasi.id`;
+    byId("globalNavPreview").innerHTML = navMarkup(active);
+    document.querySelectorAll("[data-preview-page]").forEach(
+      (button) =>
+        (button.onclick = () => {
+          globalPreviewActive = button.dataset.previewPage;
+          renderPreview();
+        }),
+    );
+    globalPreviewWa.hidden = !globalState.contact.whatsappNumber;
+    globalPreviewFooterLogo.textContent = short;
+    globalPreviewFooterBrand.textContent =
+      globalState.footer.brandName || brand;
+    globalPreviewFooterDescription.textContent = globalState.footer.description;
+    globalPreviewFooterHeading.textContent = globalState.footer.contactHeading;
+    globalPreviewFooterLinks.innerHTML = `<span class="footer__link">${globalState.contact.email}</span><span class="footer__link t-mono">${globalState.contact.whatsappDisplay}</span><span class="footer__link">${globalState.contact.address}</span>`;
+    globalPreviewCopyright.textContent = globalState.footer.copyright;
+    lucide.createIcons();
+  }
+  function bindDevices(selector, frame, prefix) {
+    document.querySelectorAll(selector).forEach(
+      (btn) =>
+        (btn.onclick = () => {
+          document
+            .querySelectorAll(selector)
+            .forEach((x) =>
+              x.classList.toggle("preview-switch__btn--active", x === btn),
+            );
+          byId(frame).className =
+            `${prefix} ${prefix}--${btn.dataset[selector.includes("nav") ? "globalNavDevice" : "globalFooterDevice"]}`;
+          renderPreview();
+        }),
+    );
+  }
+  fill();
+  renderNavigation();
+  document
+    .querySelectorAll(
+      "#eventSettingsForm input:not([type=file]):not([data-global-navigation]),#eventSettingsForm textarea",
+    )
+    .forEach((e) => e.addEventListener("input", renderPreview));
+  bindDevices(
+    "[data-global-nav-device]",
+    "globalNavPreviewFrame",
+    "global-nav-preview-frame",
+  );
+  bindDevices(
+    "[data-global-footer-device]",
+    "globalFooterPreviewFrame",
+    "global-footer-preview-frame",
+  );
+  globalPreviewWa.onclick = () => {
+    globalPreviewWa.classList.remove("global-preview-wa--pulse");
+    void globalPreviewWa.offsetWidth;
+    globalPreviewWa.classList.add("global-preview-wa--pulse");
+    globalPreviewWaFeedback.classList.add("global-preview-wa-feedback--show");
+    setTimeout(
+      () =>
+        globalPreviewWaFeedback.classList.remove(
+          "global-preview-wa-feedback--show",
+        ),
+      1800,
+    );
+  };
+  logoUploadButton.onclick = () => eventLogo.click();
+  eventLogo.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file || file.size > 2 * 1024 * 1024)
+      return showToast("Logo maksimal berukuran 2 MB.", true);
+    const r = new FileReader();
+    r.onload = () => {
+      globalState.identity.logo = r.result;
+      setLogo(r.result);
+      renderPreview();
+    };
+    r.readAsDataURL(file);
+  };
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    readForm();
+    globalState = saveGlobalSettings(globalState);
+    showToast("Pengaturan global berhasil disimpan.");
+  };
+  resetSettings.onclick = () => {
+    if (confirm("Reset seluruh pengaturan global ke template awal?")) {
+      globalState = resetGlobalSettings();
+      location.reload();
+    }
+  };
+  sidebarToggle.onclick = () =>
+    adminSidebar.classList.toggle("admin-sidebar--open");
+  renderPreview();
+  lucide.createIcons();
+});
+function setLogo(source) {
+  document.getElementById("logoPreview").innerHTML =
+    `<img src="${source}" alt="Pratinjau logo event">`;
+}
+function showToast(message, error = false) {
+  const toast = document.getElementById("adminToast");
+  toast.querySelector("span").textContent = message;
+  toast.classList.toggle("admin-toast--error", error);
+  toast.classList.add("admin-toast--show");
+  setTimeout(() => toast.classList.remove("admin-toast--show"), 3000);
+}
