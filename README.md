@@ -1,162 +1,243 @@
-﻿# ðŸ† Template Website Ajang Talenta (Platform Kompetisi Terpadu)
+# Template Website Lomba Talenta Prestasi
 
-Proyek ini adalah fondasi antarmuka (_frontend template_) untuk platform pendaftaran, informasi, dan pengumuman ajang talenta/kompetisi akademik skala nasional.
+## Tentang Proyek
 
-Sistem ini didesain secara modular, bersih, dan sangat responsif agar ke depannya dapat diintegrasikan dengan **Sistem Manajemen Konten (CMS)** dan arsitektur _Multi-Tenant_ (Subdomain).
+Proyek ini adalah **master template website penyelenggaraan lomba** yang dirancang agar dapat digunakan kembali untuk lomba-lomba berikutnya tanpa membangun tampilan dari awal.
 
----
+Template menyediakan halaman informasi lomba yang lengkap, konsisten, dan responsif. Admin dapat mengubah identitas acara, warna tema, konten beranda, dokumen, pemenang, arsip, FAQ, serta informasi kontak melalui CMS tanpa mengubah struktur desain utama.
 
-## ðŸŽ¯ Visi & Konsep Arsitektur (Menuju CMS & Subdomain)
+Tujuan akhirnya adalah menjadikan proyek ini sebagai fondasi sistem multi-event: satu template dapat melayani banyak lomba dengan konten dan identitas yang berbeda.
 
-Sesuai permintaan klien, sistem ini dibangun agar **"sekali buat, bisa dipakai berulang kali untuk lomba-lomba berikutnya"**. Berikut adalah konsep bagaimana antarmuka HTML statis ini nantinya bekerja secara dinamis melalui _backend_:
+## Template adalah Acuan Utama
 
-### 1. Arsitektur Multi-Tenant (Konsep Subdomain)
+Folder [apps/template](file:///d:/Kuliah/Magang/Web1/apps/template) adalah **source of truth untuk website yang dilihat pengunjung**.
 
-Klien ingin agar setiap ada lomba baru (misal: Olimpiade Matematika 2026, Cerdas Cermat 2027), sistem tidak perlu dibuat dari nol.
-
-- **Konsep:** Backend (CMS) akan mengelola basis data terpusat. Ketika admin membuat "Event Baru" di panel CMS, **Admin berhak menentukan sendiri nama tautannya** (mengisi kolom _slug_ / _subdomain_). Misalnya Admin mengetik `matematika2026`, maka alamat websitenya akan diaktifkan menjadi `matematika2026.talentaprestasi.id`. Hal ini memberi kontrol penuh kepada Admin agar tidak ada kesalahan penamaan dan bisa diedit sesuai kebutuhan.
-- **Templating:** Subdomain tersebut akan secara otomatis memanggil struktur HTML/CSS dari template ini. Namun, kontennya (teks, logo, warna tema, dokumen juknis) ditarik dari _database_ event tersebut. Backend hanya satu (berbagi resource), namun "wajah" (frontend) yang tampil menyesuaikan dengan event yang sedang diakses.
-
-### 2. Cara Kerja CMS (Admin Panel)
-
-Nantinya, Admin hanya perlu melakukan input data melalui antarmuka CMS tanpa menyentuh baris kode (coding) sama sekali:
-
-- **Pengaturan Tema:** Admin mengganti _Color Picker_ untuk warna utama. Di sistem backend, ini akan menimpa variabel CSS secara otomatis pada bagian header HTML: `:root { --c-primary: #WarnaBaru; }`.
-- **Manajemen Konten Utama:** Admin mengunggah logo baru, lalu sistem mengganti file gambar lama. Admin juga mengganti teks "Beranda", "Benefit", dan "Jadwal" lewat Form di CMS.
-- **Sistem Fitur Modular (On/Off):** Di template ini sudah disediakan arsitektur _class_ `section--disabled`. Melalui CMS, Admin bisa menggeser _toggle_ "Sembunyikan Pemenang" saat lomba masih tahap pendaftaran. Sistem otomatis menambahkan class `section--disabled` pada blok Pemenang sehingga tidak tampil di publik.
-- **Unggah Dokumen:** Fitur tab di `unduh.html` didesain dinamis dengan model kapsul (_pill wrap_). CMS akan me-looping otomatis nama tahun kompetisi ke dalam tab, dan mendaftar file PDF di panel bawahnya.
-- **Pengumuman Juara:** Data juara (Nama, Asal Sekolah, Daerah, No Ujian) diinput ke CMS melalui form lengkap dengan unggah foto pemenang (tanpa impor Excel). Lalu data itu akan di-render otomatis ke dalam komponen `champion-card` yang sudah didesain rapi (lengkap dengan medali emas dan detail spesifiknya).
-
----
-
-## ðŸŒŸ Fitur Utama Frontend Saat Ini
-
-1. **Desain Modern & Responsif:** Kompatibel penuh dari layar _smartphone_ kecil (Mobile First) hingga monitor lebar (Desktop). Menggunakan Flexbox & CSS Grid modern secara komprehensif.
-2. **Tab Sistem Kapsul (Pills):** Navigasi dokumen unduhan yang bisa _wrap_ otomatis ke baris bawah saat jumlah kategori banyak. Sangat jelas bagi "orang awam" pengguna _smartphone_ tanpa perlu menebak ada _hidden scroll_.
-3. **Champion Cards Eksklusif:** Desain kartu pemenang yang _aesthetic_ dengan gradasi emas, inisial foto bulat, nama lengkap, **asal sekolah**, dan struktur metadata yang tersusun vertikal rapi (menggantikan sistem tabel yang kaku).
-4. **Bottom Navigation (Mobile):** Navigasi di bagian bawah layar bergaya aplikasi mobile (_app-like_) khusus untuk interaksi layar sentuh yang lebih nyaman.
-5. **Floating WhatsApp:** Tombol askes cepat terpasang di pojok kanan bawah agar pengguna (guru pembimbing/peserta) mudah menghubungi panitia.
-
----
-
-## ðŸ“ Struktur Direktori Dasar (Siap Integrasi)
+Jika ingin memeriksa tampilan final, responsivitas, struktur halaman, komponen, CSS, gambar, atau interaksi pengunjung, mulai dari folder ini. Admin bukan template tampilan publik; Admin hanya alat untuk mengelola data yang ditampilkan oleh Template. Pendaftaran dan akun peserta disediakan oleh website eksternal.
 
 ```text
-ðŸ“¦ Template-Lomba
- â”£ ðŸ“‚ css/
- â”ƒ â”— ðŸ“œ style.css           # Sistem desain utama & variabel tema (Design Tokens)
- â”£ ðŸ“‚ assets/images/                  # Aset gambar (logo, banner)
- â”£ ðŸ“‚ js/
- â”ƒ â”— ðŸ“œ script.js           # Logika interaksi UI (Navigasi aktif, Tabs, dll)
- â”£ ðŸ“œ index.html            # Beranda (Hero, Jadwal, Highlight Pemenang)
- â”£ ðŸ“œ unduh.html            # Halaman Dokumen & Materi (Tab dinamis tipe kapsul)
- â”£ ðŸ“œ pemenang.html         # Halaman Daftar Lengkap Pemenang & Asal Sekolah
- â”£ ðŸ“œ arsip.html            # Daftar Event/Lomba Terdahulu (Grid)
- â”£ ðŸ“œ arsip-detail.html     # Detail pemenang dari event spesifik masa lalu
- â”£ ðŸ“œ faq.html              # Pertanyaan yang sering diajukan (Accordion)
- â”£ ðŸ“œ login.html            # Halaman Masuk Kontingen/Sekolah
- â”— ðŸ“œ dashboard.html        # Dashboard Manajemen (Setelah Login)
+Admin mengelola data
+        │
+        ▼
+Repository dummy + localStorage
+        │
+        ▼
+Template membaca dan menampilkan data
+
+Pendaftaran peserta ditangani oleh website eksternal dan berada di luar scope repository ini.
 ```
 
----
-
-## ðŸ› ï¸ Panduan Eksekusi (Bagi Developer Backend & Fullstack)
-
-Saat tim _Backend_ mulai menginjeksi framework (seperti Laravel, Next.js, Django, atau CodeIgniter) ke template statis ini, ikuti pakem arsitektur berikut:
-
-1. **Injeksi Tema Dinamis:**
-   Buat _helper_ atau langsung sisipkan kode di tag `<head>` untuk _override_ CSS Token dari database:
-   ```html
-   <style>
-     :root {
-       --c-primary: <?php echo $event->primary_color; ?>;
-       --c-accent: <?php echo $event->accent_color; ?>;
-     }
-   </style>
-   ```
-2. **Handle Navigasi Aktif (Active Class):**
-   Logika pewarnaan menu yang sedang aktif (warna biru) saat ini diatur lewat Vanilla JS di `script.js`. Jika menggunakan sistem _Router_ dari Backend, pastikan untuk menghapus logika JS terkait navigasi dan menggantinya dengan logika Blade/Twig/JSX (contoh: `class="navbar__link {{ request()->is('unduh') ? 'navbar__link--active' : '' }}"`).
-3. **Looping `champion-card`:**
-   Komponen kartu pemenang telah difinalisasi HTML/CSS-nya. Saat menarik data dari _database_, Anda cukup melakukan _looping_ blok HTML `<div class="champion-card">...</div>` dengan mengisi variabel data yang relevan (Nama, Sekolah, Daerah). Struktur CSS sudah otomatis menata posisi komponen tersebut menggunakan Grid.
-
----
-
-## 📌 Dokumentasi Progres
-
-Sebelum melanjutkan pengembangan, AI/developer wajib membaca `README.md` dan `PROGRESS.md`. Panel admin dipisahkan dari dashboard kontingen. Spesifikasi admin terdapat di `docs/ADMIN_SPEC.md` dan setiap perubahan wajib dicatat di `PROGRESS.md`.
-
----
-
-## Arsitektur Proyek Saat Ini
-
-Proyek menggunakan arsitektur feature-based untuk Vanilla HTML/CSS/JavaScript:
+## Struktur Proyek
 
 ```text
 Web1/
-├── *.html                         # Entry point dan kontrak URL statis
-├── assets/
-│   ├── css/main.css               # Design system dan style aktif
-│   ├── images/                    # Gambar statis
-│   └── js/
-│       ├── core/                  # Helper generik
-│       ├── data/                  # Database dummy dan repositories
-│       ├── shared/                # Runtime publik lintas halaman
-│       └── features/              # Admin shell dan domain fitur
-├── docs/
-│   ├── ADMIN_SPEC.md
-│   └── ARCHITECTURE.md
-├── README.md
-└── PROGRESS.md
+├── apps/
+│   ├── template/                       # ACUAN UTAMA website lomba
+│   │   ├── index.html                  # Beranda
+│   │   ├── unduh/index.html            # Dokumen dan materi lomba
+│   │   ├── pemenang/index.html         # Daftar pemenang
+│   │   ├── arsip/index.html            # Daftar lomba terdahulu
+│   │   ├── arsip/detail/index.html     # Detail arsip/pemenang lama
+│   │   ├── faq/index.html               # Pertanyaan umum
+│   │   └── assets/
+│   │       ├── css/main.css             # Design system dan seluruh style
+│   │       ├── images/                  # Logo serta gambar template
+│   │       └── js/                      # Runtime dan renderer publik
+│   ├── admin/                          # CMS pengelola Template
+│   │   ├── index.html                  # Shell/dashboard Admin
+│   │   ├── editors/                    # Editor setiap halaman
+│   │   └── js/
+│   │       ├── config/                 # Registry route Admin
+│   │       ├── shell/                  # Router, sidebar, save/reset
+│   │       └── features/               # Logika editor per fitur
+├── packages/
+│   └── shared/                         # Kontrak lintas aplikasi
+│       └── js/
+│           ├── core/                   # Route resolver dan storage helper
+│           └── data/                   # Dummy DB dan repositories
+├── scripts/                            # Validator proyek
+├── docs/                               # Dokumentasi teknis
+├── package.json
+├── PROGRESS.md                         # Riwayat perkembangan
+└── README.md
 ```
 
-Baca `docs/ARCHITECTURE.md` untuk dependency direction, kontrak localStorage, aturan penambahan fitur, dan jalur migrasi ke backend/API.
+## Batas Setiap Aplikasi
 
-### Menjalankan Lokal
+### 1. Template — Tampilan Murni/Acuan Utama
 
-Gunakan static server dari root proyek agar iframe dan relative URL berjalan konsisten, misalnya VS Code Live Server. Membuka file langsung melalui `file://` dapat memiliki pembatasan browser tertentu.
+[apps/template](file:///d:/Kuliah/Magang/Web1/apps/template) berisi seluruh halaman yang dilihat pengunjung dan aset visual miliknya.
 
-### Status Data
+- `assets/css/main.css` adalah design system utama.
+- `assets/images/` berisi gambar dan logo contoh.
+- `assets/js/ui.js` menangani interaksi umum.
+- `assets/js/runtime.js` menerapkan identitas, tema, navigasi, kontak, dan pengaturan global.
+- renderer Beranda, Unduh, Pemenang, Arsip, Detail Arsip, dan FAQ membaca
+  repository lalu membentuk tampilan publik dengan class Template asli.
 
-Data sekarang merupakan demonstrasi berbasis database dummy JavaScript dan override `localStorage`. Ini bukan database produksi. UI telah dipisahkan dari repository sehingga sumber data nantinya dapat diganti REST API tanpa menulis ulang desain editor dan renderer.
+Saat desain dipindahkan ke Laravel, Next.js, Django, atau backend lain, folder inilah yang menjadi referensi markup dan visual utama.
 
----
+### 2. Admin — CMS Pengelola Template
 
-## Multi-App Workspace
+[apps/admin](file:///d:/Kuliah/Magang/Web1/apps/admin) bukan website pengunjung. Admin menyediakan pengaturan identitas/tema, Beranda, Unduh, Pemenang, Arsip, FAQ, preview Template, serta tombol Reset dan Simpan perubahan.
 
-Source utama dipisahkan berdasarkan aplikasi:
+Editor ditampilkan dalam iframe satu origin agar shell Admin dan editor dapat berkomunikasi dengan aman.
 
-- `apps/public/` — template website pengunjung.
-- `apps/admin/` — CMS, shell, dan editor.
-- `apps/portal/` — login/dashboard kontingen.
-- `packages/shared/` — design system, images, database dummy, dan repositories bersama.
+### 3. Shared — Kontrak Teknis Bersama
 
-Entry utama:
+[packages/shared](file:///d:/Kuliah/Magang/Web1/packages/shared) tidak menyimpan aset visual Template. Folder ini hanya berisi kode yang memang dipakai lintas aplikasi: route resolver, helper storage, database dummy, dan repository data.
 
-- Public: `apps/public/index.html`
-- Admin: `apps/admin/index.html`
-- Portal: `apps/portal/login.html`
+Repository tetap shared karena Admin menulis data dan Template membaca data yang sama.
 
-File HTML di root hanya compatibility redirect untuk URL lama. Lihat `docs/ARCHITECTURE.md` untuk aturan dependency.
+### Tema Global
 
-## Canonical Directory Routing
+Pengaturan tema disimpan pada key `talenta_event_settings_v1` dengan schema versi 3.
+Admin hanya menyediakan Warna Utama; putih menjadi pasangan kontras tetap melalui
+`applyGlobalThemeTokens()`. Warna gelap/Navy, shade terang, shade gelap, warna
+transparan, dan stop gradient diturunkan otomatis dari Warna Utama agar tidak
+mempertahankan hue biru saat tema diganti. Template publik dan seluruh preview editor
+Admin membaca keluarga token yang sama. Editor berlangganan event `talenta:settings`
+dan `storage` agar perubahan tersimpan dapat diterapkan ulang tanpa mempertahankan
+nilai tema lama.
 
-Root proyek tidak memiliki file HTML. Gunakan static server:
+Nilai `accentColor` lama selalu dinormalisasi menjadi putih (`#ffffff`) untuk
+kompatibilitas schema. Badge jumlah pemenang memakai putih transparan pada latar tema
+gelap dan tint Warna Utama pada latar putih. Teks peringkat mengikuti Warna Utama.
+
+Seluruh section Beranda pada Template dan preview Admin dibangun oleh builder
+markup bersama. Preview tidak memiliki versi markup atau skala desain tersendiri;
+frame mensimulasikan viewport desktop, tablet, dan mobile. Jika kanvas lebih lebar
+daripada panel Admin, `ResizeObserver` mengecilkan seluruh kanvas secara proporsional
+dan menyesuaikan tinggi frame tanpa scrollbar. Paritas seluruh Beranda diperiksa
+dengan `npm run test:home-parity`; `test:hero-parity` tetap tersedia sebagai alias.
+
+Arsip menjadi pemilik data historis lomba beserta kategori, pemenang, dokumen, dan
+SK. Halaman Unduh dan Pemenang hanya mengonsumsi data Arsip yang sudah dipublikasikan;
+referensi detail selalu memakai ID milik lomba terkait. Penghapusan data bawaan
+disimpan sebagai tombstone agar data yang telah dihapus tidak muncul kembali setelah
+reload. Daftar Arsip dan Detail Arsip pada Template serta preview Admin memakai
+builder markup bersama dan kanvas responsif berskala yang sama. Kontrak relasinya
+diperiksa dengan `npm run test:archive-relations`, sedangkan paritas visual lintas
+viewport diperiksa dengan `npm run test:theme-browser`.
+
+FAQ memakai aggregate mandiri `Halaman → Kategori → Pertanyaan`. Repository menjaga
+ID unik, owner kategori, urutan, status publik, sanitasi teks, dan atribut
+aksesibilitas accordion. Template dan preview Admin memakai builder serta binder
+accordion yang sama. Kontrak datanya diperiksa dengan `npm run test:faq-relations`
+dan paritas visual/interaksinya termasuk dalam `npm run test:theme-browser`.
+
+Perbedaan jumlah antarhalaman mengikuti fungsi datanya: Arsip berisi seluruh lomba
+terdahulu yang published, Unduh berisi subset lomba aktif/Arsip yang dipilih sebagai
+sumber dokumen, sedangkan Pemenang Sebelumnya hanya memakai Arsip yang memiliki
+pemenang aktif. Batas kartu Pemenang otomatis mengikuti jumlah sumber valid dan tidak
+dapat dinaikkan melewatinya. Identitas Arsip dapat memakai logo/maskot unggahan
+dengan ikon library sebagai fallback.
+
+Seluruh Reset, Hapus, dan Unlink di Admin memakai dialog UI bersama, bukan popup
+native browser. Dialog tampil pada level shell meskipun dipicu dari editor iframe,
+mendukung keyboard/mobile, dan diaudit dengan `npm run test:admin-dialogs` serta
+`npm run test:theme-browser`.
+
+## Menjalankan Proyek
+
+Jalankan dari root proyek:
 
 ```bash
 npm run dev
 ```
 
-Entry canonical:
+| Aplikasi       | URL lokal                              |
+| -------------- | -------------------------------------- |
+| Template utama | `http://localhost:4173/apps/template/` |
+| Admin CMS      | `http://localhost:4173/apps/admin/`    |
 
-- Public: `/apps/public/`
-- Admin: `/apps/admin/`
-- Portal: `/apps/portal/login/`
-- Archive Detail: `/apps/public/arsip/detail/?id=...`
+Jangan membuka file menggunakan `file://`. Directory routing, iframe Admin, dan localStorage dirancang berjalan melalui satu HTTP origin.
 
-Validasi lengkap:
+## Canonical Routes
+
+```text
+Template
+/apps/template/
+/apps/template/unduh/
+/apps/template/pemenang/
+/apps/template/arsip/
+/apps/template/arsip/detail/?id=...
+/apps/template/faq/
+
+Admin
+/apps/admin/?page=settings
+/apps/admin/?page=home
+/apps/admin/?page=download
+/apps/admin/?page=winners
+/apps/admin/?page=archive
+/apps/admin/?page=faq
+
+```
+
+Route dinamis tidak boleh dibuat dengan string filename `.html`. Gunakan `TalentaPaths.to()` dari [paths.js](file:///d:/Kuliah/Magang/Web1/packages/shared/js/core/paths.js) agar URL tetap benar pada domain utama maupun subpath hosting.
+
+## Alur Penggunaan
+
+1. Jalankan `npm run dev`.
+2. Buka Admin dan pilih halaman yang dikelola.
+3. Ubah data melalui form editor.
+4. Tekan **Simpan perubahan**.
+5. Tekan **Lihat Halaman** untuk memeriksa Template.
+6. Template membaca data tersimpan pada origin yang sama.
+
+## Status Database
+
+Proyek masih menggunakan database dummy JavaScript, repository JavaScript, dan `localStorage`. Ini merupakan demonstrasi frontend, bukan database produksi.
+
+Pemisahan repository memungkinkan sumber data diganti menjadi REST API/backend tanpa menulis ulang UI. Key penyimpanan yang sudah ada harus dipertahankan ketika refactor agar data Admin lama tidak hilang.
+
+Rancangan target multi-tenant, ERD, aturan foreign key, kontrak API, keamanan
+data, serta tahap migrasinya tersedia di
+[`docs/DATABASE_DESIGN.md`](docs/DATABASE_DESIGN.md).
+
+## Menggunakan Template untuk Lomba Berikutnya
+
+Target implementasi selanjutnya:
+
+1. buat record event baru pada backend/CMS;
+2. tentukan nama, slug/subdomain, logo, dan warna tema;
+3. isi jadwal, biaya, benefit, dokumen, pemenang, FAQ, dan kontak;
+4. backend mengirim data event melalui repository/API;
+5. Template yang sama merender identitas dan konten event tersebut.
+
+```text
+osn2026.talentaprestasi.id        ─┐
+matematika2027.talentaprestasi.id  ├─ memakai Template yang sama
+sains2027.talentaprestasi.id      ─┘
+```
+
+Yang berbeda adalah data event, bukan struktur desainnya.
+
+## Aturan Pengembangan
+
+1. Perlakukan `apps/template/` sebagai acuan visual utama.
+2. Jangan mencampurkan script editor Admin ke dalam Template.
+3. Jangan menyimpan aset khusus Template di Admin atau `packages/shared`.
+4. Masukkan kode ke `packages/shared` hanya jika benar-benar digunakan lintas aplikasi.
+5. Gunakan canonical directory routes, bukan internal link `*.html`.
+6. Jangan mengganti key localStorage tanpa migrasi.
+7. Catat perubahan penting pada `PROGRESS.md`.
+8. Jalankan validasi sebelum commit.
+
+## Validasi
 
 ```bash
 npm run check
 ```
+
+Audit browser khusus keseragaman tema dapat dijalankan setelah tersedia Microsoft
+Edge/Chromium:
+
+```bash
+npm run test:theme-browser
+```
+
+Audit tersebut membuka enam halaman Template dan enam preview Admin menggunakan
+profil browser sementara, lalu memeriksa token warna efektif serta pengecualian warna
+peringkat pada Detail Arsip.
 
 Jangan menambahkan redirect HTML ke root atau internal link berbentuk `*.html`. Route baru wajib berupa direktori dengan `index.html` dan didaftarkan pada `packages/shared/js/core/paths.js`.

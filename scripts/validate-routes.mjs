@@ -1,13 +1,13 @@
-﻿import fs from "node:fs";
+import fs from "node:fs";
 import path from "node:path";
 const root = process.cwd();
 const routes = [
-  "apps/public/index.html",
-  "apps/public/unduh/index.html",
-  "apps/public/pemenang/index.html",
-  "apps/public/arsip/index.html",
-  "apps/public/arsip/detail/index.html",
-  "apps/public/faq/index.html",
+  "apps/template/index.html",
+  "apps/template/unduh/index.html",
+  "apps/template/pemenang/index.html",
+  "apps/template/arsip/index.html",
+  "apps/template/arsip/detail/index.html",
+  "apps/template/faq/index.html",
   "apps/admin/index.html",
   "apps/admin/editors/beranda/index.html",
   "apps/admin/editors/unduh/index.html",
@@ -15,8 +15,6 @@ const routes = [
   "apps/admin/editors/arsip/index.html",
   "apps/admin/editors/arsip/detail/index.html",
   "apps/admin/editors/faq/index.html",
-  "apps/portal/login/index.html",
-  "apps/portal/dashboard/index.html",
 ];
 const errors = [];
 for (const route of routes)

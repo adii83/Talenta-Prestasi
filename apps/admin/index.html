@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../../packages/shared/css/main.css" />
+    <link rel="stylesheet" href="../template/assets/css/main.css" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="../../packages/shared/js/core/paths.js"></script>
   </head>
@@ -27,10 +27,6 @@
         ><span>TalentaPanel<small>Event workspace</small></span></a
       >
       <nav class="admin-nav" aria-label="Navigasi admin">
-        <p class="admin-nav__label">Workspace</p>
-        <a class="admin-nav__item" href="#"
-          ><i data-lucide="layout-dashboard"></i>Ringkasan</a
-        >
         <p class="admin-nav__label admin-nav__label--spaced">
           Pengaturan Global
         </p>
@@ -50,10 +46,6 @@
           ><i data-lucide="circle-help"></i>FAQ</a
         >
       </nav>
-      <div class="admin-sidebar__footer">
-        <span class="admin-avatar">AP</span>
-        <div><strong>Admin Pusat</strong><small>Super Admin</small></div>
-      </div>
     </aside>
 
     <main class="admin-main admin-router-main">
@@ -87,7 +79,7 @@
           ><a
             class="btn btn--outline btn--sm"
             id="routePublicLink"
-            href="../public/"
+            href="../template/"
             target="_blank"
             ><i data-lucide="external-link"></i> Lihat halaman</a
           >
@@ -96,341 +88,408 @@
       <div id="adminRouteView" class="admin-route-view">
         <section id="settingsRouteView" class="admin-route-panel">
           <form class="admin-workspace" id="eventSettingsForm">
-            <div class="admin-content" id="event-settings">
-              <section class="admin-card admin-card--hero">
-                <div>
-                  <span class="admin-kicker">Fondasi event</span>
-                  <h2>Bangun identitas event Anda</h2>
-                  <p>
-                    Perubahan tema dapat dipratinjau langsung. Penyimpanan saat
-                    ini bersifat demonstrasi lokal.
-                  </p>
-                </div>
-                <span class="admin-status"
-                  ><span></span> Draft tersimpan lokal</span
-                >
-              </section>
-
-              <section class="admin-card">
-                <div class="admin-card__heading">
-                  <span class="admin-step">01</span>
+            <div class="page-editor-layout" id="event-settings">
+              <div class="page-editor-content">
+                <section class="admin-card admin-card--hero">
                   <div>
-                    <h2>Identitas utama</h2>
-                    <p>Informasi ini menjadi identitas website publik.</p>
-                  </div>
-                </div>
-                <div class="admin-form-grid">
-                  <div class="admin-field admin-field--wide">
-                    <label for="eventName">Nama event</label
-                    ><input
-                      class="form-input"
-                      id="eventName"
-                      name="eventName"
-                      value="Olimpiade Sains Nusantara"
-                      required
-                    />
-                  </div>
-                  <div class="admin-field">
-                    <label for="eventSlug">Slug / subdomain</label>
-                    <div class="admin-input-suffix">
-                      <input
-                        id="eventSlug"
-                        name="eventSlug"
-                        value="osn2026"
-                        pattern="[a-z0-9-]+"
-                        required
-                      /><span>.talentaprestasi.id</span>
-                    </div>
-                    <small>Huruf kecil, angka, dan tanda hubung.</small>
-                  </div>
-                  <div class="admin-field">
-                    <label for="organizerName">Penyelenggara</label
-                    ><input
-                      class="form-input"
-                      id="organizerName"
-                      name="organizerName"
-                      value="Talenta Prestasi Indonesia"
-                    />
-                  </div>
-                </div>
-              </section>
-
-              <section class="admin-card">
-                <div class="admin-card__heading">
-                  <span class="admin-step">02</span>
-                  <div>
-                    <h2>Logo & tema</h2>
-                    <p>Sesuaikan tampilan tanpa menyentuh kode.</p>
-                  </div>
-                </div>
-                <div class="admin-theme-grid">
-                  <div class="admin-upload">
-                    <input
-                      type="file"
-                      id="eventLogo"
-                      accept="image/png,image/jpeg,image/webp"
-                      hidden
-                    /><button
-                      type="button"
-                      id="logoUploadButton"
-                      class="admin-upload__button"
-                    >
-                      <span class="admin-logo-preview" id="logoPreview"
-                        >OSN</span
-                      ><span
-                        ><strong>Unggah logo event</strong
-                        ><small>PNG, JPG, atau WebP</small></span
-                      ><i data-lucide="upload-cloud"></i>
-                    </button>
-                  </div>
-                  <div class="admin-colors">
-                    <label for="primaryColor"
-                      >Warna utama <span id="primaryHex">#1E4B8C</span></label
-                    ><input
-                      type="color"
-                      id="primaryColor"
-                      value="#1e4b8c"
-                    /><label for="accentColor"
-                      >Warna aksen <span id="accentHex">#C89B3C</span></label
-                    ><input type="color" id="accentColor" value="#c89b3c" />
-                  </div>
-                </div>
-                <div class="admin-preview" id="themePreview">
-                  <span class="admin-preview__eyebrow">Ajang talenta 2026</span>
-                  <h3 id="previewName">Olimpiade Sains Nusantara</h3>
-                  <p id="previewDomain">osn2026.talentaprestasi.id</p>
-                  <button type="button">Daftar sekarang</button>
-                </div>
-              </section>
-
-              <section class="admin-card">
-                <div class="admin-card__heading">
-                  <span class="admin-step">03</span>
-                  <div>
-                    <h2>Navigasi halaman</h2>
+                    <span class="admin-kicker">Fondasi event</span>
+                    <h2>Bangun identitas event Anda</h2>
                     <p>
-                      Nonaktifkan halaman publik tanpa menghapus data editornya.
+                      Perubahan tema dapat dipratinjau langsung. Penyimpanan
+                      saat ini bersifat demonstrasi lokal.
                     </p>
                   </div>
-                </div>
-                <div
-                  class="global-navigation-grid"
-                  id="globalNavigationList"
-                ></div>
-                <div class="global-preview-panel">
-                  <div class="editor-subsection__head">
+                  <span class="admin-status"
+                    ><span></span> Draft tersimpan lokal</span
+                  >
+                </section>
+
+                <section class="admin-card">
+                  <div class="admin-card__heading">
+                    <span class="admin-step">01</span>
                     <div>
-                      <h3>Preview Navigasi</h3>
-                      <p>
-                        Klik menu untuk mencoba active state tanpa membuka
-                        halaman.
-                      </p>
+                      <h2>Identitas utama</h2>
+                      <p>Informasi ini menjadi identitas website publik.</p>
                     </div>
-                    <div class="preview-switch">
-                      <button
+                  </div>
+                  <div class="admin-form-grid">
+                    <div class="admin-field admin-field--wide">
+                      <label for="eventName">Nama event</label
+                      ><input
+                        class="form-input"
+                        id="eventName"
+                        name="eventName"
+                        value="Olimpiade Sains Nusantara"
+                        required
+                      />
+                    </div>
+                    <div class="admin-field">
+                      <label for="eventSlug">Slug / subdomain</label>
+                      <div class="admin-input-suffix">
+                        <input
+                          id="eventSlug"
+                          name="eventSlug"
+                          value="osn2026"
+                          pattern="[a-z0-9-]+"
+                          required
+                        /><span>.talentaprestasi.id</span>
+                      </div>
+                      <small>Huruf kecil, angka, dan tanda hubung.</small>
+                    </div>
+                    <div class="admin-field">
+                      <label for="organizerName">Penyelenggara</label
+                      ><input
+                        class="form-input"
+                        id="organizerName"
+                        name="organizerName"
+                        value="Talenta Prestasi Indonesia"
+                      />
+                    </div>
+                  </div>
+                </section>
+
+                <section class="admin-card">
+                  <div class="admin-card__heading">
+                    <span class="admin-step">02</span>
+                    <div>
+                      <h2>Logo & tema</h2>
+                      <p>Sesuaikan tampilan tanpa menyentuh kode.</p>
+                    </div>
+                  </div>
+                  <div class="admin-theme-grid">
+                    <div class="admin-upload">
+                      <input
+                        type="file"
+                        id="eventLogo"
+                        accept="image/png,image/jpeg,image/webp"
+                        hidden
+                      /><button
                         type="button"
-                        class="preview-switch__btn preview-switch__btn--active"
-                        data-global-nav-device="desktop"
-                        aria-label="Navigasi desktop"
+                        id="logoUploadButton"
+                        class="admin-upload__button"
                       >
-                        <i data-lucide="monitor"></i></button
-                      ><button
-                        type="button"
-                        class="preview-switch__btn"
-                        data-global-nav-device="tablet"
-                        aria-label="Navigasi tablet"
-                      >
-                        <i data-lucide="tablet"></i></button
-                      ><button
-                        type="button"
-                        class="preview-switch__btn"
-                        data-global-nav-device="mobile"
-                        aria-label="Navigasi mobile"
-                      >
-                        <i data-lucide="smartphone"></i>
+                        <span class="admin-logo-preview" id="logoPreview"
+                          >OSN</span
+                        ><span
+                          ><strong>Unggah logo event</strong
+                          ><small>PNG, JPG, atau WebP</small></span
+                        ><i data-lucide="upload-cloud"></i>
                       </button>
                     </div>
-                  </div>
-                  <div
-                    class="global-nav-preview-frame global-nav-preview-frame--desktop"
-                    id="globalNavPreviewFrame"
-                  >
-                    <div class="global-nav-preview" id="globalNavPreview"></div>
-                  </div>
-                </div>
-              </section>
-              <section class="admin-card">
-                <div class="admin-card__heading">
-                  <span class="admin-step">04</span>
-                  <div>
-                    <h2>WhatsApp</h2>
-                    <p>Nomor tujuan dan pesan awal tombol WhatsApp melayang.</p>
-                  </div>
-                </div>
-                <div class="admin-form-grid">
-                  <div class="admin-field">
-                    <label for="whatsappNumber">Nomor WhatsApp tujuan</label
-                    ><input
-                      class="form-input"
-                      id="whatsappNumber"
-                      inputmode="numeric"
-                    /><small>Gunakan kode negara, contoh 62899...</small>
-                  </div>
-                  <div class="admin-field admin-field--wide">
-                    <label for="whatsappMessage">Pesan awal WhatsApp</label
-                    ><textarea
-                      class="form-input editor-textarea"
-                      id="whatsappMessage"
-                    ></textarea>
-                  </div>
-                </div>
-              </section>
-              <section class="admin-card">
-                <div class="admin-card__heading">
-                  <span class="admin-step">05</span>
-                  <div>
-                    <h2>Footer & Kontak</h2>
-                    <p>Seluruh informasi kontak dan tampilan footer publik.</p>
-                  </div>
-                </div>
-                <div class="admin-form-grid">
-                  <div class="admin-field">
-                    <label for="footerBrand">Nama brand footer</label
-                    ><input class="form-input" id="footerBrand" />
-                  </div>
-                  <div class="admin-field">
-                    <label for="footerHeading">Judul kolom kontak</label
-                    ><input class="form-input" id="footerHeading" />
-                  </div>
-                  <div class="admin-field admin-field--wide">
-                    <label for="footerDescription">Deskripsi footer</label
-                    ><textarea
-                      class="form-input editor-textarea"
-                      id="footerDescription"
-                    ></textarea>
-                  </div>
-                  <div class="admin-field">
-                    <label for="contactEmail">Email kontak</label
-                    ><input class="form-input" type="email" id="contactEmail" />
-                  </div>
-                  <div class="admin-field">
-                    <label for="contactWhatsapp"
-                      >Nomor kontak yang ditampilkan</label
-                    ><input
-                      class="form-input"
-                      type="tel"
-                      id="contactWhatsapp"
-                    />
-                  </div>
-                  <div class="admin-field admin-field--wide">
-                    <label for="contactAddress">Alamat</label
-                    ><textarea
-                      class="form-input editor-textarea"
-                      id="contactAddress"
-                    ></textarea>
-                  </div>
-                  <div class="admin-field admin-field--wide">
-                    <label for="footerCopyright">Copyright</label
-                    ><input class="form-input" id="footerCopyright" />
-                  </div>
-                </div>
-                <div class="global-preview-panel">
-                  <div class="editor-subsection__head">
-                    <div>
-                      <h3>Preview Footer & WhatsApp</h3>
-                      <p>
-                        Tombol WhatsApp melayang dapat ditekan untuk simulasi
-                        tanpa membuka tautan.
-                      </p>
-                    </div>
-                    <div class="preview-switch">
-                      <button
-                        type="button"
-                        class="preview-switch__btn preview-switch__btn--active"
-                        data-global-footer-device="desktop"
-                        aria-label="Footer desktop"
-                      >
-                        <i data-lucide="monitor"></i></button
-                      ><button
-                        type="button"
-                        class="preview-switch__btn"
-                        data-global-footer-device="tablet"
-                        aria-label="Footer tablet"
-                      >
-                        <i data-lucide="tablet"></i></button
-                      ><button
-                        type="button"
-                        class="preview-switch__btn"
-                        data-global-footer-device="mobile"
-                        aria-label="Footer mobile"
-                      >
-                        <i data-lucide="smartphone"></i>
-                      </button>
-                    </div>
-                  </div>
-                  <div
-                    class="global-footer-preview-frame global-footer-preview-frame--desktop"
-                    id="globalFooterPreviewFrame"
-                  >
-                    <div class="global-footer-stage">
-                      <footer class="footer global-preview-footer">
-                        <div class="footer__grid">
-                          <div>
-                            <div class="footer__brand">
-                              <span
-                                class="footer__logo"
-                                id="globalPreviewFooterLogo"
-                                >OSN</span
-                              ><span
-                                class="footer__brand-text"
-                                id="globalPreviewFooterBrand"
-                              ></span>
-                            </div>
-                            <p
-                              class="footer__desc"
-                              id="globalPreviewFooterDescription"
-                            ></p>
-                          </div>
-                          <div>
-                            <h4
-                              class="footer__heading"
-                              id="globalPreviewFooterHeading"
-                            ></h4>
-                            <div
-                              class="footer__links"
-                              id="globalPreviewFooterLinks"
-                            ></div>
-                          </div>
-                        </div>
-                        <div class="footer__bottom">
-                          <p id="globalPreviewCopyright"></p>
-                        </div>
-                      </footer>
-                      <button
-                        type="button"
-                        class="floating-wa global-preview-wa"
-                        id="globalPreviewWa"
-                        aria-label="Simulasi tombol WhatsApp"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 24 24"
-                          aria-hidden="true"
+                    <div class="admin-colors">
+                      <label for="primaryColor">
+                        <strong>Warna utama</strong>
+                        <small
+                          >Identitas dominan untuk gradasi, tombol, menu aktif,
+                          dan ikon.</small
                         >
-                          <path
-                            d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
-                          />
-                        </svg></button
-                      ><span
-                        class="global-preview-wa-feedback"
-                        id="globalPreviewWaFeedback"
-                        role="status"
-                        >Preview WhatsApp Ã¢â‚¬â€ tautan tidak dibuka</span
-                      >
+                        <span id="primaryHex">#1E4B8C</span>
+                      </label>
+                      <input type="color" id="primaryColor" value="#1e4b8c" />
+                      <div class="admin-color-note">
+                        <strong>Pasangan warna</strong>
+                        <small
+                          >Warna utama otomatis dipadukan dengan putih untuk
+                          badge, teks kontras, dan detail dekoratif.</small
+                        >
+                      </div>
                     </div>
                   </div>
-                </div>
-              </section>
+                  <div class="global-preview-panel global-theme-preview-panel">
+                    <div class="editor-subsection__head">
+                      <div>
+                        <h3>Preview Identitas & Tema</h3>
+                        <p>
+                          Potongan Navbar, Hero, dan Pemenang memakai komponen
+                          Template asli.
+                        </p>
+                      </div>
+                      <div class="preview-switch">
+                        <button
+                          type="button"
+                          class="preview-switch__btn preview-switch__btn--active"
+                          data-global-theme-device="desktop"
+                          aria-label="Tema desktop"
+                        >
+                          <i data-lucide="monitor"></i>
+                        </button>
+                        <button
+                          type="button"
+                          class="preview-switch__btn"
+                          data-global-theme-device="tablet"
+                          aria-label="Tema tablet"
+                        >
+                          <i data-lucide="tablet"></i>
+                        </button>
+                        <button
+                          type="button"
+                          class="preview-switch__btn"
+                          data-global-theme-device="mobile"
+                          aria-label="Tema mobile"
+                        >
+                          <i data-lucide="smartphone"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div
+                      class="global-theme-preview-frame global-theme-preview-frame--desktop"
+                      id="globalThemePreviewFrame"
+                      data-preview-mode="desktop"
+                    >
+                      <div
+                        class="global-theme-preview scaled-public-preview"
+                        id="themePreview"
+                      ></div>
+                    </div>
+                  </div>
+                </section>
+
+                <section class="admin-card">
+                  <div class="admin-card__heading">
+                    <span class="admin-step">03</span>
+                    <div>
+                      <h2>Navigasi halaman</h2>
+                      <p>
+                        Nonaktifkan halaman publik tanpa menghapus data
+                        editornya.
+                      </p>
+                    </div>
+                  </div>
+                  <div
+                    class="global-navigation-grid"
+                    id="globalNavigationList"
+                  ></div>
+                  <div class="global-preview-panel">
+                    <div class="editor-subsection__head">
+                      <div>
+                        <h3>Preview Navigasi</h3>
+                        <p>
+                          Klik menu untuk mencoba active state tanpa membuka
+                          halaman.
+                        </p>
+                      </div>
+                      <div class="preview-switch">
+                        <button
+                          type="button"
+                          class="preview-switch__btn preview-switch__btn--active"
+                          data-global-nav-device="desktop"
+                          aria-label="Navigasi desktop"
+                        >
+                          <i data-lucide="monitor"></i></button
+                        ><button
+                          type="button"
+                          class="preview-switch__btn"
+                          data-global-nav-device="tablet"
+                          aria-label="Navigasi tablet"
+                        >
+                          <i data-lucide="tablet"></i></button
+                        ><button
+                          type="button"
+                          class="preview-switch__btn"
+                          data-global-nav-device="mobile"
+                          aria-label="Navigasi mobile"
+                        >
+                          <i data-lucide="smartphone"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div
+                      class="global-nav-preview-frame global-nav-preview-frame--desktop"
+                      id="globalNavPreviewFrame"
+                      data-preview-mode="desktop"
+                    >
+                      <div
+                        class="global-nav-preview scaled-public-preview"
+                        id="globalNavPreview"
+                      ></div>
+                    </div>
+                  </div>
+                </section>
+                <section class="admin-card">
+                  <div class="admin-card__heading">
+                    <span class="admin-step">04</span>
+                    <div>
+                      <h2>WhatsApp</h2>
+                      <p>
+                        Nomor tujuan dan pesan awal tombol WhatsApp melayang.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="admin-form-grid">
+                    <div class="admin-field">
+                      <label for="whatsappNumber">Nomor WhatsApp tujuan</label
+                      ><input
+                        class="form-input"
+                        id="whatsappNumber"
+                        inputmode="numeric"
+                      /><small>Gunakan kode negara, contoh 62899...</small>
+                    </div>
+                    <div class="admin-field admin-field--wide">
+                      <label for="whatsappMessage">Pesan awal WhatsApp</label
+                      ><textarea
+                        class="form-input editor-textarea"
+                        id="whatsappMessage"
+                      ></textarea>
+                    </div>
+                  </div>
+                </section>
+                <section class="admin-card">
+                  <div class="admin-card__heading">
+                    <span class="admin-step">05</span>
+                    <div>
+                      <h2>Footer & Kontak</h2>
+                      <p>
+                        Seluruh informasi kontak dan tampilan footer publik.
+                      </p>
+                    </div>
+                  </div>
+                  <div class="admin-form-grid">
+                    <div class="admin-field">
+                      <label for="footerBrand">Nama brand footer</label
+                      ><input class="form-input" id="footerBrand" />
+                    </div>
+                    <div class="admin-field">
+                      <label for="footerHeading">Judul kolom kontak</label
+                      ><input class="form-input" id="footerHeading" />
+                    </div>
+                    <div class="admin-field admin-field--wide">
+                      <label for="footerDescription">Deskripsi footer</label
+                      ><textarea
+                        class="form-input editor-textarea"
+                        id="footerDescription"
+                      ></textarea>
+                    </div>
+                    <div class="admin-field">
+                      <label for="contactEmail">Email kontak</label
+                      ><input
+                        class="form-input"
+                        type="email"
+                        id="contactEmail"
+                      />
+                    </div>
+                    <div class="admin-field">
+                      <label for="contactWhatsapp"
+                        >Nomor kontak yang ditampilkan</label
+                      ><input
+                        class="form-input"
+                        type="tel"
+                        id="contactWhatsapp"
+                      />
+                    </div>
+                    <div class="admin-field admin-field--wide">
+                      <label for="contactAddress">Alamat</label
+                      ><textarea
+                        class="form-input editor-textarea"
+                        id="contactAddress"
+                      ></textarea>
+                    </div>
+                    <div class="admin-field admin-field--wide">
+                      <label for="footerCopyright">Copyright</label
+                      ><input class="form-input" id="footerCopyright" />
+                    </div>
+                  </div>
+                  <div class="global-preview-panel">
+                    <div class="editor-subsection__head">
+                      <div>
+                        <h3>Preview Footer & WhatsApp</h3>
+                        <p>
+                          Tombol WhatsApp melayang dapat ditekan untuk simulasi
+                          tanpa membuka tautan.
+                        </p>
+                      </div>
+                      <div class="preview-switch">
+                        <button
+                          type="button"
+                          class="preview-switch__btn preview-switch__btn--active"
+                          data-global-footer-device="desktop"
+                          aria-label="Footer desktop"
+                        >
+                          <i data-lucide="monitor"></i></button
+                        ><button
+                          type="button"
+                          class="preview-switch__btn"
+                          data-global-footer-device="tablet"
+                          aria-label="Footer tablet"
+                        >
+                          <i data-lucide="tablet"></i></button
+                        ><button
+                          type="button"
+                          class="preview-switch__btn"
+                          data-global-footer-device="mobile"
+                          aria-label="Footer mobile"
+                        >
+                          <i data-lucide="smartphone"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <div
+                      class="global-footer-preview-frame global-footer-preview-frame--desktop"
+                      id="globalFooterPreviewFrame"
+                      data-preview-mode="desktop"
+                    >
+                      <div
+                        class="global-footer-stage scaled-public-preview"
+                        id="globalFooterPreview"
+                      >
+                        <footer class="footer global-preview-footer">
+                          <div class="footer__grid">
+                            <div>
+                              <div class="footer__brand">
+                                <span
+                                  class="footer__logo"
+                                  id="globalPreviewFooterLogo"
+                                  >OSN</span
+                                ><span
+                                  class="footer__brand-text"
+                                  id="globalPreviewFooterBrand"
+                                ></span>
+                              </div>
+                              <p
+                                class="footer__desc"
+                                id="globalPreviewFooterDescription"
+                              ></p>
+                            </div>
+                            <div>
+                              <h4
+                                class="footer__heading"
+                                id="globalPreviewFooterHeading"
+                              ></h4>
+                              <div
+                                class="footer__links"
+                                id="globalPreviewFooterLinks"
+                              ></div>
+                            </div>
+                          </div>
+                          <div class="footer__bottom">
+                            <p id="globalPreviewCopyright"></p>
+                          </div>
+                        </footer>
+                        <button
+                          type="button"
+                          class="floating-wa global-preview-wa"
+                          id="globalPreviewWa"
+                          aria-label="Simulasi tombol WhatsApp"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            viewBox="0 0 24 24"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+                            />
+                          </svg></button
+                        ><span
+                          class="global-preview-wa-feedback"
+                          id="globalPreviewWaFeedback"
+                          role="status"
+                          >Preview WhatsApp Ã¢â‚¬â€ tautan tidak dibuka</span
+                        >
+                      </div>
+                    </div>
+                  </div>
+                </section>
+              </div>
             </div>
             <footer class="admin-savebar">
               <p>
@@ -470,7 +529,7 @@
     </div>
     <script src="../../packages/shared/js/data/repositories/settings-repository.js"></script>
     <script src="js/config/routes.js"></script>
-    `n
+    <script src="js/shared/dialog.js"></script>
     <script src="js/shell/settings-editor.js"></script>
     <script src="js/shell/router.js"></script>
     <script src="js/shell/section-navigation.js"></script>

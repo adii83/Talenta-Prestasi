@@ -3,36 +3,36 @@
     settings: {
       title: "Pengaturan Event",
       crumb: "Event / Pengaturan",
-      public: TalentaPaths.to("public.home"),
+      public: TalentaPaths.to("template.home"),
     },
     home: {
       title: "Editor Beranda",
       crumb: "Kelola Halaman / Beranda",
-      public: TalentaPaths.to("public.home"),
+      public: TalentaPaths.to("template.home"),
       src: TalentaPaths.to("admin.homeEditor", { query: { embedded: 1 } }),
     },
     download: {
       title: "Editor Halaman Unduh",
       crumb: "Kelola Halaman / Unduh",
-      public: TalentaPaths.to("public.download"),
+      public: TalentaPaths.to("template.download"),
       src: TalentaPaths.to("admin.downloadEditor", { query: { embedded: 1 } }),
     },
     winners: {
       title: "Manajemen Pemenang",
       crumb: "Kelola Halaman / Pemenang",
-      public: TalentaPaths.to("public.winners"),
+      public: TalentaPaths.to("template.winners"),
       src: TalentaPaths.to("admin.winnersEditor", { query: { embedded: 1 } }),
     },
     archive: {
       title: "Manajemen Arsip",
       crumb: "Kelola Halaman / Arsip",
-      public: TalentaPaths.to("public.archive"),
+      public: TalentaPaths.to("template.archive"),
       src: TalentaPaths.to("admin.archiveEditor", { query: { embedded: 1 } }),
     },
     faq: {
       title: "Manajemen FAQ",
       crumb: "Kelola Halaman / FAQ",
-      public: TalentaPaths.to("public.faq"),
+      public: TalentaPaths.to("template.faq"),
       src: TalentaPaths.to("admin.faqEditor", { query: { embedded: 1 } }),
     },
   };
@@ -71,7 +71,7 @@
         "",
         `${location.pathname}?page=${name}`,
       );
-    document.title = `${r.title} Ã¢â‚¬â€ TalentaPanel`;
+    document.title = `${r.title} — TalentaPanel`;
     document.getElementById("routeTitle").textContent = r.title;
     document.getElementById("routeBreadcrumb").textContent = r.crumb;
     document.getElementById("routePublicLink").href = r.public;
@@ -101,7 +101,11 @@
     }),
   );
   resetButton.addEventListener("click", () => nativeActions().reset?.click());
-  saveButton.addEventListener("click", () => nativeActions().submit?.click());
+  saveButton.addEventListener("click", () => {
+    const save = activeDocument()?.defaultView?.TalentaHomeEditor?.save;
+    if (typeof save === "function") save();
+    else nativeActions().submit?.click();
+  });
   frame.addEventListener("load", () => {
     view.classList.remove("admin-route-view--loading");
     syncActions();

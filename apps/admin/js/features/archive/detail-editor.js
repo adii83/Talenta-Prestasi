@@ -12,6 +12,11 @@ if (!compId) {
 
 let comp = compId ? archiveClone(getEffectiveCompetitionById(compId)) : null;
 if (comp && !comp.detail) comp.detail = archiveDetailDefaults();
+let archiveDetailPreviewResizeObserver;
+
+function applyGlobalTheme(root) {
+  applyGlobalThemeTokens(root);
+}
 
 function esc(v = "") {
   const d = document.createElement("div");
@@ -43,7 +48,7 @@ function syncForm() {
     comp.name || "Detail Arsip";
   document.getElementById("detailContextTitle").textContent =
     comp.name || "Detail Arsip";
-  const publicUrl = TalentaPaths.to("public.archiveDetail", {
+  const publicUrl = TalentaPaths.to("template.archiveDetail", {
     query: { id: comp.id },
   });
   document.getElementById("detailPublicLink").href = publicUrl;
@@ -53,7 +58,6 @@ function syncForm() {
     detailName: comp.name,
     detailShortName: comp.shortName || "",
     detailDescription: comp.description,
-    detailGradient: comp.gradient || "",
     detailWinnersActive: det.winnersActive,
     detailWinnersEyebrow: det.winnersEyebrow,
     detailWinnersTitle: det.winnersTitle,
@@ -79,7 +83,7 @@ function renderSkSelect() {
   const sel = document.getElementById("detailSkDocument");
   const docs = (comp.documents || []).filter((d) => d.active !== false);
   sel.innerHTML =
-    '<option value="">â€” Tidak ada SK â€”</option>' +
+    '<option value="">— Tidak ada SK —</option>' +
     docs
       .map(
         (d) =>
@@ -119,7 +123,7 @@ function renderDocumentList() {
   root.innerHTML = docs
     .map((d) => {
       const shown = d.active !== false && !det.hiddenDocumentIds.includes(d.id);
-      return `<div class="archive-linked-doc" data-doc-id="${esc(d.id)}"><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} Â· ${d.type} Â· ${d.size}</small><input class="form-input" value="${esc(det.documentLabelOverrides[d.id] || "")}" placeholder="Label custom (opsional)"></div><button type="button" data-reset-label title="Kembalikan nama asli"><i data-lucide="rotate-ccw"></i></button></div>`;
+      return `<div class="archive-linked-doc" data-doc-id="${esc(d.id)}"><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><input class="form-input" value="${esc(det.documentLabelOverrides[d.id] || "")}" placeholder="Label custom (opsional)"></div><button type="button" data-reset-label title="Kembalikan nama asli"><i data-lucide="rotate-ccw"></i></button></div>`;
     })
     .join("");
   root.querySelectorAll(".archive-linked-doc").forEach((row) => {
@@ -152,7 +156,6 @@ function bindForm() {
     detailName: "name",
     detailShortName: "shortName",
     detailDescription: "description",
-    detailGradient: "gradient",
   };
   Object.entries(texts).forEach(
     ([id, k]) =>
@@ -231,6 +234,10 @@ function bindForm() {
         document.getElementById("archiveDetailPreviewFrame").className =
           "archive-detail-preview-frame archive-detail-preview-frame--" +
           btn.dataset.detailPreview;
+        document.getElementById(
+          "archiveDetailPreviewFrame",
+        ).dataset.previewMode = btn.dataset.detailPreview;
+        requestAnimationFrame(fitArchiveDetailPreview);
       }),
   );
   document.getElementById("archiveDetailForm").onsubmit = (e) => {
@@ -238,8 +245,16 @@ function bindForm() {
     saveDetail();
     toast();
   };
-  document.getElementById("archiveDetailReset").onclick = () => {
-    if (!confirm("Reset perubahan Detail Arsip ini ke data sumber?")) return;
+  document.getElementById("archiveDetailReset").onclick = async () => {
+    const confirmed = await adminConfirm({
+      title: "Reset Detail Arsip?",
+      message:
+        "Visibilitas kategori, dokumen, label, metadata, dan heading detail lomba ini akan dikembalikan ke data sumber.",
+      confirmLabel: "Ya, reset detail",
+      variant: "danger",
+      icon: "rotate-ccw",
+    });
+    if (!confirmed) return;
     const state = getArchiveAdminState();
     if (state.competitions) delete state.competitions[compId];
     saveArchiveAdminState(state);
@@ -260,11 +275,10 @@ function saveDetail() {
   saveArchiveAdminState(s);
 }
 
-/* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-   PREVIEW â€” menggunakan class publik asli
-   â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
-function renderPreview() {
+/* Preview menggunakan class publik asli. */
+function renderLegacyPreview() {
   const root = document.getElementById("archiveDetailPreview");
+  applyGlobalTheme(root);
   if (!comp) {
     root.innerHTML =
       '<div class="preview-disabled"><strong>Lomba tidak ditemukan</strong></div>';
@@ -276,12 +290,11 @@ function renderPreview() {
     icons();
     return;
   }
-  const det = comp.detail,
-    grad = comp.gradient || "linear-gradient(135deg,#1E4B8C 0%,#10233F 100%)";
+  const det = comp.detail;
   let html = "";
 
-  /* 1. BANNER â€” .lomba-banner */
-  html += `<section class="lomba-banner" style="background:${esc(grad)}"><div class="lomba-banner__content"><h1 class="lomba-banner__title">${esc(comp.name)}</h1><p class="lomba-banner__desc">${esc(comp.description)}</p></div></section>`;
+  /* 1. Banner — .lomba-banner */
+  html += `<section class="lomba-banner"><div class="lomba-banner__content"><h1 class="lomba-banner__title">${esc(comp.name)}</h1><p class="lomba-banner__desc">${esc(comp.description)}</p></div></section>`;
 
   /* 2. BREADCRUMB */
   html += `<div class="detail-preview__breadcrumb"><div class="container"><p class="t-caption"><a style="color:var(--c-primary)">Arsip</a>&nbsp;/&nbsp;<span style="color:var(--c-ink)">${esc(comp.name)}</span></p></div></div>`;
@@ -304,7 +317,7 @@ function renderPreview() {
         html += `<div class="winner-section">`;
         cats.forEach((cat) => {
           const ws = (cat.winners || []).filter((w) => w.active !== false);
-          html += `<div class="winner-group"><h3 class="winner-group__title"><i data-lucide="${esc(cat.icon || "trophy")}" style="width:20px;height:20px;stroke-width:1.75;color:var(--c-gold)"></i> ${esc(cat.name)} <span class="badge badge--gold">${ws.length} Pemenang</span></h3><div class="champion-grid">`;
+          html += `<div class="winner-group"><h3 class="winner-group__title"><i data-lucide="${esc(cat.icon || "trophy")}" style="width:20px;height:20px;stroke-width:1.75;color:var(--c-primary)"></i> ${esc(cat.name)} <span class="badge badge--gold">${ws.length} Pemenang</span></h3><div class="champion-grid">`;
           ws.forEach((w) => {
             html += `<div class="champion-card">`;
             if (det.showPhoto !== false)
@@ -340,7 +353,7 @@ function renderPreview() {
       html += `<section class="section section--soft"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${esc(det.documentsEyebrow)}</p><h2 class="t-h2">${esc(det.documentsTitle)}</h2></div><div class="doc-list">`;
       docs.forEach((d) => {
         const label = det.documentLabelOverrides[d.id] || d.title;
-        html += `<article class="doc-card"><div class="doc-card__icon"><i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5"></i></div><div class="doc-card__info"><p class="doc-card__name">${esc(label)} <span class="doc-card__tag">${esc(d.category)}</span></p><p class="doc-card__size">${esc(d.type)} Â· <span class="t-mono">${esc(d.size)}</span></p></div><div class="doc-card__download"><a href="#" class="btn btn--outline btn--sm"><i data-lucide="download" style="width:14px;height:14px"></i> Unduh</a></div></article>`;
+        html += `<article class="doc-card"><div class="doc-card__icon"><i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5"></i></div><div class="doc-card__info"><p class="doc-card__name">${esc(label)} <span class="doc-card__tag">${esc(d.category)}</span></p><p class="doc-card__size">${esc(d.type)} · <span class="t-mono">${esc(d.size)}</span></p></div><div class="doc-card__download"><a href="#" class="btn btn--outline btn--sm"><i data-lucide="download" style="width:14px;height:14px"></i> Unduh</a></div></article>`;
       });
       html += `</div></div></section>`;
     }
@@ -348,6 +361,66 @@ function renderPreview() {
 
   root.innerHTML = html;
   icons();
+}
+
+function renderPreview() {
+  const root = document.getElementById("archiveDetailPreview");
+  applyGlobalTheme(root);
+  if (!comp) {
+    root.className = "archive-detail-public-preview";
+    root.innerHTML =
+      '<div class="preview-disabled"><strong>Lomba tidak ditemukan</strong></div>';
+    return;
+  }
+  const normalizedCompetition = normalizeArchiveCompetition(comp);
+  if (
+    !normalizedCompetition?.active ||
+    normalizedCompetition.detail.active === false
+  ) {
+    root.className = "archive-detail-public-preview";
+    root.innerHTML =
+      '<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>Detail dinonaktifkan</strong><span>Data tetap tersimpan.</span></div>';
+    icons();
+    return;
+  }
+  root.className = "archive-detail-public-preview scaled-public-preview";
+  root.innerHTML = buildArchiveDetailMarkup(
+    resolveArchiveDetailState(normalizedCompetition),
+  );
+  requestAnimationFrame(fitArchiveDetailPreview);
+  icons();
+}
+
+function setupArchiveDetailPreviewSizing() {
+  const frame = document.getElementById("archiveDetailPreviewFrame");
+  const root = document.getElementById("archiveDetailPreview");
+  frame.dataset.previewMode = frame.dataset.previewMode || "desktop";
+  archiveDetailPreviewResizeObserver?.disconnect();
+  archiveDetailPreviewResizeObserver = new ResizeObserver(
+    fitArchiveDetailPreview,
+  );
+  archiveDetailPreviewResizeObserver.observe(frame);
+  archiveDetailPreviewResizeObserver.observe(root);
+  requestAnimationFrame(fitArchiveDetailPreview);
+}
+
+function fitArchiveDetailPreview() {
+  const frame = document.getElementById("archiveDetailPreviewFrame");
+  const root = document.getElementById("archiveDetailPreview");
+  if (!frame || !root || !root.classList.contains("scaled-public-preview"))
+    return;
+  const designWidths = { desktop: 1425, tablet: 753, mobile: 375 };
+  const mode = frame.dataset.previewMode || "desktop";
+  const designWidth = designWidths[mode] || designWidths.desktop;
+  const frameStyle = getComputedStyle(frame);
+  const horizontalPadding =
+    parseFloat(frameStyle.paddingLeft) + parseFloat(frameStyle.paddingRight);
+  const verticalPadding =
+    parseFloat(frameStyle.paddingTop) + parseFloat(frameStyle.paddingBottom);
+  const availableWidth = Math.max(1, frame.clientWidth - horizontalPadding);
+  const scale = Math.min(1, availableWidth / designWidth);
+  root.style.setProperty("--public-preview-scale", String(scale));
+  frame.style.height = `${Math.ceil(root.offsetHeight * scale + verticalPadding)}px`;
 }
 
 /* Init */
@@ -358,5 +431,7 @@ if (comp) {
   syncForm();
   bindForm();
   renderPreview();
+  setupArchiveDetailPreviewSizing();
+  subscribeGlobalSettings(renderPreview);
   icons();
 }

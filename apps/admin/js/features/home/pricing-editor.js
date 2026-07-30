@@ -1,42 +1,24 @@
 ﻿const pricingDefaults = {
   active: true,
   eyebrow: "Biaya Pendaftaran",
-  title: "",
-  description: "",
   variant: "single",
   ornament: true,
   packages: [
-    pricingPackage(
-      "Semua Jenjang",
-      "Rp150.000",
-      "per peserta, semua jenjang",
-      "wallet-cards",
-    ),
+    pricingPackage("Semua Jenjang", "Rp150.000", "per peserta, semua jenjang"),
   ],
   features: [
     pricingFeature("Sertifikat digital"),
     pricingFeature("Akses materi"),
     pricingFeature("ID Card peserta"),
   ],
-  action: {
-    ...iconItem("Daftar Sekarang", "#", "arrow-right", "primary", false),
-    active: false,
-  },
 };
-function pricingPackage(name, price, unit, icon) {
+function pricingPackage(name, price, unit) {
   return {
     name,
     price,
-    oldPrice: "",
-    promo: "",
     unit,
-    note: "",
     featured: false,
     active: true,
-    iconMode: "library",
-    libraryIcon: icon,
-    uploadedIcon: "",
-    iconAlt: "",
   };
 }
 function pricingFeature(label) {
@@ -51,10 +33,6 @@ pricingState.packages = (pricingState.packages || pricingDefaults.packages).map(
 );
 pricingState.features =
   pricingState.features || structuredClone(pricingDefaults.features);
-pricingState.action = {
-  ...pricingDefaults.action,
-  ...(pricingState.action || {}),
-};
 state.pricing = pricingState;
 document.addEventListener("DOMContentLoaded", () => {
   bindPricing();
@@ -63,11 +41,7 @@ document.addEventListener("DOMContentLoaded", () => {
   icons();
 });
 function bindPricing() {
-  bindText(
-    ["pricingEyebrow", "pricingTitle", "pricingDescription"],
-    pricingState,
-    renderPricing,
-  );
+  bindText(["pricingEyebrow"], pricingState, renderPricing);
   bindToggle("pricingActive", pricingState, renderPricing);
   document.getElementById("pricingVariant").onchange = (e) => {
     pricingState.variant = e.target.value;
@@ -79,7 +53,7 @@ function bindPricing() {
   };
   document.getElementById("addPricingPackage").onclick = () => {
     pricingState.packages.push(
-      pricingPackage("Paket baru", "Rp0", "per peserta", "wallet-cards"),
+      pricingPackage("Paket baru", "Rp0", "per peserta"),
     );
     renderPricingPackages();
     renderPricing();
@@ -95,17 +69,12 @@ function bindPricing() {
     "pricing-preview-frame",
     "pricingPreview",
   );
-  document.getElementById("homeEditorForm").addEventListener("submit", () => {
-    state.pricing = pricingState;
-    localStorage.setItem(HOME_KEY, JSON.stringify(state));
-  });
+  setupScaledPreview("pricingPreviewFrame", "pricingPreview", "pricingPreview");
 }
 function syncPricing() {
   Object.entries({
     pricingActive: pricingState.active,
     pricingEyebrow: pricingState.eyebrow,
-    pricingTitle: pricingState.title,
-    pricingDescription: pricingState.description,
     pricingVariant: pricingState.variant,
     pricingOrnament: pricingState.ornament,
   }).forEach(([id, v]) => {
@@ -117,7 +86,6 @@ function syncPricing() {
 function renderPricingAll() {
   renderPricingPackages();
   renderPricingFeatures();
-  renderPricingAction();
   renderPricing();
 }
 function renderPricingPackages() {
@@ -126,7 +94,7 @@ function renderPricingPackages() {
   pricingState.packages.forEach((pkg, i) => {
     const el = document.createElement("article");
     el.className = "pricing-editor-card";
-    el.innerHTML = `<div class="schedule-editor-card__head"><span class="admin-step">${String(i + 1).padStart(2, "0")}</span><strong>Paket Harga</strong>${toggleHtml(pkg)}<button type="button" class="repeat-row__delete"><i data-lucide="trash-2"></i></button></div><div class="admin-form-grid"><div class="admin-field"><label>Nama paket / jenjang</label><input class="form-input" data-k="name" value="${esc(pkg.name)}"></div><div class="admin-field"><label>Harga utama</label><input class="form-input" data-k="price" value="${esc(pkg.price)}"></div><div class="admin-field"><label>Harga lama (opsional)</label><input class="form-input" data-k="oldPrice" value="${esc(pkg.oldPrice)}"></div><div class="admin-field"><label>Label promo</label><input class="form-input" data-k="promo" value="${esc(pkg.promo)}"></div><div class="admin-field"><label>Keterangan harga</label><input class="form-input" data-k="unit" value="${esc(pkg.unit)}"></div><div class="admin-field"><label>Catatan paket</label><input class="form-input" data-k="note" value="${esc(pkg.note)}"></div></div><label class="editor-check"><input type="checkbox" data-featured ${pkg.featured ? "checked" : ""}> Tandai sebagai paket unggulan</label>${iconControl(pkg, "pricing-" + i)}`;
+    el.innerHTML = `<div class="schedule-editor-card__head"><span class="admin-step">${String(i + 1).padStart(2, "0")}</span><strong>Paket Harga</strong>${toggleHtml(pkg)}<button type="button" class="repeat-row__delete"><i data-lucide="trash-2"></i></button></div><div class="admin-form-grid"><div class="admin-field"><label>Nama paket / jenjang</label><input class="form-input" data-k="name" value="${esc(pkg.name)}"></div><div class="admin-field"><label>Harga utama</label><input class="form-input" data-k="price" value="${esc(pkg.price)}"></div><div class="admin-field"><label>Keterangan harga</label><input class="form-input" data-k="unit" value="${esc(pkg.unit)}"></div></div><label class="editor-check"><input type="checkbox" data-featured ${pkg.featured ? "checked" : ""}> Tandai sebagai paket unggulan</label>`;
     el.querySelectorAll("[data-k]").forEach(
       (x) =>
         (x.oninput = () => {
@@ -139,7 +107,6 @@ function renderPricingPackages() {
       pkg.featured = e.target.checked;
       renderPricing();
     };
-    wireIcon(el, pkg, renderPricing);
     el.querySelector(".repeat-row__delete").onclick = () =>
       removeItem(
         pricingState.packages,
@@ -176,32 +143,15 @@ function renderPricingFeatures() {
   });
   icons();
 }
-function renderPricingAction() {
-  const a = pricingState.action,
-    root = document.getElementById("pricingActionEditor");
-  root.innerHTML = `<div class="action-editor__card"><div class="action-editor__title"><strong>Tombol Biaya</strong>${toggleHtml(a)}</div><div class="admin-form-grid"><div class="admin-field"><label>Teks tombol</label><input class="form-input" data-k="label" value="${esc(a.label)}"></div><div class="admin-field"><label>URL tujuan</label><input class="form-input" data-k="url" value="${esc(a.url)}"></div><div class="admin-field"><label>Gaya</label><select class="form-input" data-k="style"><option value="primary" ${a.style === "primary" ? "selected" : ""}>Utama</option><option value="outline" ${a.style === "outline" ? "selected" : ""}>Outline</option></select></div></div>${iconControl(a, "pricing-action")}<label class="editor-check"><input type="checkbox" data-newtab ${a.newTab ? "checked" : ""}> Buka di tab baru</label></div>`;
-  root.querySelectorAll("[data-k]").forEach(
-    (x) =>
-      (x.oninput = () => {
-        a[x.dataset.k] = x.value;
-        renderPricing();
-      }),
-  );
-  wireItemToggle(root, a, renderPricing);
-  root.querySelector("[data-newtab]").onchange = (e) =>
-    (a.newTab = e.target.checked);
-  wireIcon(root, a, renderPricing);
-  icons();
-}
 function renderPricing() {
   const root = document.getElementById("pricingPreview"),
     p = pricingState,
     t = theme();
+  root.className =
+    "section section--soft scaled-public-preview pricing-public-preview";
   applyTheme(root, t);
   if (!p.active) return disabled(root, "Biaya Pendaftaran");
-  const packages = p.packages.filter((x) => x.active),
-    features = p.features.filter((x) => x.active);
-  root.className = `pricing-preview pricing-preview--${p.variant}${p.ornament ? " pricing-preview--ornament" : ""}`;
-  root.innerHTML = `<header><span>${esc(p.eyebrow)}</span>${p.title ? `<h2>${esc(p.title)}</h2>` : ""}${p.description ? `<p>${esc(p.description)}</p>` : ""}</header><div class="pricing-preview__packages">${packages.map((pkg) => `<article class="${pkg.featured ? "is-featured" : ""}">${pkg.promo ? `<b class="pricing-preview__promo">${esc(pkg.promo)}</b>` : ""}<div class="pricing-preview__package-icon">${iconMarkup(pkg)}</div><strong class="pricing-preview__name">${esc(pkg.name)}</strong>${pkg.oldPrice ? `<del>${esc(pkg.oldPrice)}</del>` : ""}<div class="pricing-preview__amount">${esc(pkg.price)}</div><p class="pricing-preview__unit">${esc(pkg.unit)}</p>${pkg.note ? `<p class="pricing-preview__note">${esc(pkg.note)}</p>` : ""}<div class="pricing-preview__features">${features.map((f) => `<span><i data-lucide="check"></i>${esc(f.label)}</span>`).join("")}</div>${p.action.active ? `<a class="pricing-preview__action ${p.action.style === "outline" ? "is-outline" : ""}">${esc(p.action.label)} ${iconMarkup(p.action)}</a>` : ""}</article>`).join("")}</div>`;
+  root.innerHTML = buildHomePricingMarkup(p);
+  requestAnimationFrame(() => fitScaledPreview("pricingPreviewFrame"));
   icons();
 }

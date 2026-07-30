@@ -8,7 +8,7 @@
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../../../../../packages/shared/css/main.css" />
+    <link rel="stylesheet" href="../../../../template/assets/css/main.css" />
     <script>
       if (new URLSearchParams(location.search).get("embedded") === "1")
         document.documentElement.classList.add("admin-embedded");
@@ -53,192 +53,204 @@
       >
     </header>
     <main class="admin-main">
-      <div class="archive-detail-toolbar">
-        <a class="btn btn--outline btn--sm" href="#" data-archive-back
-          ><i data-lucide="arrow-left"></i>Kembali ke Arsip</a
-        >
-        <div class="archive-detail-toolbar__context">
-          <span>Kelola Halaman / Arsip / Detail</span
-          ><strong id="detailContextTitle">Editor Detail Arsip</strong>
+      <form class="admin-workspace" id="archiveDetailForm">
+        <div class="page-editor-layout">
+          <div class="page-editor-content">
+            <div class="archive-detail-toolbar">
+              <a class="btn btn--outline btn--sm" href="#" data-archive-back
+                ><i data-lucide="arrow-left"></i>Kembali ke Arsip</a
+              >
+              <div class="archive-detail-toolbar__context">
+                <span>Kelola Halaman / Arsip / Detail</span
+                ><strong id="detailContextTitle">Editor Detail Arsip</strong>
+              </div>
+              <a
+                class="btn btn--outline btn--sm"
+                id="detailToolbarPublicLink"
+                target="_blank"
+                ><i data-lucide="external-link"></i>Lihat halaman</a
+              >
+            </div>
+            <section class="admin-card">
+              <div class="editor-section-head">
+                <div class="admin-card__heading">
+                  <span class="admin-step">01</span>
+                  <div>
+                    <h2>Identitas dan Banner</h2>
+                    <p>
+                      Identitas ini juga digunakan pada card Arsip dan sumber
+                      halaman lain.
+                    </p>
+                  </div>
+                </div>
+                <label class="admin-switch admin-switch--label"
+                  ><input id="detailActive" type="checkbox" /><span></span
+                  ><em>Aktif</em></label
+                >
+              </div>
+              <div class="admin-form-grid">
+                <div class="admin-field">
+                  <label for="detailName">Nama lomba</label
+                  ><input class="form-input" id="detailName" />
+                </div>
+                <div class="admin-field">
+                  <label for="detailShortName">Nama pendek</label
+                  ><input class="form-input" id="detailShortName" />
+                </div>
+                <div class="admin-field admin-field--wide">
+                  <label for="detailDescription">Deskripsi banner</label
+                  ><textarea
+                    class="form-input editor-textarea"
+                    id="detailDescription"
+                  ></textarea>
+                </div>
+              </div>
+            </section>
+            <section class="admin-card">
+              <div class="editor-section-head">
+                <div class="admin-card__heading">
+                  <span class="admin-step">02</span>
+                  <div>
+                    <h2>Hasil dan Pemenang</h2>
+                    <p>Kategori serta pemenang historis milik lomba ini.</p>
+                  </div>
+                </div>
+                <label class="admin-switch admin-switch--label"
+                  ><input
+                    id="detailWinnersActive"
+                    type="checkbox"
+                  /><span></span><em>Tampil</em></label
+                >
+              </div>
+              <div class="admin-form-grid">
+                <div class="admin-field">
+                  <label for="detailWinnersEyebrow">Eyebrow</label
+                  ><input class="form-input" id="detailWinnersEyebrow" />
+                </div>
+                <div class="admin-field">
+                  <label for="detailWinnersTitle">Judul section</label
+                  ><input class="form-input" id="detailWinnersTitle" />
+                </div>
+                <div class="admin-field">
+                  <label>Banner SK</label
+                  ><label class="editor-check"
+                    ><input type="checkbox" id="detailShowSk" /> Tampilkan bila
+                    tersedia</label
+                  >
+                </div>
+              </div>
+              <div class="wm-metadata-options" id="detailMetaOptions">
+                <label
+                  ><input type="checkbox" data-meta="showPhoto" /><span
+                    >Foto / inisial</span
+                  ></label
+                ><label
+                  ><input type="checkbox" data-meta="showSchool" /><span
+                    >Sekolah</span
+                  ></label
+                ><label
+                  ><input type="checkbox" data-meta="showExam" /><span
+                    >No. Ujian</span
+                  ></label
+                ><label
+                  ><input type="checkbox" data-meta="showDistrict" /><span
+                    >Kecamatan</span
+                  ></label
+                ><label
+                  ><input type="checkbox" data-meta="showRegency" /><span
+                    >Kabupaten</span
+                  ></label
+                ><label
+                  ><input type="checkbox" data-meta="showProvince" /><span
+                    >Provinsi</span
+                  ></label
+                >
+              </div>
+              <div
+                id="detailCategorySummary"
+                class="detail-source-summary"
+              ></div>
+            </section>
+            <section class="admin-card">
+              <div class="editor-section-head">
+                <div class="admin-card__heading">
+                  <span class="admin-step">03</span>
+                  <div>
+                    <h2>Dokumen Terkait</h2>
+                    <p>
+                      Dokumen ini menjadi sumber yang sama untuk halaman Unduh.
+                    </p>
+                  </div>
+                </div>
+                <label class="admin-switch admin-switch--label"
+                  ><input
+                    id="detailDocumentsActive"
+                    type="checkbox"
+                  /><span></span><em>Tampil</em></label
+                >
+              </div>
+              <div class="admin-form-grid">
+                <div class="admin-field">
+                  <label for="detailDocumentsEyebrow">Eyebrow</label
+                  ><input class="form-input" id="detailDocumentsEyebrow" />
+                </div>
+                <div class="admin-field">
+                  <label for="detailDocumentsTitle">Judul section</label
+                  ><input class="form-input" id="detailDocumentsTitle" />
+                </div>
+                <div class="admin-field">
+                  <label for="detailSkDocument">Dokumen untuk banner SK</label
+                  ><select class="form-input" id="detailSkDocument"></select>
+                </div>
+              </div>
+              <div
+                id="detailDocumentList"
+                class="archive-linked-docs detail-doc-editor"
+              ></div>
+            </section>
+            <section class="admin-card">
+              <div class="editor-subsection__head">
+                <div>
+                  <h2>Preview Keseluruhan Detail</h2>
+                  <p>
+                    Banner, breadcrumb, pemenang, dan dokumen mengikuti template
+                    publik.
+                  </p>
+                </div>
+                <div class="preview-switch">
+                  <button
+                    type="button"
+                    class="preview-switch__btn preview-switch__btn--active"
+                    data-detail-preview="desktop"
+                  >
+                    <i data-lucide="monitor"></i></button
+                  ><button
+                    type="button"
+                    class="preview-switch__btn"
+                    data-detail-preview="tablet"
+                  >
+                    <i data-lucide="tablet"></i></button
+                  ><button
+                    type="button"
+                    class="preview-switch__btn"
+                    data-detail-preview="mobile"
+                  >
+                    <i data-lucide="smartphone"></i>
+                  </button>
+                </div>
+              </div>
+              <div
+                class="archive-detail-preview-frame"
+                id="archiveDetailPreviewFrame"
+              >
+                <div
+                  class="archive-detail-preview"
+                  id="archiveDetailPreview"
+                ></div>
+              </div>
+            </section>
+          </div>
         </div>
-        <a
-          class="btn btn--outline btn--sm"
-          id="detailToolbarPublicLink"
-          target="_blank"
-          ><i data-lucide="external-link"></i>Lihat halaman</a
-        >
-      </div>
-      <form id="archiveDetailForm">
-        <section class="admin-card">
-          <div class="editor-section-head">
-            <div class="admin-card__heading">
-              <span class="admin-step">01</span>
-              <div>
-                <h2>Identitas dan Banner</h2>
-                <p>
-                  Identitas ini juga digunakan pada card Arsip dan sumber
-                  halaman lain.
-                </p>
-              </div>
-            </div>
-            <label class="admin-switch admin-switch--label"
-              ><input id="detailActive" type="checkbox" /><span></span
-              ><em>Aktif</em></label
-            >
-          </div>
-          <div class="admin-form-grid">
-            <div class="admin-field">
-              <label for="detailName">Nama lomba</label
-              ><input class="form-input" id="detailName" />
-            </div>
-            <div class="admin-field">
-              <label for="detailShortName">Nama pendek</label
-              ><input class="form-input" id="detailShortName" />
-            </div>
-            <div class="admin-field admin-field--wide">
-              <label for="detailDescription">Deskripsi banner</label
-              ><textarea
-                class="form-input editor-textarea"
-                id="detailDescription"
-              ></textarea>
-            </div>
-            <div class="admin-field">
-              <label for="detailGradient">Gradient banner</label
-              ><input class="form-input" id="detailGradient" />
-            </div>
-          </div>
-        </section>
-        <section class="admin-card">
-          <div class="editor-section-head">
-            <div class="admin-card__heading">
-              <span class="admin-step">02</span>
-              <div>
-                <h2>Hasil dan Pemenang</h2>
-                <p>Kategori serta pemenang historis milik lomba ini.</p>
-              </div>
-            </div>
-            <label class="admin-switch admin-switch--label"
-              ><input id="detailWinnersActive" type="checkbox" /><span></span
-              ><em>Tampil</em></label
-            >
-          </div>
-          <div class="admin-form-grid">
-            <div class="admin-field">
-              <label for="detailWinnersEyebrow">Eyebrow</label
-              ><input class="form-input" id="detailWinnersEyebrow" />
-            </div>
-            <div class="admin-field">
-              <label for="detailWinnersTitle">Judul section</label
-              ><input class="form-input" id="detailWinnersTitle" />
-            </div>
-            <div class="admin-field">
-              <label>Banner SK</label
-              ><label class="editor-check"
-                ><input type="checkbox" id="detailShowSk" /> Tampilkan bila
-                tersedia</label
-              >
-            </div>
-          </div>
-          <div class="wm-metadata-options" id="detailMetaOptions">
-            <label
-              ><input type="checkbox" data-meta="showPhoto" /><span
-                >Foto / inisial</span
-              ></label
-            ><label
-              ><input type="checkbox" data-meta="showSchool" /><span
-                >Sekolah</span
-              ></label
-            ><label
-              ><input type="checkbox" data-meta="showExam" /><span
-                >No. Ujian</span
-              ></label
-            ><label
-              ><input type="checkbox" data-meta="showDistrict" /><span
-                >Kecamatan</span
-              ></label
-            ><label
-              ><input type="checkbox" data-meta="showRegency" /><span
-                >Kabupaten</span
-              ></label
-            ><label
-              ><input type="checkbox" data-meta="showProvince" /><span
-                >Provinsi</span
-              ></label
-            >
-          </div>
-          <div id="detailCategorySummary" class="detail-source-summary"></div>
-        </section>
-        <section class="admin-card">
-          <div class="editor-section-head">
-            <div class="admin-card__heading">
-              <span class="admin-step">03</span>
-              <div>
-                <h2>Dokumen Terkait</h2>
-                <p>Dokumen ini menjadi sumber yang sama untuk halaman Unduh.</p>
-              </div>
-            </div>
-            <label class="admin-switch admin-switch--label"
-              ><input id="detailDocumentsActive" type="checkbox" /><span></span
-              ><em>Tampil</em></label
-            >
-          </div>
-          <div class="admin-form-grid">
-            <div class="admin-field">
-              <label for="detailDocumentsEyebrow">Eyebrow</label
-              ><input class="form-input" id="detailDocumentsEyebrow" />
-            </div>
-            <div class="admin-field">
-              <label for="detailDocumentsTitle">Judul section</label
-              ><input class="form-input" id="detailDocumentsTitle" />
-            </div>
-            <div class="admin-field">
-              <label for="detailSkDocument">Dokumen untuk banner SK</label
-              ><select class="form-input" id="detailSkDocument"></select>
-            </div>
-          </div>
-          <div
-            id="detailDocumentList"
-            class="archive-linked-docs detail-doc-editor"
-          ></div>
-        </section>
-        <section class="admin-card">
-          <div class="editor-subsection__head">
-            <div>
-              <h2>Preview Keseluruhan Detail</h2>
-              <p>
-                Banner, breadcrumb, pemenang, dan dokumen mengikuti template
-                publik.
-              </p>
-            </div>
-            <div class="preview-switch">
-              <button
-                type="button"
-                class="preview-switch__btn preview-switch__btn--active"
-                data-detail-preview="desktop"
-              >
-                <i data-lucide="monitor"></i></button
-              ><button
-                type="button"
-                class="preview-switch__btn"
-                data-detail-preview="tablet"
-              >
-                <i data-lucide="tablet"></i></button
-              ><button
-                type="button"
-                class="preview-switch__btn"
-                data-detail-preview="mobile"
-              >
-                <i data-lucide="smartphone"></i>
-              </button>
-            </div>
-          </div>
-          <div
-            class="archive-detail-preview-frame"
-            id="archiveDetailPreviewFrame"
-          >
-            <div class="archive-detail-preview" id="archiveDetailPreview"></div>
-          </div>
-        </section>
         <footer class="admin-savebar">
           <p>
             <i data-lucide="database"></i>Satu data untuk Detail, Unduh, dan
@@ -262,7 +274,9 @@
       <i data-lucide="check-circle"></i><span>Tersimpan.</span>
     </div>
     <script src="../../../../../packages/shared/js/data/mock-archive-database.js"></script>
+    <script src="../../../../../packages/shared/js/data/repositories/settings-repository.js"></script>
     <script src="../../../../../packages/shared/js/data/repositories/archive-repository.js"></script>
+    <script src="../../../js/shared/dialog.js"></script>
     <script src="../../../js/features/archive/detail-editor.js"></script>
   </body>
 </html>

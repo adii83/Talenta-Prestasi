@@ -1,5 +1,6 @@
 ﻿/* Manajemen FAQ — kategori dan pertanyaan bebas dengan preview template publik. */
 let faqState = getFaqAdminState();
+let faqPreviewResizeObserver;
 const faqEsc = (v = "") => {
   const n = document.createElement("div");
   n.textContent = v;
@@ -63,16 +64,18 @@ function faqBindEditor() {
       faqMove(faqState.categories, ci, -1);
     catEl.querySelector("[data-category-down]").onclick = () =>
       faqMove(faqState.categories, ci, 1);
-    catEl.querySelector("[data-category-delete]").onclick = () => {
-      if (
-        confirm(
-          `Hapus kategori “${cat.title}” beserta ${cat.questions.length} pertanyaan?`,
-        )
-      ) {
-        faqState.categories.splice(ci, 1);
-        faqRenderEditor();
-        faqRenderPreview();
-      }
+    catEl.querySelector("[data-category-delete]").onclick = async () => {
+      const confirmed = await adminConfirm({
+        title: "Hapus kategori FAQ?",
+        message: `${cat.title} beserta ${cat.questions.length} pertanyaan di dalamnya akan dihapus dari perubahan saat ini.`,
+        confirmLabel: "Ya, hapus kategori",
+        variant: "danger",
+        icon: "folder-x",
+      });
+      if (!confirmed) return;
+      faqState.categories.splice(ci, 1);
+      faqRenderEditor();
+      faqRenderPreview();
     };
     catEl.querySelector("[data-add-question]").onclick = () => {
       cat.questions.push({
@@ -105,67 +108,33 @@ function faqBindEditor() {
         faqMove(cat.questions, qi, -1);
       qEl.querySelector("[data-question-down]").onclick = () =>
         faqMove(cat.questions, qi, 1);
-      qEl.querySelector("[data-question-delete]").onclick = () => {
-        if (confirm("Hapus pertanyaan ini?")) {
-          cat.questions.splice(qi, 1);
-          faqRenderEditor();
-          faqRenderPreview();
-        }
+      qEl.querySelector("[data-question-delete]").onclick = async () => {
+        const confirmed = await adminConfirm({
+          title: "Hapus pertanyaan FAQ?",
+          message: `"${q.question || "Pertanyaan tanpa judul"}" akan dihapus dari kategori ${cat.title}.`,
+          confirmLabel: "Ya, hapus pertanyaan",
+          variant: "danger",
+          icon: "message-circle-x",
+        });
+        if (!confirmed) return;
+        cat.questions.splice(qi, 1);
+        faqRenderEditor();
+        faqRenderPreview();
       };
     });
   });
 }
-function faqAccordionMarkup(categories) {
-  return categories
-    .map(
-      (cat) =>
-        `<section class="faq-category"><h2 class="faq-category__title">${faqEsc(cat.title)}</h2><div class="accordion">${cat.questions.map((q) => `<div class="accordion__item"><button class="accordion__trigger" type="button" aria-expanded="false" aria-controls="preview-${faqEsc(q.id)}"><span>${faqEsc(q.question)}</span><svg class="accordion__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button><div class="accordion__content" id="preview-${faqEsc(q.id)}"><div class="accordion__body">${faqEsc(q.answer).replace(/\n/g, "<br>")}</div></div></div>`).join("")}</div></section>`,
-    )
-    .join("");
-}
-function faqBindPreviewAccordion() {
-  document.querySelectorAll("#faqPreview .accordion__trigger").forEach(
-    (trigger) =>
-      (trigger.onclick = () => {
-        const item = trigger.closest(".accordion__item"),
-          accordion = item.closest(".accordion"),
-          opening = !item.classList.contains("accordion__item--open");
-        accordion.querySelectorAll(".accordion__item").forEach((other) => {
-          other.classList.remove("accordion__item--open");
-          other
-            .querySelector(".accordion__trigger")
-            .setAttribute("aria-expanded", "false");
-          other.querySelector(".accordion__content").style.maxHeight = "0";
-        });
-        if (opening) {
-          const content = item.querySelector(".accordion__content");
-          item.classList.add("accordion__item--open");
-          trigger.setAttribute("aria-expanded", "true");
-          content.style.maxHeight = content.scrollHeight + "px";
-        }
-      }),
-  );
-}
 function faqRenderPreview() {
-  const root = document.getElementById("faqPreview"),
-    page = faqState.page,
-    cats = faqState.categories
-      .filter((c) => c.active && c.title.trim())
-      .map((c) => ({
-        ...c,
-        questions: c.questions.filter(
-          (q) => q.active && q.question.trim() && q.answer.trim(),
-        ),
-      }))
-      .filter((c) => c.questions.length);
-  if (!page.active) {
-    root.innerHTML =
-      '<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>Halaman FAQ dinonaktifkan</strong><span>Aktifkan kembali melalui pengaturan heading.</span></div>';
-    faqIcons();
-    return;
-  }
-  root.innerHTML = `<section class="section"><div class="container"><div class="section__header${page.alignment === "left" ? " section__header--left" : ""}"><p class="t-eyebrow">${faqEsc(page.eyebrow)}</p><h1 class="t-h1">${faqEsc(page.title)}</h1><p>${faqEsc(page.description)}</p></div>${cats.length ? faqAccordionMarkup(cats) : '<div class="public-empty-state public-empty-state--compact"><p>Belum ada pertanyaan aktif.</p></div>'}</div></section>`;
-  faqBindPreviewAccordion();
+  const root = document.getElementById("faqPreview");
+  const publicState = getPublicFaqStateFromSource(faqState);
+  applyGlobalThemeTokens(root);
+  root.className = "faq-public-preview scaled-public-preview";
+  root.innerHTML = buildFaqPageMarkup(publicState, {
+    idPrefix: "preview-faq",
+    homeHref: "../../../template/",
+  });
+  bindFaqAccordion(root);
+  requestAnimationFrame(fitFaqPreview);
   faqIcons();
 }
 function faqBindPage() {
@@ -209,16 +178,26 @@ function faqBindPage() {
           );
         document.getElementById("faqPreviewFrame").className =
           `faq-preview-frame faq-preview-frame--${btn.dataset.faqPreview}`;
+        document.getElementById("faqPreviewFrame").dataset.previewMode =
+          btn.dataset.faqPreview;
+        requestAnimationFrame(fitFaqPreview);
       }),
   );
-  document.getElementById("faqReset").onclick = () => {
-    if (confirm("Reset seluruh FAQ ke isi template awal?")) {
-      faqState = resetFaqAdminState();
-      faqSyncPage();
-      faqRenderEditor();
-      faqRenderPreview();
-      faqToast("FAQ dikembalikan ke template awal.");
-    }
+  document.getElementById("faqReset").onclick = async () => {
+    const confirmed = await adminConfirm({
+      title: "Reset seluruh FAQ?",
+      message:
+        "Heading, kategori, pertanyaan, jawaban, status, dan urutan FAQ akan dikembalikan ke template awal.",
+      confirmLabel: "Ya, reset FAQ",
+      variant: "danger",
+      icon: "rotate-ccw",
+    });
+    if (!confirmed) return;
+    faqState = resetFaqAdminState();
+    faqSyncPage();
+    faqRenderEditor();
+    faqRenderPreview();
+    faqToast("FAQ dikembalikan ke template awal.");
   };
   document.getElementById("faqEditorForm").onsubmit = (e) => {
     e.preventDefault();
@@ -233,4 +212,36 @@ faqBindPage();
 faqSyncPage();
 faqRenderEditor();
 faqRenderPreview();
+setupFaqPreviewSizing();
+subscribeGlobalSettings(faqRenderPreview);
 faqIcons();
+
+function setupFaqPreviewSizing() {
+  const frame = document.getElementById("faqPreviewFrame");
+  const root = document.getElementById("faqPreview");
+  frame.dataset.previewMode = frame.dataset.previewMode || "desktop";
+  faqPreviewResizeObserver?.disconnect();
+  faqPreviewResizeObserver = new ResizeObserver(fitFaqPreview);
+  faqPreviewResizeObserver.observe(frame);
+  faqPreviewResizeObserver.observe(root);
+  requestAnimationFrame(fitFaqPreview);
+}
+
+function fitFaqPreview() {
+  const frame = document.getElementById("faqPreviewFrame");
+  const root = document.getElementById("faqPreview");
+  if (!frame || !root || !root.classList.contains("scaled-public-preview"))
+    return;
+  const designWidths = { desktop: 1425, tablet: 753, mobile: 375 };
+  const mode = frame.dataset.previewMode || "desktop";
+  const designWidth = designWidths[mode] || designWidths.desktop;
+  const frameStyle = getComputedStyle(frame);
+  const horizontalPadding =
+    parseFloat(frameStyle.paddingLeft) + parseFloat(frameStyle.paddingRight);
+  const verticalPadding =
+    parseFloat(frameStyle.paddingTop) + parseFloat(frameStyle.paddingBottom);
+  const availableWidth = Math.max(1, frame.clientWidth - horizontalPadding);
+  const scale = Math.min(1, availableWidth / designWidth);
+  root.style.setProperty("--public-preview-scale", String(scale));
+  frame.style.height = `${Math.ceil(root.offsetHeight * scale + verticalPadding)}px`;
+}

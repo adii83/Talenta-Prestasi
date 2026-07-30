@@ -27,7 +27,7 @@
         left: 0;
       }
     </style>
-    <link rel="stylesheet" href="../../../../packages/shared/css/main.css" />
+    <link rel="stylesheet" href="../../../template/assets/css/main.css" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="../../../../packages/shared/js/core/paths.js"></script>
   </head>
@@ -56,120 +56,128 @@
         <small>Kelola Halaman / Arsip</small>
         <h1>Manajemen Arsip</h1>
       </div>
-      <a class="btn btn--outline" href="../../../public/arsip/" target="_blank"
+      <a
+        class="btn btn--outline"
+        href="../../../template/arsip/"
+        target="_blank"
         ><i data-lucide="external-link"></i>Lihat halaman</a
       >
     </header>
     <main class="admin-main">
-      <form id="archiveEditorForm">
-        <section class="admin-card">
-          <div class="editor-section-head">
-            <div class="admin-card__heading">
-              <span class="admin-step">01</span>
-              <div>
-                <h2>Sumber Lomba Arsip</h2>
-                <p>
-                  Semua dokumen dan pemenang tetap melekat pada lomba yang sama.
-                </p>
+      <form class="admin-workspace" id="archiveEditorForm">
+        <div class="page-editor-layout">
+          <div class="page-editor-content">
+            <section class="admin-card">
+              <div class="editor-section-head">
+                <div class="admin-card__heading">
+                  <span class="admin-step">01</span>
+                  <div>
+                    <h2>Sumber Lomba Arsip</h2>
+                    <p>
+                      Semua dokumen dan pemenang tetap melekat pada lomba yang
+                      sama.
+                    </p>
+                  </div>
+                </div>
+                <button type="button" class="btn btn--primary" id="archiveAdd">
+                  <i data-lucide="plus"></i>Tambah Lomba
+                </button>
               </div>
-            </div>
-            <button type="button" class="btn btn--primary" id="archiveAdd">
-              <i data-lucide="plus"></i>Tambah Lomba
-            </button>
-          </div>
-          <div class="editor-notice">
-            <i data-lucide="database"></i>
-            <div>
-              <strong>Database bersama</strong>
-              <p>
-                Perubahan presentasi Arsip tidak menduplikasi dokumen untuk
-                halaman Unduh.
-              </p>
-            </div>
-          </div>
-          <div id="archiveItems" class="archive-manager-list"></div>
-        </section>
-        <section class="admin-card" id="archiveDisplay">
-          <div class="editor-section-head">
-            <div class="admin-card__heading">
-              <span class="admin-step">02</span>
-              <div>
-                <h2>Tampilan Halaman Arsip</h2>
-                <p>Atur heading dan label aksi pada card publik.</p>
+              <div class="editor-notice">
+                <i data-lucide="database"></i>
+                <div>
+                  <strong>Database bersama</strong>
+                  <p>
+                    Perubahan presentasi Arsip tidak menduplikasi dokumen untuk
+                    halaman Unduh.
+                  </p>
+                </div>
               </div>
-            </div>
-            <label class="admin-switch admin-switch--label"
-              ><input
-                type="checkbox"
-                id="archivePageActive"
-                checked
-              /><span></span><em>Aktif</em></label
-            >
+              <div id="archiveItems" class="archive-manager-list"></div>
+            </section>
+            <section class="admin-card" id="archiveDisplay">
+              <div class="editor-section-head">
+                <div class="admin-card__heading">
+                  <span class="admin-step">02</span>
+                  <div>
+                    <h2>Tampilan Halaman Arsip</h2>
+                    <p>Atur heading dan label aksi pada card publik.</p>
+                  </div>
+                </div>
+                <label class="admin-switch admin-switch--label"
+                  ><input
+                    type="checkbox"
+                    id="archivePageActive"
+                    checked
+                  /><span></span><em>Aktif</em></label
+                >
+              </div>
+              <div class="admin-form-grid">
+                <div class="admin-field">
+                  <label for="archiveEyebrow">Subjudul kecil</label
+                  ><input class="form-input" id="archiveEyebrow" />
+                </div>
+                <div class="admin-field">
+                  <label for="archiveTitle">Judul utama</label
+                  ><input class="form-input" id="archiveTitle" />
+                </div>
+                <div class="admin-field admin-field--wide">
+                  <label for="archiveDescription">Deskripsi</label
+                  ><textarea
+                    class="form-input editor-textarea"
+                    id="archiveDescription"
+                  ></textarea>
+                </div>
+                <div class="admin-field">
+                  <label for="archiveAlignment">Perataan heading</label
+                  ><select class="form-input" id="archiveAlignment">
+                    <option value="center">Tengah</option>
+                    <option value="left">Kiri</option>
+                  </select>
+                </div>
+                <div class="admin-field">
+                  <label for="archiveAction">Teks aksi card</label
+                  ><input class="form-input" id="archiveAction" />
+                </div>
+              </div>
+            </section>
+            <section class="admin-card">
+              <div class="editor-subsection__head">
+                <div>
+                  <h2>Preview Halaman Arsip</h2>
+                  <p>Ukuran card dan teks mengikuti template publik.</p>
+                </div>
+                <div class="preview-switch">
+                  <button
+                    type="button"
+                    class="preview-switch__btn preview-switch__btn--active"
+                    data-archive-preview="desktop"
+                    aria-label="Desktop"
+                  >
+                    <i data-lucide="monitor"></i></button
+                  ><button
+                    type="button"
+                    class="preview-switch__btn"
+                    data-archive-preview="tablet"
+                    aria-label="Tablet"
+                  >
+                    <i data-lucide="tablet"></i></button
+                  ><button
+                    type="button"
+                    class="preview-switch__btn"
+                    data-archive-preview="mobile"
+                    aria-label="Mobile"
+                  >
+                    <i data-lucide="smartphone"></i>
+                  </button>
+                </div>
+              </div>
+              <div class="archive-preview-frame" id="archivePreviewFrame">
+                <div class="archive-preview" id="archivePreview"></div>
+              </div>
+            </section>
           </div>
-          <div class="admin-form-grid">
-            <div class="admin-field">
-              <label for="archiveEyebrow">Subjudul kecil</label
-              ><input class="form-input" id="archiveEyebrow" />
-            </div>
-            <div class="admin-field">
-              <label for="archiveTitle">Judul utama</label
-              ><input class="form-input" id="archiveTitle" />
-            </div>
-            <div class="admin-field admin-field--wide">
-              <label for="archiveDescription">Deskripsi</label
-              ><textarea
-                class="form-input editor-textarea"
-                id="archiveDescription"
-              ></textarea>
-            </div>
-            <div class="admin-field">
-              <label for="archiveAlignment">Perataan heading</label
-              ><select class="form-input" id="archiveAlignment">
-                <option value="center">Tengah</option>
-                <option value="left">Kiri</option>
-              </select>
-            </div>
-            <div class="admin-field">
-              <label for="archiveAction">Teks aksi card</label
-              ><input class="form-input" id="archiveAction" />
-            </div>
-          </div>
-        </section>
-        <section class="admin-card">
-          <div class="editor-subsection__head">
-            <div>
-              <h2>Preview Halaman Arsip</h2>
-              <p>Ukuran card dan teks mengikuti template publik.</p>
-            </div>
-            <div class="preview-switch">
-              <button
-                type="button"
-                class="preview-switch__btn preview-switch__btn--active"
-                data-archive-preview="desktop"
-                aria-label="Desktop"
-              >
-                <i data-lucide="monitor"></i></button
-              ><button
-                type="button"
-                class="preview-switch__btn"
-                data-archive-preview="tablet"
-                aria-label="Tablet"
-              >
-                <i data-lucide="tablet"></i></button
-              ><button
-                type="button"
-                class="preview-switch__btn"
-                data-archive-preview="mobile"
-                aria-label="Mobile"
-              >
-                <i data-lucide="smartphone"></i>
-              </button>
-            </div>
-          </div>
-          <div class="archive-preview-frame" id="archivePreviewFrame">
-            <div class="archive-preview" id="archivePreview"></div>
-          </div>
-        </section>
+        </div>
         <footer class="admin-savebar">
           <p>
             <i data-lucide="shield-check"></i>Nonaktif tidak menghapus data
@@ -189,7 +197,9 @@
       <i data-lucide="check-circle"></i><span>Tersimpan.</span>
     </div>
     <script src="../../../../packages/shared/js/data/mock-archive-database.js"></script>
+    <script src="../../../../packages/shared/js/data/repositories/settings-repository.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/archive-repository.js"></script>
+    <script src="../../js/shared/dialog.js"></script>
     <script src="../../js/features/archive/manager.js"></script>
   </body>
 </html>

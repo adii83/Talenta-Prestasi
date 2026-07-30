@@ -5,7 +5,6 @@
 document.addEventListener("DOMContentLoaded", () => {
   initNavigation();
   initAccordion();
-  initAuthToggle();
   initDocFilter();
   initTabToggle();
   initUnduhTabs();
@@ -13,31 +12,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
 /* --- NAVIGATION --- */
 function initNavigation() {
-  const currentPage = window.location.pathname.split("/").pop() || "index.html";
+  const currentPage =
+    typeof publicPageId === "function"
+      ? publicPageId(window.location.pathname)
+      : null;
 
-  // Desktop nav
-  document.querySelectorAll(".navbar__link").forEach((link) => {
-    const href = link.getAttribute("href");
-    if (
-      href === currentPage ||
-      (currentPage === "" && href === "index.html") ||
-      (currentPage === "arsip-detail.html" && href === "arsip.html")
-    ) {
-      link.classList.add("navbar__link--active");
-    }
-  });
-
-  // Mobile bottom nav
-  document.querySelectorAll(".bottom-nav__item").forEach((item) => {
-    const href = item.getAttribute("href");
-    if (
-      href === currentPage ||
-      (currentPage === "" && href === "index.html") ||
-      (currentPage === "arsip-detail.html" && href === "arsip.html")
-    ) {
-      item.classList.add("bottom-nav__item--active");
-    }
-  });
+  document
+    .querySelectorAll(".navbar__link,.bottom-nav__item")
+    .forEach((link) => {
+      const href = link.getAttribute("href");
+      if (!href || href.startsWith("#")) return;
+      const linkedPage =
+        typeof publicPageId === "function"
+          ? publicPageId(new URL(href, window.location.href).pathname)
+          : null;
+      const active = Boolean(currentPage && linkedPage === currentPage);
+      link.classList.toggle("navbar__link--active", active);
+      link.classList.toggle("bottom-nav__item--active", active);
+      if (active) link.setAttribute("aria-current", "page");
+      else link.removeAttribute("aria-current");
+    });
 }
 
 /* --- ACCORDION (FAQ) --- */
@@ -73,30 +67,6 @@ function initAccordion(root = document) {
       }
     });
   });
-}
-
-/* --- AUTH FORM TOGGLE (LOGIN / REGISTER) --- */
-function initAuthToggle() {
-  const loginForm = document.getElementById("loginForm");
-  const registerForm = document.getElementById("registerForm");
-  const showRegister = document.getElementById("showRegister");
-  const showLogin = document.getElementById("showLogin");
-
-  if (showRegister) {
-    showRegister.addEventListener("click", (e) => {
-      e.preventDefault();
-      loginForm.style.display = "none";
-      registerForm.style.display = "block";
-    });
-  }
-
-  if (showLogin) {
-    showLogin.addEventListener("click", (e) => {
-      e.preventDefault();
-      registerForm.style.display = "none";
-      loginForm.style.display = "block";
-    });
-  }
 }
 
 /* --- DOCUMENT FILTER (UNDUH PAGE) --- */

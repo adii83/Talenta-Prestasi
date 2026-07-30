@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pemenang â€” Olimpiade Sains Nusantara</title>
+    <title>Pemenang — Olimpiade Sains Nusantara</title>
     <meta
       name="description"
       content="Daftar pemenang Olimpiade Sains Nusantara. Lihat para juara dari berbagai kategori dan jenjang pendidikan."
@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../../../packages/shared/css/main.css" />
+    <link rel="stylesheet" href="../assets/css/main.css" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="../../../packages/shared/js/core/paths.js"></script>
   </head>
@@ -96,7 +96,7 @@
                     width: 20px;
                     height: 20px;
                     stroke-width: 1.75;
-                    color: var(--c-gold);
+                    color: var(--c-primary);
                   "
                 ></i>
                 Juara Umum
@@ -187,7 +187,7 @@
                     width: 20px;
                     height: 20px;
                     stroke-width: 1.75;
-                    color: var(--c-gold);
+                    color: var(--c-primary);
                   "
                 ></i>
                 Juara Harapan
@@ -431,9 +431,13 @@
       </a>
     </nav>
 
+    <script src="../../../packages/shared/js/data/mock-archive-database.js"></script>
+    <script src="../../../packages/shared/js/data/repositories/archive-repository.js"></script>
     <script src="../../../packages/shared/js/data/repositories/settings-repository.js"></script>
-    <script src="../js/runtime.js"></script>
-    <script src="../js/ui.js"></script>
+    <script src="../../../packages/shared/js/data/repositories/winner-repository.js"></script>
+    <script src="../assets/js/runtime.js"></script>
+    <script src="../assets/js/winner-renderer.js"></script>
+    <script src="../assets/js/ui.js"></script>
     <script>
       lucide.createIcons();
     </script>

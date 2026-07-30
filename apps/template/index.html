@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Olimpiade Sains Nusantara â€” Beranda</title>
+    <title>Olimpiade Sains Nusantara — Beranda</title>
     <meta
       name="description"
-      content="Platform resmi Olimpiade Sains Nusantara â€” ajang talenta akademik untuk siswa SD, SMP, dan SMA se-Indonesia. Daftar sekarang dan tunjukkan potensi akademikmu."
+      content="Platform resmi Olimpiade Sains Nusantara — ajang talenta akademik untuk siswa SD, SMP, dan SMA se-Indonesia. Daftar sekarang dan tunjukkan potensi akademikmu."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../../packages/shared/css/main.css" />
+    <link rel="stylesheet" href="assets/css/main.css" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="../../packages/shared/js/core/paths.js"></script>
   </head>
@@ -56,10 +56,7 @@
             <h1 class="t-h1">Olimpiade Sains Nusantara 2026</h1>
 
             <div class="hero__image hero__image--mobile">
-              <img
-                src="../../packages/shared/images/garuda.png"
-                alt="Garuda Logo"
-              />
+              <img src="assets/images/garuda.png" alt="Garuda Logo" />
             </div>
 
             <p class="hero__subtitle">
@@ -97,10 +94,7 @@
             </div>
           </div>
           <div class="hero__image hero__image--desktop">
-            <img
-              src="../../packages/shared/images/garuda.png"
-              alt="Garuda Logo"
-            />
+            <img src="assets/images/garuda.png" alt="Garuda Logo" />
           </div>
         </div>
       </section>
@@ -125,7 +119,7 @@
                 ></i>
               </div>
               <p class="schedule-card__label">Pendaftaran</p>
-              <p class="schedule-card__date t-mono">15 Jul â€” 30 Agt 2026</p>
+              <p class="schedule-card__date t-mono">15 Jul — 30 Agt 2026</p>
             </div>
             <div class="schedule-card">
               <div class="schedule-card__icon">
@@ -155,7 +149,7 @@
                 ></i>
               </div>
               <p class="schedule-card__label">Pelaksanaan</p>
-              <p class="schedule-card__date t-mono">12 â€” 13 Sep 2026</p>
+              <p class="schedule-card__date t-mono">12 — 13 Sep 2026</p>
             </div>
           </div>
         </div>
@@ -164,13 +158,29 @@
       <!-- BIAYA PENDAFTARAN -->
       <section class="section section--soft" id="biaya">
         <div class="container">
-          <div class="pricing-section">
-            <p class="t-eyebrow">Biaya Pendaftaran</p>
-            <p class="pricing__amount">Rp150.000</p>
-            <p class="pricing__per">per peserta, semua jenjang</p>
-            <p class="pricing__note" style="margin-top: var(--sp-2)">
-              Termasuk sertifikat digital, akses materi, dan ID Card peserta.
-            </p>
+          <div class="home-pricing-grid home-pricing-grid--single">
+            <article class="pricing-section home-pricing-card">
+              <p class="t-eyebrow">Biaya Pendaftaran</p>
+              <p class="pricing__amount">Rp150.000</p>
+              <p class="pricing__per">per peserta, semua jenjang</p>
+              <div
+                class="home-pricing-features"
+                aria-label="Fasilitas termasuk"
+              >
+                <span
+                  ><i data-lucide="check" aria-hidden="true"></i>Sertifikat
+                  digital</span
+                >
+                <span
+                  ><i data-lucide="check" aria-hidden="true"></i>Akses
+                  materi</span
+                >
+                <span
+                  ><i data-lucide="check" aria-hidden="true"></i>ID Card
+                  peserta</span
+                >
+              </div>
+            </article>
           </div>
         </div>
       </section>
@@ -182,7 +192,7 @@
             <p class="t-eyebrow">Benefit</p>
             <h2 class="t-h2">Keuntungan Mengikuti Ajang Talenta</h2>
             <p>
-              Lebih dari sekadar ajang talenta â€” ini adalah kesempatan untuk
+              Lebih dari sekadar ajang talenta — ini adalah kesempatan untuk
               berkembang.
             </p>
           </div>
@@ -287,12 +297,6 @@
               </div>
             </div>
           </div>
-          <div style="text-align: center; margin-top: var(--sp-4)">
-            <a href="pemenang/" class="btn btn--white btn--lg"
-              >Lihat Semua Pemenang
-              <i data-lucide="arrow-right" style="width: 18px; height: 18px"></i
-            ></a>
-          </div>
         </div>
       </section>
 
@@ -310,7 +314,7 @@
                 decoding="async"
                 width="774"
                 height="171"
-                src="../../packages/shared/images/mitra-oain.jpg"
+                src="assets/images/mitra-oain.jpg"
                 alt="Mitra OAIN"
               />
             </div>
@@ -320,7 +324,7 @@
                 decoding="async"
                 width="800"
                 height="416"
-                src="../../packages/shared/images/mitra-talenta.png"
+                src="assets/images/mitra-talenta.png"
                 alt="Talenta Prestasi Indonesia"
               />
             </div>
@@ -417,9 +421,13 @@
       </a>
     </nav>
 
+    <script src="../../packages/shared/js/data/mock-archive-database.js"></script>
     <script src="../../packages/shared/js/data/repositories/settings-repository.js"></script>
-    <script src="js/runtime.js"></script>
-    <script src="js/ui.js"></script>
+    <script src="../../packages/shared/js/data/repositories/winner-repository.js"></script>
+    <script src="../../packages/shared/js/data/repositories/home-repository.js"></script>
+    <script src="assets/js/runtime.js"></script>
+    <script src="assets/js/home-renderer.js"></script>
+    <script src="assets/js/ui.js"></script>
     <script>
       lucide.createIcons();
     </script>

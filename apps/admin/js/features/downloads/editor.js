@@ -1,46 +1,18 @@
-const DOWNLOAD_KEY = "talenta_download_editor_v2",
-  GLOBAL_KEY = "talenta_event_settings_v1";
 let previewCompetitionId = "";
-const defaults = {
-  version: 2,
-  active: true,
-  eyebrow: "Unduh",
-  title: "Dokumen & Materi",
-  description:
-    "Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.",
-  alignment: "center",
-  competitions: [
-    link("osn-2025", "Lomba Sekarang", true),
-    link("osn-2024", "OSN 2024"),
-    link("osn-2023", "OSN 2023"),
-  ],
-};
-function link(competitionId, customTabName = "", isDefault = false) {
-  return {
-    competitionId,
-    customTabName,
-    active: true,
-    isDefault,
-    hiddenDocumentIds: [],
-    documentLabelOverrides: {},
-  };
-}
-function clone(v) {
-  return JSON.parse(JSON.stringify(v));
-}
+let downloadPreviewResizeObserver;
 function archive(id) {
-  return typeof getEffectiveCompetitionById === "function"
-    ? getEffectiveCompetitionById(id)
-    : MOCK_ARCHIVE_DATABASE.competitions.find((x) => x.id === id);
+  return typeof getDownloadCompetition === "function"
+    ? getDownloadCompetition(id)
+    : typeof getEffectiveCompetitionById === "function"
+      ? getEffectiveCompetitionById(id)
+      : MOCK_ARCHIVE_DATABASE.competitions.find((x) => x.id === id);
 }
 function load() {
-  const saved = JSON.parse(localStorage.getItem(DOWNLOAD_KEY) || "null");
-  const s =
-    saved?.version === 2 ? { ...clone(defaults), ...saved } : clone(defaults);
+  const s = getDownloadAdminState();
   s.competitions = (s.competitions || [])
     .filter((x) => archive(x.competitionId))
     .map((x) => ({
-      ...link(x.competitionId),
+      ...downloadCompetitionLink(x.competitionId),
       ...x,
       hiddenDocumentIds: x.hiddenDocumentIds || [],
       documentLabelOverrides: x.documentLabelOverrides || {},
@@ -55,6 +27,8 @@ document.addEventListener("DOMContentLoaded", () => {
   renderPicker();
   renderCompetitions();
   renderPreview();
+  setupDownloadPreviewSizing();
+  subscribeGlobalSettings(renderPreview);
   lucide.createIcons();
 });
 function normalize(s) {
@@ -95,7 +69,11 @@ function bind() {
     const id = document.getElementById("archiveCompetitionSelect").value;
     if (!id) return toast("Semua lomba sudah ditambahkan.", true);
     state.competitions.push(
-      link(id, archive(id).shortName, !state.competitions.length),
+      downloadCompetitionLink(
+        id,
+        archive(id).shortName,
+        !state.competitions.length,
+      ),
     );
     normalize(state);
     renderPicker();
@@ -105,14 +83,21 @@ function bind() {
   document.getElementById("downloadEditorForm").onsubmit = (e) => {
     e.preventDefault();
     normalize(state);
-    localStorage.setItem(DOWNLOAD_KEY, JSON.stringify(state));
+    saveDownloadAdminState(state);
     toast("Konfigurasi Unduh berhasil disimpan.");
   };
-  document.getElementById("resetDownload").onclick = () => {
-    if (confirm("Reset konfigurasi Unduh versi baru?")) {
-      localStorage.removeItem(DOWNLOAD_KEY);
-      location.reload();
-    }
+  document.getElementById("resetDownload").onclick = async () => {
+    const confirmed = await adminConfirm({
+      title: "Reset halaman Unduh?",
+      message:
+        "Pilihan sumber lomba, urutan tab, visibilitas dokumen, dan label custom akan dikembalikan ke template awal.",
+      confirmLabel: "Ya, reset Unduh",
+      variant: "danger",
+      icon: "rotate-ccw",
+    });
+    if (!confirmed) return;
+    resetDownloadAdminState();
+    location.reload();
   };
   document.querySelectorAll("[data-download-preview]").forEach(
     (b) =>
@@ -122,6 +107,7 @@ function bind() {
           .forEach((x) => x.classList.remove("preview-switch__btn--active"));
         b.classList.add("preview-switch__btn--active");
         const f = document.getElementById("downloadPreviewFrame");
+        f.dataset.previewMode = b.dataset.downloadPreview;
         f.classList.remove(
           "download-preview-frame--tablet",
           "download-preview-frame--mobile",
@@ -130,8 +116,37 @@ function bind() {
           f.classList.add(
             "download-preview-frame--" + b.dataset.downloadPreview,
           );
+        requestAnimationFrame(fitDownloadPreview);
       }),
   );
+}
+function setupDownloadPreviewSizing() {
+  const frame = document.getElementById("downloadPreviewFrame");
+  const root = document.getElementById("downloadPreview");
+  frame.dataset.previewMode = frame.dataset.previewMode || "desktop";
+  downloadPreviewResizeObserver?.disconnect();
+  downloadPreviewResizeObserver = new ResizeObserver(fitDownloadPreview);
+  downloadPreviewResizeObserver.observe(frame);
+  downloadPreviewResizeObserver.observe(root);
+  requestAnimationFrame(fitDownloadPreview);
+}
+function fitDownloadPreview() {
+  const frame = document.getElementById("downloadPreviewFrame");
+  const root = document.getElementById("downloadPreview");
+  if (!frame || !root || !root.classList.contains("scaled-public-preview"))
+    return;
+  const designWidths = { desktop: 1425, tablet: 753, mobile: 375 };
+  const mode = frame.dataset.previewMode || "desktop";
+  const designWidth = designWidths[mode] || designWidths.desktop;
+  const frameStyle = getComputedStyle(frame);
+  const horizontalPadding =
+    parseFloat(frameStyle.paddingLeft) + parseFloat(frameStyle.paddingRight);
+  const verticalPadding =
+    parseFloat(frameStyle.paddingTop) + parseFloat(frameStyle.paddingBottom);
+  const availableWidth = Math.max(1, frame.clientWidth - horizontalPadding);
+  const scale = Math.min(1, availableWidth / designWidth);
+  root.style.setProperty("--public-preview-scale", String(scale));
+  frame.style.height = `${Math.ceil(root.offsetHeight * scale + verticalPadding)}px`;
 }
 function sync() {
   Object.entries({
@@ -147,19 +162,33 @@ function sync() {
 }
 function renderPicker() {
   const selected = new Set(state.competitions.map((x) => x.competitionId)),
+    activeCompetition =
+      typeof getActiveCompetition === "function"
+        ? getActiveCompetition()
+        : null,
     allComps =
-      typeof getEffectiveArchivedCompetitions === "function"
-        ? getEffectiveArchivedCompetitions()
-        : MOCK_ARCHIVE_DATABASE.competitions.filter(
-            (x) => x.status === "published",
-          ),
+      typeof getDownloadCompetitions === "function"
+        ? getDownloadCompetitions()
+        : typeof getEffectiveArchivedCompetitions === "function"
+          ? getEffectiveArchivedCompetitions()
+          : MOCK_ARCHIVE_DATABASE.competitions.filter(
+              (x) => x.status === "published",
+            ),
     available = allComps.filter(
       (x) => x.active !== false && !selected.has(x.id),
     ),
     el = document.getElementById("archiveCompetitionSelect");
+  const archivedCount = allComps.filter(
+    (competition) => competition.id !== activeCompetition?.id,
+  ).length;
+  document.getElementById("downloadSourceSummary").textContent =
+    `Halaman Unduh bukan salinan otomatis Arsip: ${selected.size} tab dipilih dari ${allComps.length} sumber tersedia (${activeCompetition ? "1 lomba aktif" : "tanpa lomba aktif"} + ${archivedCount} Arsip).`;
   el.innerHTML = available.length
     ? available
-        .map((x) => `<option value="${x.id}">${esc(x.name)}</option>`)
+        .map(
+          (x) =>
+            `<option value="${x.id}">${x.id === activeCompetition?.id ? "Lomba aktif" : "Arsip"} — ${esc(x.name)}</option>`,
+        )
         .join("")
     : '<option value="">Semua lomba sudah ditambahkan</option>';
   document.getElementById("addArchiveCompetition").disabled = !available.length;
@@ -170,9 +199,14 @@ function renderCompetitions() {
   root.innerHTML = "";
   state.competitions.forEach((cfg, i) => {
     const comp = archive(cfg.competitionId),
+      isActiveCompetition =
+        typeof getActiveCompetition === "function" &&
+        getActiveCompetition()?.id === comp.id,
+      sourceLabel = isActiveCompetition ? "Lomba aktif" : "Dari Arsip",
+      sourceIcon = isActiveCompetition ? "radio-tower" : "database",
       el = document.createElement("article");
     el.className = "download-period-card archive-link-card";
-    el.innerHTML = `<div class="download-period-card__order"><button type="button" data-up ${i === 0 ? "disabled" : ""}><i data-lucide="chevron-up"></i></button><span>${String(i + 1).padStart(2, "0")}</span><button type="button" data-down ${i === state.competitions.length - 1 ? "disabled" : ""}><i data-lucide="chevron-down"></i></button></div><div class="archive-link-card__main"><span class="archive-source-badge"><i data-lucide="database"></i> Dari Arsip</span><strong>${esc(comp.name)}</strong><div class="admin-field"><label>Nama tab di halaman Unduh</label><input class="form-input" value="${esc(cfg.customTabName || comp.shortName)}"></div><button type="button" class="archive-doc-toggle" data-doc-toggle><i data-lucide="files"></i> ${comp.documents.length} dokumen bawaan <i data-lucide="chevron-down"></i></button></div><label class="download-default"><input type="radio" name="defaultCompetition" ${cfg.isDefault ? "checked" : ""} ${!cfg.active ? "disabled" : ""}> Tab default</label><label class="admin-switch"><input type="checkbox" ${cfg.active ? "checked" : ""}><span></span><em>${cfg.active ? "Aktif" : "Nonaktif"}</em></label><button type="button" class="repeat-row__delete"><i data-lucide="unlink"></i></button><div class="archive-linked-docs" hidden>${comp.documents.map((d) => docEditor(cfg, d)).join("")}</div>`;
+    el.innerHTML = `<div class="download-period-card__order"><button type="button" data-up ${i === 0 ? "disabled" : ""}><i data-lucide="chevron-up"></i></button><span>${String(i + 1).padStart(2, "0")}</span><button type="button" data-down ${i === state.competitions.length - 1 ? "disabled" : ""}><i data-lucide="chevron-down"></i></button></div><div class="archive-link-card__main"><span class="archive-source-badge"><i data-lucide="${sourceIcon}"></i> ${sourceLabel}</span><strong>${esc(comp.name)}</strong><div class="admin-field"><label>Nama tab di halaman Unduh</label><input class="form-input" value="${esc(cfg.customTabName || comp.shortName)}"></div><button type="button" class="archive-doc-toggle" data-doc-toggle><i data-lucide="files"></i> ${comp.documents.length} dokumen bawaan <i data-lucide="chevron-down"></i></button></div><label class="download-default"><input type="radio" name="defaultCompetition" ${cfg.isDefault ? "checked" : ""} ${!cfg.active ? "disabled" : ""}> Tab default</label><label class="admin-switch"><input type="checkbox" ${cfg.active ? "checked" : ""}><span></span><em>${cfg.active ? "Aktif" : "Nonaktif"}</em></label><button type="button" class="repeat-row__delete"><i data-lucide="unlink"></i></button><div class="archive-linked-docs" hidden>${comp.documents.map((d) => docEditor(cfg, d)).join("")}</div>`;
     el.querySelector(".form-input").oninput = (e) => {
       cfg.customTabName = e.target.value;
       renderPreview();
@@ -216,18 +250,20 @@ function renderCompetitions() {
         renderPreview();
       };
     });
-    el.querySelector(".repeat-row__delete").onclick = () => {
-      if (
-        confirm(
-          "Lepas lomba ini dari halaman Unduh? Data Arsip tidak akan terhapus.",
-        )
-      ) {
-        state.competitions.splice(i, 1);
-        normalize(state);
-        renderPicker();
-        renderCompetitions();
-        renderPreview();
-      }
+    el.querySelector(".repeat-row__delete").onclick = async () => {
+      const confirmed = await adminConfirm({
+        title: "Lepas sumber lomba?",
+        message: `${comp.name} akan dihapus dari tab halaman Unduh. Data lomba dan dokumennya di Arsip tetap aman.`,
+        confirmLabel: "Ya, lepas sumber",
+        variant: "danger",
+        icon: "unlink",
+      });
+      if (!confirmed) return;
+      state.competitions.splice(i, 1);
+      normalize(state);
+      renderPicker();
+      renderCompetitions();
+      renderPreview();
     };
     root.appendChild(el);
   });
@@ -248,43 +284,36 @@ function move(i, d) {
   renderPreview();
 }
 function renderPreview() {
-  const root = document.getElementById("downloadPreview"),
-    g = JSON.parse(localStorage.getItem(GLOBAL_KEY) || "null") || {};
-  root.style.setProperty("--preview-primary", g.primaryColor || "#1e4b8c");
+  const root = document.getElementById("downloadPreview");
+  applyGlobalThemeTokens(root);
   if (!state.active) return disabled();
   normalize(state);
-  const links = state.competitions.filter((x) => x.active),
-    cfg =
-      links.find((x) => x.competitionId === previewCompetitionId) ||
-      links.find((x) => x.isDefault) ||
-      links[0];
-  previewCompetitionId = cfg?.competitionId || "";
-  root.className = `download-preview download-preview--${state.alignment}`;
-  const comp = cfg && archive(cfg.competitionId),
-    docs = comp
-      ? comp.documents.filter(
-          (d) => d.active && !cfg.hiddenDocumentIds.includes(d.id),
-        )
-      : [];
-  root.innerHTML = `<header><span>${esc(state.eyebrow)}</span><h1>${esc(state.title)}</h1><p>${esc(state.description)}</p></header><div class="download-preview__tabs">${links
-    .map((x) => {
-      const c = archive(x.competitionId);
-      return `<button type="button" class="${x === cfg ? "is-active" : ""}" data-preview="${x.competitionId}">${esc(x.customTabName || c.shortName)}</button>`;
-    })
-    .join(
-      "",
-    )}</div>${docs.length ? `<div class="download-preview__docs">${docs.map((d) => `<article><div class="download-preview__doc-icon"><i data-lucide="file-text"></i></div><div><strong>${esc(cfg.documentLabelOverrides[d.id] || d.title)}</strong><span>${esc(d.type)} · ${esc(d.size)} <b>${esc(d.category)}</b></span></div><button type="button"><i data-lucide="download"></i> Unduh</button></article>`).join("")}</div>` : '<div class="download-empty"><i data-lucide="folder-open"></i><strong>Belum ada dokumen ditampilkan</strong><span>Aktifkan dokumen bawaan lomba dari editor.</span></div>'}`;
-  root.querySelectorAll("[data-preview]").forEach(
+  const previewState = resolveDownloadPublicState(state);
+  const selected =
+    previewState.competitions.find(
+      (item) => item.competitionId === previewCompetitionId,
+    ) ||
+    previewState.competitions.find((item) => item.isDefault) ||
+    previewState.competitions[0];
+  previewCompetitionId = selected?.competitionId || "";
+  root.className = "section download-public-preview scaled-public-preview";
+  root.innerHTML = buildDownloadMarkup(previewState, {
+    selectedCompetitionId: previewCompetitionId,
+  });
+  root.querySelectorAll(".unduh-tab").forEach(
     (b) =>
       (b.onclick = () => {
-        previewCompetitionId = b.dataset.preview;
+        previewCompetitionId = b.dataset.tab.replace(/^download-/, "");
         renderPreview();
       }),
   );
+  requestAnimationFrame(fitDownloadPreview);
   lucide.createIcons();
 }
 function disabled() {
-  document.getElementById("downloadPreview").innerHTML =
+  const root = document.getElementById("downloadPreview");
+  root.className = "download-public-preview";
+  root.innerHTML =
     '<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>Halaman Unduh dinonaktifkan</strong></div>';
   lucide.createIcons();
 }

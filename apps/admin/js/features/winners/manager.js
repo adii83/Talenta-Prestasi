@@ -1,68 +1,19 @@
-/* winner-manager.js â€” CRUD kategori juara & pemenang lomba aktif */
-const WM_KEY = "talenta_winner_manager_v1",
-  WM_DISPLAY_KEY = "talenta_winner_page_v1";
+/* CRUD kategori juara dan pemenang lomba aktif. */
 let wmState = load();
 let wmDisplay = loadDisplay();
+let winnerPreviewResizeObserver;
 
 function load() {
-  const comp = getActiveCompetition();
-  if (!comp)
-    return {
-      competitionId: "",
-      categories: [],
-      sk: { title: "", description: "", url: "" },
-    };
-  const saved = JSON.parse(localStorage.getItem(WM_KEY) || "null");
-  if (saved && saved.competitionId === comp.id) return saved;
-  return {
-    competitionId: comp.id,
-    categories: (comp.winnerCategories || []).map((c) => ({
-      id: c.id,
-      name: c.name,
-      icon: c.icon,
-      rankPrefix: "Juara",
-      active: true,
-      winners: c.winners.map((w) => ({ ...w })),
-    })),
-    sk: comp.skDocument
-      ? {
-          title: comp.skDocument.title,
-          description: comp.skDocument.description,
-          url: comp.skDocument.url,
-        }
-      : { title: "SK Penetapan Pemenang", description: "", url: "" },
-  };
+  return getWinnerManagerState();
 }
 function loadDisplay() {
-  const comp = getActiveCompetition(),
-    saved = JSON.parse(localStorage.getItem(WM_DISPLAY_KEY) || "null");
-  return {
-    active: true,
-    eyebrow: comp?.name || "",
-    title: "Daftar Pemenang",
-    description:
-      "Selamat kepada para pemenang ajang talenta nasional tahun ini.",
-    alignment: "left",
-    showSk: true,
-    showPhoto: true,
-    showSchool: true,
-    showExam: true,
-    showDistrict: true,
-    showRegency: true,
-    showProvince: true,
-    archiveActive: true,
-    archiveTitle: "Pemenang Ajang Talenta Sebelumnya",
-    archiveAction: "Lihat Pemenang",
-    archiveLimit: 3,
-    ...(saved || {}),
-  };
+  return getWinnerPageState();
 }
-function saveDisplay() {
-  localStorage.setItem(WM_DISPLAY_KEY, JSON.stringify(wmDisplay));
+function applyGlobalTheme(root) {
+  applyGlobalThemeTokens(root);
 }
 function save() {
-  localStorage.setItem(WM_KEY, JSON.stringify(wmState));
-  saveDisplay();
+  saveWinnerAdminState(wmState, wmDisplay);
   toast("Data pemenang berhasil disimpan.");
 }
 function uid() {
@@ -91,6 +42,16 @@ function toast(msg, err = false) {
 function icons() {
   lucide.createIcons();
 }
+function availableWinnerArchives() {
+  return typeof getAvailableWinnerArchiveCompetitions === "function"
+    ? getAvailableWinnerArchiveCompetitions()
+    : [];
+}
+function archiveSourceIcon(competition) {
+  if (competition.iconMode === "upload" && competition.uploadedIcon)
+    return `<img class="wm-archive-source__uploaded-icon" src="${esc(competition.uploadedIcon)}" alt="${esc(competition.iconAlt || "Logo atau maskot lomba")}">`;
+  return `<span class="wm-archive-source__icon"><i data-lucide="${esc(competition.icon || "archive")}"></i></span>`;
+}
 
 document.addEventListener("DOMContentLoaded", () => {
   renderActiveComp();
@@ -101,9 +62,26 @@ document.addEventListener("DOMContentLoaded", () => {
   bindDisplay();
   renderArchiveSources();
   renderPreview();
+  setupWinnerPreviewSizing();
+  subscribeGlobalSettings(() => {
+    applyGlobalTheme(document.getElementById("wmCategoryEditor"));
+    renderPreview();
+  });
+  window.addEventListener("talenta:archive", refreshWinnerArchiveSources);
+  window.addEventListener("storage", (event) => {
+    if (event.key === ARCHIVE_STATE_KEY || event.key === null)
+      refreshWinnerArchiveSources();
+  });
   bindGlobal();
   icons();
 });
+
+function refreshWinnerArchiveSources() {
+  wmDisplay = normalizeWinnerPageState(wmDisplay);
+  syncDisplay();
+  renderArchiveSources();
+  renderPreview();
+}
 
 function renderActiveComp() {
   const comp = getActiveCompetition(),
@@ -113,7 +91,7 @@ function renderActiveComp() {
       '<p class="wm-empty">Tidak ada lomba aktif. Tambahkan lomba dengan status "active" di database.</p>';
     return;
   }
-  el.innerHTML = `<div class="wm-comp-badge"><i data-lucide="${esc(comp.icon || "trophy")}"></i><div><strong>${esc(comp.name)}</strong><small>${esc(comp.shortName)} Â· ${(comp.winnerCategories || []).length} kategori sumber Â· ${getAllWinners(comp).length} pemenang sumber</small></div></div>`;
+  el.innerHTML = `<div class="wm-comp-badge"><i data-lucide="${esc(comp.icon || "trophy")}"></i><div><strong>${esc(comp.name)}</strong><small>${esc(comp.shortName)} · ${(comp.winnerCategories || []).length} kategori sumber · ${getAllWinners(comp).length} pemenang sumber</small></div></div>`;
 }
 function syncSk() {
   document.getElementById("wmSkTitle").value = wmState.sk.title;
@@ -140,6 +118,10 @@ function bindSk() {
   });
 }
 function syncDisplay() {
+  const availableCount = availableWinnerArchives().length;
+  wmDisplay.archiveLimit = availableCount
+    ? Math.max(1, Math.min(availableCount, wmDisplay.archiveLimit))
+    : 0;
   const vals = {
     wmPageActive: wmDisplay.active,
     wmPageEyebrow: wmDisplay.eyebrow,
@@ -162,6 +144,13 @@ function syncDisplay() {
     const e = document.getElementById(id);
     e.type === "checkbox" ? (e.checked = v) : (e.value = v);
   });
+  const limitInput = document.getElementById("wmArchiveLimit");
+  limitInput.min = availableCount ? "1" : "0";
+  limitInput.max = String(availableCount);
+  limitInput.disabled = availableCount === 0;
+  document.getElementById("wmArchiveLimitHint").textContent = availableCount
+    ? `Maksimal ${availableCount}, sesuai Arsip yang memiliki pemenang`
+    : "Belum ada Arsip yang memiliki pemenang aktif";
 }
 function bindDisplay() {
   const text = {
@@ -201,26 +190,30 @@ function bindDisplay() {
       }),
   );
   document.getElementById("wmArchiveLimit").oninput = (e) => {
+    const availableCount = availableWinnerArchives().length;
     wmDisplay.archiveLimit = Math.max(
-      1,
-      Math.min(12, Number(e.target.value) || 1),
+      availableCount ? 1 : 0,
+      Math.min(availableCount, Number(e.target.value) || 0),
     );
+    e.target.value = String(wmDisplay.archiveLimit);
     renderArchiveSources();
     renderPreview();
   };
 }
 function renderArchiveSources() {
   const root = document.getElementById("wmArchiveSourceList"),
-    items =
-      typeof getEffectiveArchivedCompetitions === "function"
-        ? getEffectiveArchivedCompetitions().filter((x) => x.active !== false)
-        : getArchivedCompetitions();
+    allArchives =
+      typeof getPublicArchivedCompetitions === "function"
+        ? getPublicArchivedCompetitions()
+        : [],
+    items = availableWinnerArchives(),
+    unavailableCount = Math.max(0, allArchives.length - items.length);
   root.innerHTML =
-    `<p class="wm-source-note"><i data-lucide="database"></i> ${items.length} lomba Arsip tersedia; ${Math.min(wmDisplay.archiveLimit, items.length)} card akan tampil.</p>` +
+    `<p class="wm-source-note"><i data-lucide="database"></i> ${allArchives.length} Arsip publik; ${items.length} memiliki pemenang aktif${unavailableCount ? `; ${unavailableCount} tidak masuk karena belum memiliki pemenang` : ""}. ${Math.min(wmDisplay.archiveLimit, items.length)} card akan tampil.</p>` +
     items
       .map(
         (c, i) =>
-          `<div class="wm-archive-source ${i < wmDisplay.archiveLimit ? "is-included" : ""}"><i data-lucide="${esc(c.icon || "archive")}"></i><span><strong>${esc(c.name)}</strong><small>${(c.winnerCategories || []).reduce((n, x) => n + x.winners.filter((w) => w.active).length, 0)} pemenang · Sumber Arsip</small></span><em>${i < wmDisplay.archiveLimit ? "Ditampilkan" : "Di luar batas"}</em></div>`,
+          `<div class="wm-archive-source ${i < wmDisplay.archiveLimit ? "is-included" : ""}">${archiveSourceIcon(c)}<span><strong>${esc(c.name)}</strong><small>${(c.winnerCategories || []).reduce((n, x) => n + x.winners.filter((w) => w.active !== false).length, 0)} pemenang · Sumber Arsip</small></span><em>${i < wmDisplay.archiveLimit ? "Ditampilkan" : "Di luar batas"}</em></div>`,
       )
       .join("");
   icons();
@@ -234,12 +227,18 @@ function bindGlobal() {
     e.preventDefault();
     save();
   };
-  document.getElementById("resetWinnerManager").onclick = () => {
-    if (confirm("Reset data pemenang?")) {
-      localStorage.removeItem(WM_KEY);
-      localStorage.removeItem(WM_DISPLAY_KEY);
-      location.reload();
-    }
+  document.getElementById("resetWinnerManager").onclick = async () => {
+    const confirmed = await adminConfirm({
+      title: "Reset data Pemenang?",
+      message:
+        "Kategori, data pemenang, SK, pengaturan metadata, dan batas riwayat akan dikembalikan ke template awal.",
+      confirmLabel: "Ya, reset Pemenang",
+      variant: "danger",
+      icon: "rotate-ccw",
+    });
+    if (!confirmed) return;
+    resetWinnerAdminState();
+    location.reload();
   };
   document.getElementById("addWinnerCategory").onclick = () => {
     wmState.categories.push({
@@ -261,18 +260,51 @@ function bindGlobal() {
           .forEach((x) => x.classList.remove("preview-switch__btn--active"));
         b.classList.add("preview-switch__btn--active");
         const f = document.getElementById("wmPreviewFrame");
+        f.dataset.previewMode = b.dataset.wmPreview;
         f.classList.remove(
           "wm-preview-frame--tablet",
           "wm-preview-frame--mobile",
         );
         if (b.dataset.wmPreview !== "desktop")
           f.classList.add("wm-preview-frame--" + b.dataset.wmPreview);
+        requestAnimationFrame(fitWinnerPreview);
       }),
   );
 }
 
+function setupWinnerPreviewSizing() {
+  const frame = document.getElementById("wmPreviewFrame");
+  const root = document.getElementById("wmPreview");
+  frame.dataset.previewMode = frame.dataset.previewMode || "desktop";
+  winnerPreviewResizeObserver?.disconnect();
+  winnerPreviewResizeObserver = new ResizeObserver(fitWinnerPreview);
+  winnerPreviewResizeObserver.observe(frame);
+  winnerPreviewResizeObserver.observe(root);
+  requestAnimationFrame(fitWinnerPreview);
+}
+
+function fitWinnerPreview() {
+  const frame = document.getElementById("wmPreviewFrame");
+  const root = document.getElementById("wmPreview");
+  if (!frame || !root || !root.classList.contains("scaled-public-preview"))
+    return;
+  const designWidths = { desktop: 1425, tablet: 753, mobile: 375 };
+  const mode = frame.dataset.previewMode || "desktop";
+  const designWidth = designWidths[mode] || designWidths.desktop;
+  const frameStyle = getComputedStyle(frame);
+  const horizontalPadding =
+    parseFloat(frameStyle.paddingLeft) + parseFloat(frameStyle.paddingRight);
+  const verticalPadding =
+    parseFloat(frameStyle.paddingTop) + parseFloat(frameStyle.paddingBottom);
+  const availableWidth = Math.max(1, frame.clientWidth - horizontalPadding);
+  const scale = Math.min(1, availableWidth / designWidth);
+  root.style.setProperty("--public-preview-scale", String(scale));
+  frame.style.height = `${Math.ceil(root.offsetHeight * scale + verticalPadding)}px`;
+}
+
 function renderCategories() {
   const root = document.getElementById("wmCategoryEditor");
+  applyGlobalTheme(root);
   root.innerHTML = "";
   wmState.categories.forEach((cat, ci) => {
     const el = document.createElement("div");
@@ -331,12 +363,18 @@ function renderCategories() {
         renderPreview();
       }
     };
-    el.querySelector("[data-cat-delete]").onclick = () => {
-      if (confirm(`Hapus kategori "${cat.name}" dan semua pemenangnya?`)) {
-        wmState.categories.splice(ci, 1);
-        renderCategories();
-        renderPreview();
-      }
+    el.querySelector("[data-cat-delete]").onclick = async () => {
+      const confirmed = await adminConfirm({
+        title: "Hapus kategori Pemenang?",
+        message: `${cat.name} dan seluruh ${cat.winners.length} data pemenang di dalamnya akan dihapus dari perubahan saat ini.`,
+        confirmLabel: "Ya, hapus kategori",
+        variant: "danger",
+        icon: "folder-x",
+      });
+      if (!confirmed) return;
+      wmState.categories.splice(ci, 1);
+      renderCategories();
+      renderPreview();
     };
     el.querySelector("[data-add-winner]").onclick = () => {
       cat.winners.push({
@@ -413,12 +451,18 @@ function renderCategories() {
           renderPreview();
         }
       };
-      wEl.querySelector("[data-w-delete]").onclick = () => {
-        if (confirm(`Hapus pemenang "${w.name || "tanpa nama"}"?`)) {
-          cat.winners.splice(wi, 1);
-          renderCategories();
-          renderPreview();
-        }
+      wEl.querySelector("[data-w-delete]").onclick = async () => {
+        const confirmed = await adminConfirm({
+          title: "Hapus data pemenang?",
+          message: `${w.name || "Pemenang tanpa nama"} akan dihapus dari kategori ${cat.name}.`,
+          confirmLabel: "Ya, hapus pemenang",
+          variant: "danger",
+          icon: "user-x",
+        });
+        if (!confirmed) return;
+        cat.winners.splice(wi, 1);
+        renderCategories();
+        renderPreview();
       };
       wEl.querySelector("[data-w-photo]").onchange = (e) => {
         const file = e.target.files[0];
@@ -452,51 +496,30 @@ function initials(name) {
     .toUpperCase();
 }
 
-function archiveCards() {
-  if (!wmDisplay.archiveActive) return "";
-  const allItems = (
-    typeof getPublicArchivedCompetitions === "function"
-      ? getPublicArchivedCompetitions()
-      : typeof getEffectiveArchivedCompetitions === "function"
-        ? getEffectiveArchivedCompetitions().filter((x) => x.active !== false)
-        : getArchivedCompetitions()
-  ).filter((c) =>
-    (c.winnerCategories || []).some(
-      (cat) =>
-        cat.active !== false &&
-        (cat.winners || []).some((w) => w.active !== false),
-    ),
-  );
-  const items = allItems.slice(0, wmDisplay.archiveLimit);
-  if (!items.length) return "";
-  return `<div class="archive-winners wm-preview__archives"><h3 class="archive-winners__title">${esc(wmDisplay.archiveTitle)}</h3><div class="grid grid--3">${items.map((c) => `<a href="${TalentaPaths.to("public.archiveDetail", { query: { id: c.id }, hash: "pemenang" })}" class="lomba-card"><div class="lomba-card__thumb" style="background:${esc(c.gradient || "")}"><i data-lucide="${esc(c.icon || "archive")}"></i></div><div class="lomba-card__body"><h3 class="lomba-card__title">${esc(c.name)}</h3><p class="lomba-card__desc">${esc(c.description || "Lihat daftar pemenang ajang talenta sebelumnya.")}</p><span class="lomba-card__action">${esc(wmDisplay.archiveAction)} <i data-lucide="arrow-right"></i></span></div></a>`).join("")}</div></div>`;
-}
 function renderPreview() {
-  const root = document.getElementById("wmPreview"),
-    comp = getActiveCompetition();
-  if (!comp) {
+  const root = document.getElementById("wmPreview");
+  const competition = getActiveCompetition();
+  applyGlobalTheme(root);
+  if (!competition) {
+    root.className = "winner-public-preview";
     root.innerHTML = '<div class="wm-empty">Tidak ada lomba aktif.</div>';
     return;
   }
   if (!wmDisplay.active) {
+    root.className = "winner-public-preview";
     root.innerHTML =
       '<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>Halaman Pemenang dinonaktifkan</strong><span>Aktifkan kembali dari Pengaturan Tampilan.</span></div>';
     icons();
     return;
   }
-  const activeCats = wmState.categories.filter(
-      (c) => c.active && c.winners.some((w) => w.active),
-    ),
-    align = wmDisplay.alignment === "center" ? "" : " section__header--left";
-  root.innerHTML = `
-<div class="section__header${align} wm-preview__public-header"><p class="t-eyebrow">${esc(wmDisplay.eyebrow)}</p><h1 class="t-h1">${esc(wmDisplay.title)}</h1><p>${esc(wmDisplay.description)}</p></div>
-${wmDisplay.showSk && wmState.sk.title ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2"></i></div><div class="sk-banner__content"><h3>${esc(wmState.sk.title)}</h3><p>${esc(wmState.sk.description)}</p></div></div><button type="button" class="btn btn--primary wm-preview__download"><i data-lucide="download"></i> Unduh PDF</button></div>` : ""}
-<div class="winner-section">${activeCats
-    .map((cat) => {
-      const winners = cat.winners.filter((w) => w.active);
-      return `<div class="winner-group"><h3 class="winner-group__title"><i data-lucide="${esc(cat.icon)}"></i>${esc(cat.name)}<span class="badge badge--gold">${winners.length} Pemenang</span></h3><div class="champion-grid">${winners.map((w) => `<article class="champion-card">${wmDisplay.showPhoto ? `<div class="champion-card__photo">${w.photo ? `<img src="${esc(w.photo)}" alt="Foto ${esc(w.name)}">` : `${initials(w.name)}`}</div>` : ""}<p class="champion-card__rank t-mono">${esc(w.rank)}</p><p class="champion-card__name">${esc(w.name || "—")}</p>${wmDisplay.showSchool ? `<p class="champion-card__school">${esc(w.school)}</p>` : ""}<div class="champion-card__meta">${wmDisplay.showExam ? `<span><span class="meta-label">No. Ujian:</span> ${esc(w.exam)}</span>` : ""}${wmDisplay.showDistrict ? `<span><span class="meta-label">Kecamatan:</span> ${esc(w.district)}</span>` : ""}${wmDisplay.showRegency ? `<span><span class="meta-label">Kabupaten:</span> ${esc(w.regency)}</span>` : ""}${wmDisplay.showProvince ? `<span><span class="meta-label">Provinsi:</span> ${esc(w.province)}</span>` : ""}</div></article>`).join("")}</div></div>`;
-    })
-    .join("")}</div>
-${!activeCats.length ? '<div class="wm-empty"><i data-lucide="trophy"></i><strong>Belum ada pemenang</strong><span>Tambahkan kategori dan data pemenang dari editor di atas.</span></div>' : ""}${archiveCards()}`;
+  const source = resolvePublicWinnerState(wmState, wmDisplay);
+  const archiveHref = (archiveCompetition) =>
+    TalentaPaths.to("template.archiveDetail", {
+      query: { id: archiveCompetition.id },
+      hash: "pemenang",
+    });
+  root.className = "section winner-public-preview scaled-public-preview";
+  root.innerHTML = buildWinnerPageMarkup(source, { archiveHref });
+  requestAnimationFrame(fitWinnerPreview);
   icons();
 }

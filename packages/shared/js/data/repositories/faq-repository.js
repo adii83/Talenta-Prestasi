@@ -1,7 +1,7 @@
 ﻿/* State mandiri FAQ — baseline mengikuti konten template faq.html. */
 const FAQ_STATE_KEY = "talenta_faq_manager_v1";
 const FAQ_BASELINE = {
-  version: 1,
+  version: 2,
   page: {
     active: true,
     eyebrow: "Bantuan",
@@ -126,40 +126,91 @@ function faqRead() {
 function faqUid(prefix = "faq") {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
+function faqString(value, fallback = "") {
+  return typeof value === "string" ? value : fallback;
+}
+function faqEscape(value = "") {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+function faqSafeId(value, fallback, used) {
+  const base =
+    faqString(value)
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]+/g, "-")
+      .replace(/^-+|-+$/g, "") ||
+    fallback ||
+    "faq";
+  let candidate = base;
+  let suffix = 2;
+  while (used.has(candidate)) {
+    candidate = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  used.add(candidate);
+  return candidate;
+}
 function normalizeFaqState(source) {
-  const s = { ...faqClone(FAQ_BASELINE), ...(source || {}) };
-  s.page = { ...FAQ_BASELINE.page, ...(source?.page || {}) };
+  const raw = source && typeof source === "object" ? source : {};
+  const rawPage =
+    raw.page && typeof raw.page === "object" ? raw.page : FAQ_BASELINE.page;
   const used = new Set();
-  s.categories = (s.categories || []).filter(Boolean).map((cat, i) => {
-    let id = cat.id || faqUid("category");
-    while (used.has(id)) id = faqUid("category");
-    used.add(id);
-    return {
-      ...cat,
-      id,
-      title: cat.title || `Kategori ${i + 1}`,
-      active: cat.active !== false,
-      questions: (cat.questions || []).filter(Boolean).map((q) => {
-        let qid = q.id || faqUid("question");
-        while (used.has(qid)) qid = faqUid("question");
-        used.add(qid);
+  const categories = Array.isArray(raw.categories) ? raw.categories : [];
+  return {
+    version: 2,
+    page: {
+      active: rawPage.active !== false,
+      eyebrow: faqString(rawPage.eyebrow, FAQ_BASELINE.page.eyebrow),
+      title: faqString(rawPage.title, FAQ_BASELINE.page.title),
+      description: faqString(
+        rawPage.description,
+        FAQ_BASELINE.page.description,
+      ),
+      alignment: rawPage.alignment === "left" ? "left" : "center",
+    },
+    categories: categories
+      .filter((category) => category && typeof category === "object")
+      .map((category, categoryIndex) => {
+        const id = faqSafeId(
+          category.id,
+          `category-${categoryIndex + 1}`,
+          used,
+        );
+        const questions = Array.isArray(category.questions)
+          ? category.questions
+          : [];
         return {
-          ...q,
-          id: qid,
-          active: q.active !== false,
-          question: q.question || "",
-          answer: q.answer || "",
+          id,
+          active: category.active !== false,
+          title:
+            faqString(category.title).trim() || `Kategori ${categoryIndex + 1}`,
+          questions: questions
+            .filter((question) => question && typeof question === "object")
+            .map((question, questionIndex) => ({
+              id: faqSafeId(
+                question.id,
+                `question-${categoryIndex + 1}-${questionIndex + 1}`,
+                used,
+              ),
+              categoryId: id,
+              active: question.active !== false,
+              question: faqString(question.question),
+              answer: faqString(question.answer),
+            })),
         };
       }),
-    };
-  });
-  return s;
+  };
 }
 function getFaqAdminState() {
   return normalizeFaqState(faqRead() || FAQ_BASELINE);
 }
-function getPublicFaqState() {
-  const s = getFaqAdminState();
+function getPublicFaqStateFromSource(source) {
+  const s = normalizeFaqState(source);
   return {
     ...s,
     categories: s.categories
@@ -173,10 +224,87 @@ function getPublicFaqState() {
       .filter((c) => c.questions.length),
   };
 }
+function getPublicFaqState() {
+  return getPublicFaqStateFromSource(getFaqAdminState());
+}
+function buildFaqAccordionMarkup(categories, options = {}) {
+  const idPrefix = faqSafeId(options.idPrefix, "faq", new Set());
+  return categories
+    .map(
+      (category) =>
+        `<section class="faq-category" data-faq-category-id="${faqEscape(category.id)}"><h2 class="faq-category__title">${faqEscape(category.title)}</h2><div class="accordion">${category.questions
+          .map((question) => {
+            const panelId = `${idPrefix}-${question.id}`;
+            const triggerId = `${panelId}-trigger`;
+            return `<div class="accordion__item" data-faq-question-id="${faqEscape(question.id)}"><button class="accordion__trigger" id="${faqEscape(triggerId)}" type="button" aria-expanded="false" aria-controls="${faqEscape(panelId)}"><span>${faqEscape(question.question)}</span><svg class="accordion__chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg></button><div class="accordion__content" id="${faqEscape(panelId)}" role="region" aria-labelledby="${faqEscape(triggerId)}"><div class="accordion__body">${faqEscape(question.answer).replace(/\r?\n/g, "<br>")}</div></div></div>`;
+          })
+          .join("")}</div></section>`,
+    )
+    .join("");
+}
+function buildFaqPageMarkup(state, options = {}) {
+  const normalized = normalizeFaqState(state);
+  const page = normalized.page;
+  if (!page.active) {
+    const homeHref = faqEscape(options.homeHref || "../");
+    return `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="eye-off"></i><h1 class="t-h2">FAQ tidak tersedia</h1><p>Halaman bantuan sedang dinonaktifkan.</p><a class="btn btn--outline" href="${homeHref}">Kembali ke Beranda</a></div></div></section>`;
+  }
+  const categories = normalized.categories
+    .filter((category) => category.active)
+    .map((category) => ({
+      ...category,
+      questions: category.questions.filter(
+        (question) =>
+          question.active && question.question.trim() && question.answer.trim(),
+      ),
+    }))
+    .filter((category) => category.questions.length);
+  return `<section class="section"><div class="container"><div class="section__header${page.alignment === "left" ? " section__header--left" : ""}"><p class="t-eyebrow">${faqEscape(page.eyebrow)}</p><h1 class="t-h1">${faqEscape(page.title)}</h1><p>${faqEscape(page.description)}</p></div>${
+    categories.length
+      ? buildFaqAccordionMarkup(categories, options)
+      : '<div class="public-empty-state public-empty-state--compact"><p>Belum ada pertanyaan yang dipublikasikan.</p></div>'
+  }</div></section>`;
+}
+function bindFaqAccordion(root = document) {
+  root.querySelectorAll(".accordion__trigger").forEach((trigger) => {
+    if (trigger.dataset.accordionBound === "1") return;
+    trigger.dataset.accordionBound = "1";
+    trigger.addEventListener("click", () => {
+      const item = trigger.closest(".accordion__item");
+      const content = item.querySelector(".accordion__content");
+      const isOpen = item.classList.contains("accordion__item--open");
+      item
+        .closest(".accordion")
+        .querySelectorAll(".accordion__item")
+        .forEach((other) => {
+          other.classList.remove("accordion__item--open");
+          other
+            .querySelector(".accordion__trigger")
+            ?.setAttribute("aria-expanded", "false");
+          const otherContent = other.querySelector(".accordion__content");
+          if (otherContent) otherContent.style.maxHeight = "0";
+        });
+      if (!isOpen) {
+        item.classList.add("accordion__item--open");
+        trigger.setAttribute("aria-expanded", "true");
+        content.style.maxHeight = `${content.scrollHeight}px`;
+      }
+    });
+  });
+}
 function saveFaqAdminState(state) {
-  localStorage.setItem(FAQ_STATE_KEY, JSON.stringify(normalizeFaqState(state)));
+  const normalized = normalizeFaqState(state);
+  localStorage.setItem(FAQ_STATE_KEY, JSON.stringify(normalized));
+  window.dispatchEvent(
+    new CustomEvent("talenta:faq", { detail: faqClone(normalized) }),
+  );
+  return faqClone(normalized);
 }
 function resetFaqAdminState() {
   localStorage.removeItem(FAQ_STATE_KEY);
-  return getFaqAdminState();
+  const baseline = getFaqAdminState();
+  window.dispatchEvent(
+    new CustomEvent("talenta:faq", { detail: faqClone(baseline) }),
+  );
+  return baseline;
 }

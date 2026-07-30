@@ -9,10 +9,10 @@
     ],
     home: [
       ["Hero", "hero-editor"],
+      ["Highlight Pemenang", "winner-highlight-editor"],
       ["Jadwal Penting", "schedule-editor"],
       ["Biaya Pendaftaran", "pricing-editor"],
       ["Benefit", "benefit-editor"],
-      ["Highlight Pemenang", "winner-highlight-editor"],
       ["Mitra & Partner", "partner-editor"],
     ],
     download: [

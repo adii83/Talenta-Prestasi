@@ -1,9 +1,7 @@
-﻿const HOME_KEY = "talenta_home_editor_v1",
-  GLOBAL_KEY = "talenta_event_settings_v1";
+const HOME_KEY = HOME_STATE_KEY;
 const THEME_DEFAULTS = {
   primaryColor: "#1e4b8c",
-  accentColor: "#c89b3c",
-  navyColor: "#10233f",
+  accentColor: "#ffffff",
 };
 const ICONS = [
   "arrow-right",
@@ -27,7 +25,7 @@ const heroDefaults = {
   title: "Olimpiade Sains Nusantara 2026",
   description:
     "Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.",
-  image: "../../../packages/shared/images/garuda.png",
+  image: "../../../template/assets/images/garuda.png",
   imageAlt: "Garuda Logo",
   badges: [
     { label: "SD / MI", active: true },
@@ -84,28 +82,52 @@ function scheduleItem(label, date, icon) {
   };
 }
 function loadState() {
-  const old = JSON.parse(localStorage.getItem(HOME_KEY) || "null");
-  if (!old)
-    return {
-      hero: structuredClone(heroDefaults),
-      schedule: structuredClone(scheduleDefaults),
-    };
-  const hero = old.hero || old;
+  const old = getHomeAdminState();
+  const hero = old.hero;
+  if (
+    !hero.image ||
+    /(?:packages\/shared\/images|template\/assets\/images)\/garuda\.png$/.test(
+      hero.image,
+    )
+  ) {
+    hero.image = heroDefaults.image;
+  }
   hero.buttons = (hero.buttons || heroDefaults.buttons).map((b, i) => ({
     ...(heroDefaults.buttons[i] || heroDefaults.buttons[0]),
     ...b,
     libraryIcon: b.libraryIcon || b.icon || "arrow-right",
   }));
   return {
+    ...old,
     hero: { ...structuredClone(heroDefaults), ...hero },
     schedule: { ...structuredClone(scheduleDefaults), ...(old.schedule || {}) },
   };
 }
 let state = loadState();
+let heroPreviewResizeObserver;
+const scaledPreviewConfigs = new Map();
 document.addEventListener("DOMContentLoaded", () => {
+  const heroEditor = document.getElementById("hero-editor");
+  const winnerEditor = document.getElementById("winner-highlight-editor");
+  if (heroEditor && winnerEditor)
+    heroEditor.insertAdjacentElement("afterend", winnerEditor);
   bind();
   sync();
   renderAll();
+  setupHeroPreviewSizing();
+  setupScaledPreview(
+    "schedulePreviewFrame",
+    "schedulePreview",
+    "schedulePreview",
+  );
+  subscribeGlobalSettings(() => {
+    renderHero();
+    renderSchedule();
+    renderPricing();
+    renderBenefit();
+    renderWinner();
+    renderPartners();
+  });
   lucide.createIcons();
 });
 function bind() {
@@ -141,16 +163,31 @@ function bind() {
     renderScheduleCards();
     renderSchedule();
   };
-  document.getElementById("homeEditorForm").onsubmit = (e) => {
-    e.preventDefault();
-    localStorage.setItem(HOME_KEY, JSON.stringify(state));
+  const saveHome = () => {
+    document.dispatchEvent(
+      new CustomEvent("talenta:home-before-save", { detail: state }),
+    );
+    const saved = saveHomeAdminState(state);
+    Object.assign(state.winnerHighlight, saved.winnerHighlight);
     toast("Pengaturan Beranda berhasil disimpan.");
   };
-  document.getElementById("resetHome").onclick = () => {
-    if (confirm("Reset seluruh konfigurasi Beranda?")) {
-      localStorage.removeItem(HOME_KEY);
-      location.reload();
-    }
+  document.getElementById("homeEditorForm").onsubmit = (e) => {
+    e.preventDefault();
+    saveHome();
+  };
+  window.TalentaHomeEditor = Object.freeze({ save: saveHome });
+  document.getElementById("resetHome").onclick = async () => {
+    const confirmed = await adminConfirm({
+      title: "Reset seluruh Beranda?",
+      message:
+        "Hero, Highlight Pemenang, Jadwal, Biaya, Benefit, dan Mitra akan dikembalikan ke template awal.",
+      confirmLabel: "Ya, reset Beranda",
+      variant: "danger",
+      icon: "rotate-ccw",
+    });
+    if (!confirmed) return;
+    resetHomeAdminState();
+    location.reload();
   };
   bindPreview("[data-preview]", "homePreviewFrame", "home-preview-frame");
   bindPreview(
@@ -196,10 +233,82 @@ function bindPreview(selector, frameId, prefix, dataName = "preview") {
         b.classList.add("preview-switch__btn--active");
         const f = document.getElementById(frameId),
           mode = b.dataset[dataName];
-        f.classList.remove(prefix + "--tablet", prefix + "--mobile");
-        if (mode !== "desktop") f.classList.add(prefix + "--" + mode);
+        f.classList.remove(
+          prefix + "--desktop",
+          prefix + "--tablet",
+          prefix + "--mobile",
+        );
+        f.classList.add(prefix + "--" + mode);
+        if (frameId === "homePreviewFrame") {
+          f.dataset.previewMode = mode;
+          requestAnimationFrame(fitHeroPreview);
+        } else if (scaledPreviewConfigs.has(frameId)) {
+          f.dataset.previewMode = mode;
+          requestAnimationFrame(() => fitScaledPreview(frameId));
+        }
       }),
   );
+}
+function setupScaledPreview(frameId, rootId) {
+  const frame = document.getElementById(frameId);
+  const root = document.getElementById(rootId);
+  if (!frame || !root) return;
+  const oldConfig = scaledPreviewConfigs.get(frameId);
+  oldConfig?.observer.disconnect();
+  const observer = new ResizeObserver(() => fitScaledPreview(frameId));
+  const config = {
+    rootId,
+    designWidths: { desktop: 1440, tablet: 753, mobile: 375 },
+    observer,
+  };
+  scaledPreviewConfigs.set(frameId, config);
+  frame.dataset.previewMode = frame.dataset.previewMode || "desktop";
+  observer.observe(frame);
+  observer.observe(root);
+  requestAnimationFrame(() => fitScaledPreview(frameId));
+}
+function fitScaledPreview(frameId) {
+  const frame = document.getElementById(frameId);
+  const config = scaledPreviewConfigs.get(frameId);
+  const root = config && document.getElementById(config.rootId);
+  if (!frame || !root || !config) return;
+  const mode = frame.dataset.previewMode || "desktop";
+  const designWidth = config.designWidths[mode] || config.designWidths.desktop;
+  const frameStyle = getComputedStyle(frame);
+  const horizontalPadding =
+    parseFloat(frameStyle.paddingLeft) + parseFloat(frameStyle.paddingRight);
+  const verticalPadding =
+    parseFloat(frameStyle.paddingTop) + parseFloat(frameStyle.paddingBottom);
+  const availableWidth = Math.max(1, frame.clientWidth - horizontalPadding);
+  const scale = Math.min(1, availableWidth / designWidth);
+  root.style.setProperty("--public-preview-scale", String(scale));
+  frame.style.height = `${Math.ceil(root.offsetHeight * scale + verticalPadding)}px`;
+}
+function setupHeroPreviewSizing() {
+  const frame = document.getElementById("homePreviewFrame");
+  frame.dataset.previewMode = "desktop";
+  heroPreviewResizeObserver?.disconnect();
+  heroPreviewResizeObserver = new ResizeObserver(() => fitHeroPreview());
+  heroPreviewResizeObserver.observe(frame);
+  heroPreviewResizeObserver.observe(document.getElementById("homePreview"));
+  requestAnimationFrame(fitHeroPreview);
+}
+function fitHeroPreview() {
+  const frame = document.getElementById("homePreviewFrame");
+  const root = document.getElementById("homePreview");
+  if (!frame || !root) return;
+  const designWidths = { desktop: 1440, tablet: 753, mobile: 375 };
+  const mode = frame.dataset.previewMode || "desktop";
+  const designWidth = designWidths[mode] || designWidths.desktop;
+  const frameStyle = getComputedStyle(frame);
+  const horizontalPadding =
+    parseFloat(frameStyle.paddingLeft) + parseFloat(frameStyle.paddingRight);
+  const verticalPadding =
+    parseFloat(frameStyle.paddingTop) + parseFloat(frameStyle.paddingBottom);
+  const availableWidth = Math.max(1, frame.clientWidth - horizontalPadding);
+  const scale = Math.min(1, availableWidth / designWidth);
+  root.style.setProperty("--hero-preview-scale", String(scale));
+  frame.style.height = `${Math.ceil(root.offsetHeight * scale + verticalPadding)}px`;
 }
 function sync() {
   const h = state.hero,
@@ -339,30 +448,38 @@ function renderHero() {
   const root = document.getElementById("homePreview"),
     h = state.hero,
     t = theme();
+  root.className = "hero hero-preview";
   applyTheme(root, t);
   if (!h.active) return disabled(root, "Hero");
-  root.innerHTML = `<div class="home-preview__copy"><span>${esc(h.eyebrow)}</span><h2>${esc(h.title)}</h2><img class="home-preview__mobile-image" src="${h.image}" alt="${esc(h.imageAlt)}"><p>${esc(h.description)}</p><div class="home-preview__badges">${h.badges
-    .filter((x) => x.active)
-    .map((x) => `<b>${esc(x.label)}</b>`)
-    .join("")}</div><div class="home-preview__buttons">${h.buttons
-    .filter((x) => x.active)
-    .map(
-      (x) =>
-        `<a class="${x.style === "outline" ? "is-outline" : ""}">${esc(x.label)} ${iconMarkup(x)}</a>`,
-    )
-    .join(
-      "",
-    )}</div></div><img class="home-preview__image" src="${h.image}" alt="${esc(h.imageAlt)}">`;
+  root.innerHTML = buildHomeHeroMarkup(h, {
+    resolveAsset: (value, fallback) => value || fallback,
+    resolveUrl: () => "#",
+    renderIcon: heroPreviewIconMarkup,
+    linkAttributes: () => ' data-hero-preview-link="true"',
+  });
+  root.querySelectorAll("[data-hero-preview-link]").forEach(
+    (link) =>
+      (link.onclick = (event) => {
+        event.preventDefault();
+      }),
+  );
+  root
+    .querySelectorAll("img")
+    .forEach((image) => (image.onload = () => fitHeroPreview()));
+  requestAnimationFrame(fitHeroPreview);
   icons();
 }
 function renderSchedule() {
   const root = document.getElementById("schedulePreview"),
     s = state.schedule,
     t = theme();
+  root.className = "section scaled-public-preview schedule-public-preview";
   applyTheme(root, t);
   if (!s.active) return disabled(root, "Jadwal Penting");
-  const cards = s.cards.filter((x) => x.active);
-  root.innerHTML = `<header><span>${esc(s.eyebrow)}</span><h2>${esc(s.title)}</h2><p>${esc(s.description)}</p></header><div class="schedule-preview__grid" style="--card-count:${Math.min(cards.length, 4)}">${cards.map((c) => `<article><div class="schedule-preview__icon">${iconMarkup(c)}</div><strong>${esc(c.label)}</strong><time>${esc(c.date)}</time>${c.description ? `<p>${esc(c.description)}</p>` : ""}</article>`).join("")}</div>`;
+  root.innerHTML = buildHomeScheduleMarkup(s, {
+    renderIcon: heroPreviewIconMarkup,
+  });
+  requestAnimationFrame(() => fitScaledPreview("schedulePreviewFrame"));
   icons();
 }
 function renderSummaries() {
@@ -392,6 +509,11 @@ function iconMarkup(x) {
     return `<img src="${x.uploadedIcon}" alt="${esc(x.iconAlt || "Ikon kustom")}">`;
   return `<i data-lucide="${x.libraryIcon || x.icon || "circle"}"></i>`;
 }
+function heroPreviewIconMarkup(x, size = 18) {
+  if (x.iconMode === "upload" && x.uploadedIcon)
+    return `<img class="home-custom-icon" src="${x.uploadedIcon}" alt="${esc(x.iconAlt || "Ikon kustom")}" style="width:${size}px;height:${size}px">`;
+  return `<i data-lucide="${x.libraryIcon || x.icon || "circle"}" style="width:${size}px;height:${size}px;stroke-width:1.5"></i>`;
+}
 function readImage(file, maxMb, done) {
   if (!file) return;
   if (
@@ -406,29 +528,31 @@ function readImage(file, maxMb, done) {
   r.onload = () => done(r.result);
   r.readAsDataURL(file);
 }
-function removeItem(arr, i, name, ...renders) {
-  if (confirm(`Hapus ${name} ini secara permanen?`)) {
-    arr.splice(i, 1);
-    renders.forEach((f) => f());
-  }
+async function removeItem(arr, i, name, ...renders) {
+  const confirmed = await adminConfirm({
+    title: `Hapus ${name}?`,
+    message: `${name} ini akan dihapus dari perubahan Beranda saat ini.`,
+    confirmLabel: "Ya, hapus",
+    variant: "danger",
+    icon: "trash-2",
+  });
+  if (!confirmed) return;
+  arr.splice(i, 1);
+  renders.forEach((f) => f());
 }
 function disabled(root, name) {
   root.innerHTML = `<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>${name} dinonaktifkan</strong><span>Data tetap tersimpan dan dapat diaktifkan kembali.</span></div>`;
   icons();
 }
 function theme() {
+  const globalTheme = getGlobalSettings().theme;
   return {
     ...THEME_DEFAULTS,
-    ...JSON.parse(localStorage.getItem(GLOBAL_KEY) || "null"),
+    ...globalTheme,
   };
 }
 function applyTheme(el, t) {
-  el.style.setProperty("--preview-primary", t.primaryColor);
-  el.style.setProperty("--preview-accent", t.accentColor);
-  el.style.setProperty(
-    "--preview-navy",
-    t.navyColor || THEME_DEFAULTS.navyColor,
-  );
+  applyGlobalThemeTokens(el, { theme: t });
 }
 function icons() {
   lucide.createIcons();

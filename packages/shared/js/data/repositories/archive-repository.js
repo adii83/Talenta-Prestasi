@@ -1,5 +1,4 @@
-﻿/* Resolver bersama untuk data Arsip efektif.
-   Baseline tetap MOCK_ARCHIVE_DATABASE; localStorage hanya menyimpan override demo versi 2. */
+/* Resolver, normalizer, dan markup bersama untuk Arsip serta Detail Arsip. */
 const ARCHIVE_STATE_KEY = "talenta_archive_manager_v2";
 const ARCHIVE_LEGACY_KEY = "talenta_archive_manager_v1";
 
@@ -14,6 +13,37 @@ function archiveReadJson(key) {
     console.warn(`State ${key} tidak valid; baseline digunakan.`, error);
     return null;
   }
+}
+
+function archiveString(value, fallback = "") {
+  return typeof value === "string" ? value.trim() : fallback;
+}
+
+function archiveEscape(value = "") {
+  return String(value).replace(
+    /[&<>"]/g,
+    (character) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character],
+  );
+}
+
+function archiveSafeUrl(value = "", fallback = "#") {
+  const source = String(value).trim();
+  return source && !/^(?:javascript|vbscript):/i.test(source)
+    ? source
+    : fallback;
+}
+
+function archiveInitials(name = "") {
+  return (
+    name
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0])
+      .join("")
+      .toUpperCase() || "?"
+  );
 }
 
 function archiveDetailDefaults() {
@@ -38,69 +68,192 @@ function archiveDetailDefaults() {
   };
 }
 
-function normalizeArchiveCompetition(source, index = 0) {
-  if (!source || !source.id) return null;
-  const gradients = [
-    "linear-gradient(135deg,#1E4B8C 0%,#10233F 100%)",
-    "linear-gradient(135deg,#10233F 0%,#2a5fa8 100%)",
-    "linear-gradient(135deg,#1E4B8C 0%,#10233F 100%)",
-    "linear-gradient(135deg,#2a5fa8 0%,#1E4B8C 100%)",
-  ];
-  const competition = archiveClone(source);
-  competition.active = competition.active !== false;
-  competition.gradient =
-    competition.gradient || gradients[index % gradients.length];
-  competition.detail = {
-    ...archiveDetailDefaults(),
-    ...(competition.detail || {}),
+function normalizeArchivePage(source) {
+  const baseline = {
+    active: true,
+    eyebrow: "Arsip",
+    title: "Arsip Ajang Talenta",
+    description:
+      "Lihat catatan dan hasil dari ajang talenta yang telah berlangsung di tahun-tahun sebelumnya.",
+    alignment: "center",
+    action: "Lihat Detail",
   };
-  competition.detail.active = competition.detail.active !== false;
-  competition.detail.hiddenCategoryIds = [
-    ...new Set(competition.detail.hiddenCategoryIds || []),
-  ];
-  competition.detail.hiddenDocumentIds = [
-    ...new Set(competition.detail.hiddenDocumentIds || []),
-  ];
-  competition.detail.documentLabelOverrides =
-    competition.detail.documentLabelOverrides || {};
-  competition.winnerCategories = (competition.winnerCategories || [])
-    .filter(Boolean)
+  const page = { ...baseline, ...(source || {}) };
+  return {
+    active: page.active !== false,
+    eyebrow: archiveString(page.eyebrow, baseline.eyebrow),
+    title: archiveString(page.title, baseline.title),
+    description: archiveString(page.description, baseline.description),
+    alignment: page.alignment === "left" ? "left" : "center",
+    action: archiveString(page.action, baseline.action),
+  };
+}
+
+function normalizeArchiveCompetition(source) {
+  const id = archiveString(source?.id);
+  if (!id || !/^[a-z0-9][a-z0-9_-]*$/i.test(id)) return null;
+  const categoryIds = new Set();
+  const winnerIds = new Set();
+  const documentIds = new Set();
+  const winnerCategories = (
+    Array.isArray(source.winnerCategories) ? source.winnerCategories : []
+  )
+    .filter((category) => {
+      const categoryId = archiveString(category?.id);
+      if (!categoryId || categoryIds.has(categoryId)) return false;
+      categoryIds.add(categoryId);
+      return true;
+    })
     .map((category) => ({
-      ...category,
+      id: archiveString(category.id),
+      name: archiveString(category.name, "Kategori Pemenang"),
+      icon: /^[a-z0-9-]+$/i.test(category.icon || "")
+        ? category.icon
+        : "trophy",
       active: category.active !== false,
-      winners: (category.winners || [])
-        .filter(Boolean)
-        .map((winner) => ({ ...winner, active: winner.active !== false })),
+      winners: (Array.isArray(category.winners) ? category.winners : [])
+        .filter((winner) => {
+          const winnerId = archiveString(winner?.id);
+          if (!winnerId || winnerIds.has(winnerId)) return false;
+          winnerIds.add(winnerId);
+          return true;
+        })
+        .map((winner) => ({
+          id: archiveString(winner.id),
+          rank: archiveString(winner.rank),
+          name: archiveString(winner.name),
+          school: archiveString(winner.school),
+          exam: archiveString(winner.exam),
+          district: archiveString(winner.district),
+          regency: archiveString(winner.regency),
+          province: archiveString(winner.province),
+          photo: archiveSafeUrl(winner.photo || "", ""),
+          active: winner.active !== false,
+        })),
     }));
-  competition.documents = (competition.documents || [])
-    .filter(Boolean)
+  const documents = (Array.isArray(source.documents) ? source.documents : [])
+    .filter((document) => {
+      const documentId = archiveString(document?.id);
+      if (!documentId || documentIds.has(documentId)) return false;
+      documentIds.add(documentId);
+      return true;
+    })
     .map((document) => ({
-      ...document,
-      type: document.type || "PDF",
+      id: archiveString(document.id),
+      title: archiveString(document.title, "Dokumen"),
+      category: archiveString(document.category, "Dokumen"),
+      type: archiveString(document.type, "PDF"),
+      size: archiveString(document.size),
+      url: archiveSafeUrl(document.url || ""),
+      icon: /^[a-z0-9-]+$/i.test(document.icon || "")
+        ? document.icon
+        : "file-text",
       active: document.active !== false,
     }));
-  if (competition.skDocument) {
-    const sk = { ...competition.skDocument };
-    if (!sk.documentId) {
-      const match = competition.documents.find(
+
+  const detailSource = {
+    ...archiveDetailDefaults(),
+    ...(source.detail || {}),
+  };
+  const hiddenCategoryIds = [
+    ...new Set(
+      (detailSource.hiddenCategoryIds || []).filter((categoryId) =>
+        categoryIds.has(categoryId),
+      ),
+    ),
+  ];
+  const hiddenDocumentIds = [
+    ...new Set(
+      (detailSource.hiddenDocumentIds || []).filter((documentId) =>
+        documentIds.has(documentId),
+      ),
+    ),
+  ];
+  const documentLabelOverrides = Object.fromEntries(
+    Object.entries(detailSource.documentLabelOverrides || {})
+      .filter(
+        ([documentId, label]) =>
+          documentIds.has(documentId) &&
+          typeof label === "string" &&
+          label.trim(),
+      )
+      .map(([documentId, label]) => [documentId, label.trim()]),
+  );
+  const detail = {
+    active: detailSource.active !== false,
+    winnersActive: detailSource.winnersActive !== false,
+    winnersEyebrow: archiveString(
+      detailSource.winnersEyebrow,
+      "Hasil Ajang Talenta",
+    ),
+    winnersTitle: archiveString(detailSource.winnersTitle, "Daftar Pemenang"),
+    showSk: detailSource.showSk !== false,
+    documentsActive: detailSource.documentsActive !== false,
+    documentsEyebrow: archiveString(detailSource.documentsEyebrow, "Dokumen"),
+    documentsTitle: archiveString(
+      detailSource.documentsTitle,
+      "Dokumen Terkait",
+    ),
+    showPhoto: detailSource.showPhoto !== false,
+    showSchool: detailSource.showSchool !== false,
+    showExam: detailSource.showExam !== false,
+    showDistrict: detailSource.showDistrict !== false,
+    showRegency: detailSource.showRegency !== false,
+    showProvince: detailSource.showProvince !== false,
+    hiddenCategoryIds,
+    hiddenDocumentIds,
+    documentLabelOverrides,
+  };
+
+  let skDocument = null;
+  if (source.skDocument) {
+    const sourceSk = source.skDocument;
+    let documentId = archiveString(sourceSk.documentId);
+    if (!documentIds.has(documentId)) {
+      const match = documents.find(
         (document) =>
-          document.category === "SK Pemenang" || document.title === sk.title,
+          document.category === "SK Pemenang" ||
+          document.title === sourceSk.title,
       );
-      if (match) sk.documentId = match.id;
+      documentId = match?.id || "";
     }
-    const linked = competition.documents.find(
-      (document) => document.id === sk.documentId,
-    );
-    competition.skDocument = linked
+    const linked = documents.find((document) => document.id === documentId);
+    skDocument = linked
       ? {
-          ...sk,
           ...linked,
           documentId: linked.id,
-          description: sk.description || "",
+          description: archiveString(sourceSk.description),
         }
-      : sk;
+      : {
+          title: archiveString(sourceSk.title, "SK Penetapan Pemenang"),
+          description: archiveString(sourceSk.description),
+          url: archiveSafeUrl(sourceSk.url || ""),
+          type: archiveString(sourceSk.type, "PDF"),
+          size: archiveString(sourceSk.size),
+        };
   }
-  return competition;
+
+  return {
+    id,
+    name: archiveString(source.name, "Ajang Talenta"),
+    shortName: archiveString(source.shortName, source.name || "Ajang Talenta"),
+    status: ["published", "draft", "disabled"].includes(source.status)
+      ? source.status
+      : "published",
+    icon: /^[a-z0-9-]+$/i.test(source.icon || "") ? source.icon : "archive",
+    iconMode:
+      source.iconMode === "upload" && source.uploadedIcon
+        ? "upload"
+        : "library",
+    uploadedIcon: archiveSafeUrl(source.uploadedIcon || "", ""),
+    iconAlt: archiveString(source.iconAlt),
+    description: archiveString(source.description),
+    active: source.active !== false,
+    detail,
+    winnerCategories,
+    documents,
+    skDocument,
+  };
 }
 
 function archiveBaseline() {
@@ -113,65 +266,89 @@ function archiveBaseline() {
     .filter(Boolean);
 }
 
+function archiveStateBaseline() {
+  const competitions = archiveBaseline();
+  return {
+    version: 2,
+    page: normalizeArchivePage(),
+    order: competitions.map((competition) => competition.id),
+    competitions: Object.fromEntries(
+      competitions.map((competition) => [competition.id, competition]),
+    ),
+    removedCompetitionIds: [],
+  };
+}
+
+function normalizeArchiveState(source) {
+  if (!source || source.version !== 2) return archiveStateBaseline();
+  const competitions = {};
+  Object.entries(source.competitions || {}).forEach(([key, value]) => {
+    const normalized = normalizeArchiveCompetition({
+      ...value,
+      id: value?.id || key,
+    });
+    if (normalized && !competitions[normalized.id])
+      competitions[normalized.id] = normalized;
+  });
+  const removedCompetitionIds = [
+    ...new Set(
+      (source.removedCompetitionIds || [])
+        .map((id) => archiveString(id))
+        .filter(Boolean),
+    ),
+  ];
+  const knownIds = new Set([
+    ...archiveBaseline().map((competition) => competition.id),
+    ...Object.keys(competitions),
+  ]);
+  const order = [
+    ...new Set((source.order || []).filter((id) => knownIds.has(id))),
+  ];
+  return {
+    version: 2,
+    page: normalizeArchivePage(source.page),
+    order,
+    competitions,
+    removedCompetitionIds,
+  };
+}
+
 function migrateArchiveLegacy() {
   const legacy = archiveReadJson(ARCHIVE_LEGACY_KEY);
   if (!legacy?.items) return null;
-  const state = {
+  const state = normalizeArchiveState({
     version: 2,
-    page: {
-      active: legacy.active !== false,
-      eyebrow: legacy.eyebrow || "Arsip",
-      title: legacy.title || "Arsip Ajang Talenta",
-      description: legacy.description || "",
-      alignment: legacy.alignment || "center",
-      action: legacy.action || "Lihat Detail",
-    },
+    page: legacy,
     order: legacy.items.map((item) => item.id).filter(Boolean),
-    competitions: {},
-  };
-  legacy.items.forEach((item, index) => {
-    const normalized = normalizeArchiveCompetition(item, index);
-    if (normalized) state.competitions[normalized.id] = normalized;
+    competitions: Object.fromEntries(
+      legacy.items.filter((item) => item?.id).map((item) => [item.id, item]),
+    ),
+    removedCompetitionIds: [],
   });
   saveArchiveAdminState(state);
   return state;
 }
 
 function getArchiveAdminState() {
-  const saved = archiveReadJson(ARCHIVE_STATE_KEY) || migrateArchiveLegacy();
-  if (saved?.version === 2) return archiveClone(saved);
-  const baseline = archiveBaseline();
-  return {
-    version: 2,
-    page: {
-      active: true,
-      eyebrow: "Arsip",
-      title: "Arsip Ajang Talenta",
-      description:
-        "Lihat catatan dan hasil dari ajang talenta yang telah berlangsung di tahun-tahun sebelumnya.",
-      alignment: "center",
-      action: "Lihat Detail",
-    },
-    order: baseline.map((competition) => competition.id),
-    competitions: Object.fromEntries(
-      baseline.map((competition) => [competition.id, competition]),
-    ),
-  };
+  return normalizeArchiveState(
+    archiveReadJson(ARCHIVE_STATE_KEY) ||
+      migrateArchiveLegacy() ||
+      archiveStateBaseline(),
+  );
 }
 
 function getEffectiveArchivedCompetitions() {
   const state = getArchiveAdminState();
+  const removed = new Set(state.removedCompetitionIds);
   const map = new Map(
-    archiveBaseline().map((competition) => [competition.id, competition]),
+    archiveBaseline()
+      .filter((competition) => !removed.has(competition.id))
+      .map((competition) => [competition.id, competition]),
   );
-  Object.entries(state.competitions || {}).forEach(([id, source], index) => {
-    const normalized = normalizeArchiveCompetition(
-      { ...source, id: source.id || id },
-      index,
-    );
-    if (normalized) map.set(id, normalized);
+  Object.values(state.competitions || {}).forEach((competition) => {
+    if (!removed.has(competition.id)) map.set(competition.id, competition);
   });
-  const ordered = (state.order || []).map((id) => map.get(id)).filter(Boolean);
+  const ordered = state.order.map((id) => map.get(id)).filter(Boolean);
   const seen = new Set(ordered.map((competition) => competition.id));
   return archiveClone([
     ...ordered,
@@ -188,13 +365,19 @@ function getEffectiveCompetitionById(id) {
   );
 }
 
-function getPublicArchivedCompetitions() {
-  return getEffectiveArchivedCompetitions().filter(
-    (competition) =>
-      competition.status === "published" &&
-      competition.active !== false &&
-      competition.detail?.active !== false,
+function resolvePublicArchivedCompetitions(source) {
+  return archiveClone(
+    (source || []).filter(
+      (competition) =>
+        competition.status === "published" &&
+        competition.active !== false &&
+        competition.detail?.active !== false,
+    ),
   );
+}
+
+function getPublicArchivedCompetitions() {
+  return resolvePublicArchivedCompetitions(getEffectiveArchivedCompetitions());
 }
 
 function getPublicArchiveCompetitionById(id) {
@@ -216,20 +399,95 @@ function getArchiveSkDocument(competition) {
 }
 
 function saveArchiveAdminState(state) {
-  localStorage.setItem(
-    ARCHIVE_STATE_KEY,
-    JSON.stringify({ ...archiveClone(state), version: 2 }),
+  const normalized = normalizeArchiveState(state);
+  localStorage.setItem(ARCHIVE_STATE_KEY, JSON.stringify(normalized));
+  window.dispatchEvent(
+    new CustomEvent("talenta:archive", { detail: archiveClone(normalized) }),
   );
+  return archiveClone(normalized);
+}
+
+function resetArchiveAdminState() {
+  localStorage.removeItem(ARCHIVE_STATE_KEY);
+  localStorage.removeItem(ARCHIVE_LEGACY_KEY);
+  const baseline = getArchiveAdminState();
+  window.dispatchEvent(
+    new CustomEvent("talenta:archive", { detail: archiveClone(baseline) }),
+  );
+  return baseline;
 }
 
 function getEffectiveArchivePage() {
-  const page = getArchiveAdminState().page || {};
+  return getArchiveAdminState().page;
+}
+
+function resolveArchiveDetailState(competition) {
+  if (!competition) return null;
+  const detail = competition.detail || archiveDetailDefaults();
+  const categories = (competition.winnerCategories || [])
+    .filter(
+      (category) =>
+        category.active !== false &&
+        !detail.hiddenCategoryIds.includes(category.id),
+    )
+    .map((category) => ({
+      ...category,
+      winners: (category.winners || []).filter(
+        (winner) => winner.active !== false,
+      ),
+    }))
+    .filter((category) => category.winners.length);
+  const documents = (competition.documents || [])
+    .filter(
+      (document) =>
+        document.active !== false &&
+        !detail.hiddenDocumentIds.includes(document.id),
+    )
+    .map((document) => ({
+      ...document,
+      title: detail.documentLabelOverrides[document.id] || document.title,
+    }));
   return {
-    active: page.active !== false,
-    eyebrow: page.eyebrow || "Arsip",
-    title: page.title || "Arsip Ajang Talenta",
-    description: page.description || "",
-    alignment: page.alignment === "left" ? "left" : "center",
-    action: page.action || "Lihat Detail",
+    competition: archiveClone(competition),
+    detail: archiveClone(detail),
+    categories: archiveClone(categories),
+    documents: archiveClone(documents),
+    sk: getArchiveSkDocument(competition),
   };
+}
+
+function buildArchiveIconMarkup(competition) {
+  if (competition.iconMode === "upload" && competition.uploadedIcon)
+    return `<img class="archive-card__uploaded-icon" src="${archiveEscape(competition.uploadedIcon)}" alt="${archiveEscape(competition.iconAlt || "Logo atau maskot lomba")}">`;
+  return `<i data-lucide="${archiveEscape(competition.icon || "archive")}"></i>`;
+}
+
+function buildArchiveListMarkup(page, competitions, options = {}) {
+  const archiveHref =
+    typeof options.archiveHref === "function" ? options.archiveHref : () => "#";
+  const leftClass = page.alignment === "left" ? " section__header--left" : "";
+  return `<section class="section" id="arsip"><div class="container"><div class="section__header${leftClass}"><p class="t-eyebrow">${archiveEscape(page.eyebrow)}</p><h1 class="t-h1">${archiveEscape(page.title)}</h1><p>${archiveEscape(page.description)}</p></div>${competitions.length ? `<div class="grid grid--3">${competitions.map((competition) => `<a href="${archiveEscape(archiveSafeUrl(archiveHref(competition)))}" class="lomba-card"><div class="lomba-card__thumb">${buildArchiveIconMarkup(competition)}</div><div class="lomba-card__body"><h2 class="lomba-card__title">${archiveEscape(competition.name)}</h2><p class="lomba-card__desc">${archiveEscape(competition.description || "")}</p><span class="lomba-card__action">${archiveEscape(page.action)} <i data-lucide="arrow-right"></i></span></div></a>`).join("")}</div>` : '<div class="public-empty-state"><i data-lucide="archive-x"></i><h2 class="t-h2">Belum ada arsip</h2><p>Belum ada ajang terdahulu yang dipublikasikan.</p></div>'}</div></section>`;
+}
+
+function buildArchiveWinnerMetaMarkup(winner, detail) {
+  return `<div class="champion-card__meta">${detail.showExam ? `<span><span class="meta-label">No. Ujian:</span> ${archiveEscape(winner.exam || "-")}</span>` : ""}${detail.showDistrict ? `<span><span class="meta-label">Kecamatan:</span> ${archiveEscape(winner.district || "-")}</span>` : ""}${detail.showRegency ? `<span><span class="meta-label">Kabupaten:</span> ${archiveEscape(winner.regency || "-")}</span>` : ""}${detail.showProvince ? `<span><span class="meta-label">Provinsi:</span> ${archiveEscape(winner.province || "-")}</span>` : ""}</div>`;
+}
+
+function buildArchiveWinnerCardMarkup(winner, detail) {
+  return `<article class="champion-card">${detail.showPhoto ? `<div class="champion-card__photo">${winner.photo && winner.photo !== "#" ? `<img src="${archiveEscape(winner.photo)}" alt="Foto ${archiveEscape(winner.name)}">` : archiveInitials(winner.name)}</div>` : ""}<p class="champion-card__rank t-mono">${archiveEscape(winner.rank)}</p><p class="champion-card__name">${archiveEscape(winner.name)}</p>${detail.showSchool ? `<p class="champion-card__school">${archiveEscape(winner.school || "-")}</p>` : ""}${buildArchiveWinnerMetaMarkup(winner, detail)}</article>`;
+}
+
+function buildArchiveDetailMarkup(source, options = {}) {
+  const { competition, detail, categories, documents, sk } = source;
+  const archiveHref =
+    typeof options.archiveHref === "function" ? options.archiveHref() : "#";
+  const winnersSection =
+    detail.winnersActive && (categories.length || (detail.showSk && sk))
+      ? `<section class="section" id="pemenang"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${archiveEscape(detail.winnersEyebrow)}</p><h2 class="t-h2">${archiveEscape(detail.winnersTitle)}</h2></div>${detail.showSk && sk ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2"></i></div><div class="sk-banner__content"><h3>${archiveEscape(sk.title)}</h3><p>${archiveEscape(sk.description || "Unduh dokumen resmi penetapan pemenang.")}</p></div></div><a href="${archiveEscape(archiveSafeUrl(sk.url || ""))}" class="btn btn--primary"><i data-lucide="download"></i>Unduh ${archiveEscape(sk.type || "PDF")}</a></div>` : ""}${categories.length ? `<div class="winner-section">${categories.map((category) => `<section class="winner-group"><h3 class="winner-group__title"><i data-lucide="${archiveEscape(category.icon || "trophy")}"></i>${archiveEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildArchiveWinnerCardMarkup(winner, detail)).join("")}</div></section>`).join("")}</div>` : '<div class="public-empty-state public-empty-state--compact"><p>Belum ada pemenang yang dipublikasikan.</p></div>'}</div></section>`
+      : "";
+  const documentsSection =
+    detail.documentsActive && documents.length
+      ? `<section class="section section--soft" id="dokumen-terkait"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${archiveEscape(detail.documentsEyebrow)}</p><h2 class="t-h2">${archiveEscape(detail.documentsTitle)}</h2></div><div class="doc-list">${documents.map((document) => `<article class="doc-card" data-category="${archiveEscape(document.category || "")}"><div class="doc-card__icon"><i data-lucide="${archiveEscape(document.icon || "file-text")}"></i></div><div class="doc-card__info"><p class="doc-card__name">${archiveEscape(document.title)} <span class="doc-card__tag">${archiveEscape(document.category || "Dokumen")}</span></p><p class="doc-card__size">${archiveEscape(document.type || "PDF")} · <span class="t-mono">${archiveEscape(document.size || "-")}</span></p></div><div class="doc-card__download"><a href="${archiveEscape(archiveSafeUrl(document.url || ""))}" class="btn btn--outline btn--sm"><i data-lucide="download"></i>Unduh</a></div></article>`).join("")}</div></div></section>`
+      : "";
+  return `<section class="lomba-banner"><div class="lomba-banner__content"><h1 class="lomba-banner__title">${archiveEscape(competition.name)}</h1><p class="lomba-banner__desc">${archiveEscape(competition.description || "")}</p></div></section><nav class="archive-detail-breadcrumb" aria-label="Breadcrumb"><div class="container"><p class="t-caption"><a href="${archiveEscape(archiveSafeUrl(archiveHref))}">Arsip</a><span aria-hidden="true">/</span><span>${archiveEscape(competition.name)}</span></p></div></nav>${winnersSection}${documentsSection}`;
 }

@@ -14,7 +14,7 @@
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../../../../packages/shared/css/main.css" />
+    <link rel="stylesheet" href="../../../template/assets/css/main.css" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="../../../../packages/shared/js/core/paths.js"></script>
   </head>
@@ -42,10 +42,6 @@
         ><span>TalentaPanel<small>Event workspace</small></span></a
       >
       <nav class="admin-nav" aria-label="Navigasi admin">
-        <p class="admin-nav__label">Workspace</p>
-        <a class="admin-nav__item" href="#"
-          ><i data-lucide="layout-dashboard"></i>Ringkasan</a
-        >
         <p class="admin-nav__label admin-nav__label--spaced">
           Pengaturan Global
         </p>
@@ -64,7 +60,7 @@
         ><a
           data-page="download"
           class="admin-nav__item admin-nav__item--active"
-          href="../../../public/unduh/"
+          href="../../../template/unduh/"
           ><i data-lucide="file-down"></i>Unduh</a
         ><a class="admin-nav__item" href="#" aria-disabled="true"
           ><i data-lucide="trophy"></i>Pemenang</a
@@ -74,10 +70,6 @@
           ><i data-lucide="circle-help"></i>FAQ <span>Segera</span></a
         >
       </nav>
-      <div class="admin-sidebar__footer">
-        <span class="admin-avatar">AP</span>
-        <div><strong>Admin Pusat</strong><small>Super Admin</small></div>
-      </div>
     </aside>
     <main class="admin-main">
       <header class="admin-topbar">
@@ -94,7 +86,7 @@
         </div>
         <a
           class="btn btn--outline btn--sm"
-          href="../../../public/unduh/"
+          href="../../../template/unduh/"
           target="_blank"
           ><i data-lucide="external-link"></i> Lihat halaman</a
         >
@@ -186,17 +178,19 @@ Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
                 <div class="admin-card__heading">
                   <span class="admin-step">02</span>
                   <div>
-                    <h2>Lomba dari Arsip</h2>
+                    <h2>Sumber Dokumen Lomba</h2>
                     <p>
-                      Pilih lomba; dokumennya otomatis diambil dari Detail
-                      Arsip.
+                      Pilih lomba aktif sekarang atau lomba terdahulu dari
+                      Arsip. Halaman Unduh hanya menampilkan sumber yang
+                      dipilih.
                     </p>
                   </div>
                 </div>
               </div>
               <div class="archive-source-picker">
                 <div class="admin-field">
-                  <label for="archiveCompetitionSelect">Tambahkan lomba</label
+                  <label for="archiveCompetitionSelect"
+                    >Tambahkan sumber lomba</label
                   ><select
                     class="form-input"
                     id="archiveCompetitionSelect"
@@ -210,6 +204,7 @@ Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
                   <i data-lucide="plus"></i> Tambahkan
                 </button>
               </div>
+              <p class="wm-source-note" id="downloadSourceSummary"></p>
               <div
                 id="downloadCompetitionEditor"
                 class="download-period-list"
@@ -271,7 +266,10 @@ Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
       <i data-lucide="check-circle"></i><span>Berhasil disimpan.</span>
     </div>
     <script src="../../../../packages/shared/js/data/mock-archive-database.js"></script>
+    <script src="../../../../packages/shared/js/data/repositories/settings-repository.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/archive-repository.js"></script>
+    <script src="../../../../packages/shared/js/data/repositories/download-repository.js"></script>
+    <script src="../../js/shared/dialog.js"></script>
     <script src="../../js/features/downloads/editor.js"></script>
   </body>
 </html>
