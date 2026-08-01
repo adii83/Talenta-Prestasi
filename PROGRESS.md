@@ -1,4 +1,4 @@
-﻿# Progres Platform Ajang Talenta
+# Progres Platform Ajang Talenta
 
 > **WAJIB DIBACA:** AI/developer harus membaca `README.md` dan dokumen ini sebelum mengubah proyek. Setelah bekerja, perbarui status, riwayat perubahan, berkas terkait, hasil pengujian, dan langkah berikutnya.
 
@@ -780,3 +780,28 @@ diganti adapter API tanpa mengubah struktur UI final.
   data pemenang, dan API publik/Admin.
 - Menambahkan roadmap migrasi bertahap, kriteria penerimaan, serta daftar keputusan
   yang perlu disahkan client di `docs/DATABASE_DESIGN.md`.
+
+### 1 Agustus 2026 — Backend Fase 1–2 dan Beranda Fase 3
+
+- Membuat backend NestJS + TypeScript strict di `apps/backend/` dengan TypeORM,
+  PostgreSQL, konfigurasi environment, validasi global, dan autentikasi JWT dasar.
+- Menjalankan initial migration untuk organisasi, user, portal, media, audit, lomba,
+  dokumen, kategori, pemenang, serta konfigurasi Detail Arsip.
+- Memverifikasi 16 tabel awal, 22 foreign key, composite ownership FK, dan partial
+  unique index satu lomba `current` per portal pada PostgreSQL 18.3.
+- Menambahkan `page_settings`, `winner_page_settings`, `home_sections`, dan tujuh
+  tabel item Beranda melalui dua migration tambahan yang telah dijalankan.
+- Menguji penolakan halaman/section duplikat, cascade delete child Beranda,
+  keberlangsungan partial index lomba, TypeScript, ESLint, dan schema drift.
+- Status rinci serta kelanjutan bertahap tersedia di `docs/BACKEND_PROGRESS.md`.
+
+### 1 Agustus 2026 — Backend Fase 4 Public dan Admin API Inti
+
+- Menyelesaikan endpoint publik Bootstrap, Beranda, Unduh, Pemenang, Arsip, Detail
+  Arsip, dan FAQ dengan filter portal aktif, hostname verified, publish, dan ownership.
+- Menguatkan autentikasi dengan DTO validation, JWT tanpa fallback secret, pemeriksaan
+  user aktif, CORS terbatas, serta tenant isolation melalui membership organisasi.
+- Menambahkan Admin API tenant-scoped untuk site dan competition beserta create,
+  update, soft-delete, publish, audit transaction, dan optimistic locking `If-Match`.
+- Menjalankan enam migration; TypeScript, ESLint, unit test, audit dependency, dan
+  sembilan E2E PostgreSQL lulus termasuk cross-tenant, role, stale version, dan publish.
