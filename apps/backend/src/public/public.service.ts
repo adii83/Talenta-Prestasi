@@ -31,7 +31,15 @@ export class PublicService {
       .andWhere('domain.verified_at IS NOT NULL')
       .getRawOne<PublicSiteRow>();
     if (!site) throw new NotFoundException('Published site not found');
+    return this.bootstrapData(site);
+  }
 
+  async bootstrapBySlug(siteSlug: string) {
+    const site = await this.requirePublicSite(siteSlug);
+    return this.bootstrapData(site);
+  }
+
+  private async bootstrapData(site: PublicSiteRow) {
     const competition = await this.sites.manager
       .createQueryBuilder()
       .select([
@@ -86,16 +94,17 @@ export class PublicService {
 
   async downloads(siteSlug: string) {
     const site = await this.requirePublicSite(siteSlug);
-    const competitions = await this.sites.manager.query<
-      Array<{
-        slug: string;
-        name: string;
-        tabName: string;
-        isDefault: boolean;
-        documents: unknown;
-      }>
-    >(
-      `SELECT dc.id, c.slug, c.name,
+    const [competitions, pages] = await Promise.all([
+      this.sites.manager.query<
+        Array<{
+          slug: string;
+          name: string;
+          tabName: string;
+          isDefault: boolean;
+          documents: unknown;
+        }>
+      >(
+        `SELECT dc.id, c.slug, c.name,
               COALESCE(NULLIF(dc.custom_tab_name, ''), c.short_name, c.name) AS "tabName",
               dc.is_default AS "isDefault",
               COALESCE(jsonb_agg(jsonb_build_object(
@@ -103,7 +112,8 @@ export class PublicService {
                 'category', d.category,
                 'fileType', d.file_type,
                 'displaySize', d.display_size,
-                'assetId', d.asset_id
+                'assetId', d.asset_id,
+                'url', CASE WHEN d.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/' || d.asset_id::text END
               ) ORDER BY dds.sort_order, d.sort_order) FILTER (WHERE d.id IS NOT NULL), '[]') AS documents
        FROM download_competitions dc
        JOIN competitions c ON c.id = dc.competition_id
@@ -113,11 +123,17 @@ export class PublicService {
          AND c.publication_status = 'published' AND c.deleted_at IS NULL
        GROUP BY dc.id, c.slug, c.name, c.short_name
        ORDER BY dc.is_default DESC, dc.sort_order, dc.id`,
-      [site.id],
-    );
+        [site.id],
+      ),
+      this.sites.manager.query<Array<Record<string, unknown>>>(
+        `SELECT is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type='download'`,
+        [site.id],
+      ),
+    ]);
     return {
       data: {
         site: this.siteDto(site),
+        page: pages[0] ?? null,
         competitions,
       },
       errors: [],
@@ -126,10 +142,9 @@ export class PublicService {
 
   async faq(siteSlug: string) {
     const site = await this.requirePublicSite(siteSlug);
-    const categories = await this.sites.manager.query<
-      Array<{ title: string; questions: unknown }>
-    >(
-      `SELECT category.title,
+    const [categories, pages] = await Promise.all([
+      this.sites.manager.query<Array<{ title: string; questions: unknown }>>(
+        `SELECT category.title,
               COALESCE(jsonb_agg(jsonb_build_object(
                 'question', question.question,
                 'answer', question.answer
@@ -139,33 +154,84 @@ export class PublicService {
        WHERE category.event_site_id = $1 AND category.is_active = true
        GROUP BY category.id
        ORDER BY category.sort_order, category.id`,
-      [site.id],
-    );
-    return { data: { site: this.siteDto(site), categories }, errors: [] };
+        [site.id],
+      ),
+      this.sites.manager.query<Array<Record<string, unknown>>>(
+        `SELECT is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type='faq'`,
+        [site.id],
+      ),
+    ]);
+    return {
+      data: { site: this.siteDto(site), page: pages[0] ?? null, categories },
+      errors: [],
+    };
   }
 
   async winners(siteSlug: string) {
     const site = await this.requirePublicSite(siteSlug);
-    const competition = await this.publicCompetition(site.id, 'current');
+    const [competition, pageRows, settingRows, archives] = await Promise.all([
+      this.publicCompetition(site.id, 'current'),
+      this.sites.manager.query<Array<Record<string, unknown>>>(
+        `SELECT is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type='winners'`,
+        [site.id],
+      ),
+      this.sites.manager.query<Array<Record<string, unknown>>>(
+        `SELECT is_active AS "isActive",show_decree AS "showDecree",metadata_visibility AS "metadataVisibility",archive_active AS "archiveActive",archive_limit AS "archiveLimit" FROM winner_page_settings WHERE event_site_id=$1`,
+        [site.id],
+      ),
+      this.sites.manager.query<Array<Record<string, unknown>>>(
+        `SELECT slug,name,description,fallback_icon AS icon FROM competitions WHERE event_site_id=$1 AND lifecycle='archived' AND publication_status='published' AND deleted_at IS NULL ORDER BY sort_order,id`,
+        [site.id],
+      ),
+    ]);
+    const settings = settingRows[0] ?? {};
+    const limit = Number(settings.archiveLimit ?? 3);
     if (!competition)
-      return { data: { competition: null, categories: [] }, errors: [] };
+      return {
+        data: {
+          site: this.siteDto(site),
+          competition: null,
+          categories: [],
+          page: pageRows[0] ?? null,
+          settings,
+          archives: archives.slice(0, limit),
+        },
+        errors: [],
+      };
     const categories = await this.winnerCategories(competition.id);
-    return { data: { competition, categories }, errors: [] };
+    return {
+      data: {
+        site: this.siteDto(site),
+        competition,
+        categories,
+        page: pageRows[0] ?? null,
+        settings,
+        archives: archives.slice(0, limit),
+      },
+      errors: [],
+    };
   }
 
   async archives(siteSlug: string) {
     const site = await this.requirePublicSite(siteSlug);
-    const competitions = await this.sites.manager.query<
-      Array<Record<string, unknown>>
-    >(
-      `SELECT slug, name, short_name AS "shortName", description, fallback_icon AS "fallbackIcon", mascot_asset_id AS "mascotAssetId"
-       FROM competitions
-       WHERE event_site_id = $1 AND lifecycle = 'archived'
-         AND publication_status = 'published' AND deleted_at IS NULL
-       ORDER BY sort_order, published_at DESC NULLS LAST, id`,
-      [site.id],
-    );
-    return { data: { site: this.siteDto(site), competitions }, errors: [] };
+    const [competitions, pages] = await Promise.all([
+      this.sites.manager.query<Array<Record<string, unknown>>>(
+        `SELECT slug, name, short_name AS "shortName", description, fallback_icon AS "fallbackIcon", mascot_asset_id AS "mascotAssetId"
+         FROM competitions
+         WHERE event_site_id = $1 AND lifecycle = 'archived'
+           AND publication_status = 'published' AND deleted_at IS NULL
+         ORDER BY sort_order, published_at DESC NULLS LAST, id`,
+        [site.id],
+      ),
+      this.sites.manager.query<Array<Record<string, unknown>>>(
+        `SELECT is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type='archive'`,
+        [site.id],
+      ),
+    ]);
+    return {
+      data: { site: this.siteDto(site), page: pages[0] ?? null, competitions },
+      errors: [],
+    };
   }
 
   async archiveDetail(siteSlug: string, competitionSlug: string) {
@@ -177,14 +243,18 @@ export class PublicService {
     );
     if (!competition)
       throw new NotFoundException('Published archive not found');
-    const [categories, documents] = await Promise.all([
+    const [categories, documents, settingRows] = await Promise.all([
       this.winnerCategories(competition.id),
       this.sites.manager.query<Array<Record<string, unknown>>>(
-        `SELECT d.title, d.category, d.document_role AS "documentRole", d.file_type AS "fileType", d.display_size AS "displaySize", d.asset_id AS "assetId"
+        `SELECT d.title, d.category, d.document_role AS "documentRole", d.file_type AS "fileType", d.display_size AS "displaySize", d.asset_id AS "assetId", CASE WHEN d.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/' || d.asset_id::text END AS url
          FROM competition_documents d
          LEFT JOIN archive_document_settings setting ON setting.document_id = d.id AND setting.competition_id = d.competition_id
          WHERE d.competition_id = $1 AND d.is_active = true AND COALESCE(setting.is_visible, true) = true
          ORDER BY COALESCE(setting.sort_order, d.sort_order), d.id`,
+        [competition.id],
+      ),
+      this.sites.manager.query<Array<Record<string, unknown>>>(
+        `SELECT is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM competition_detail_settings WHERE competition_id=$1`,
         [competition.id],
       ),
     ]);
@@ -197,7 +267,13 @@ export class PublicService {
       mascotAssetId: competition.mascotAssetId,
     };
     return {
-      data: { competition: publicCompetition, categories, documents },
+      data: {
+        site: this.siteDto(site),
+        competition: publicCompetition,
+        settings: settingRows[0] ?? null,
+        categories,
+        documents,
+      },
       errors: [],
     };
   }
@@ -240,7 +316,8 @@ export class PublicService {
                 'district', winner.district,
                 'regency', winner.regency,
                 'province', winner.province,
-                'photoAssetId', winner.photo_asset_id
+                'photoAssetId', winner.photo_asset_id,
+                'photoUrl', CASE WHEN winner.photo_asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/' || winner.photo_asset_id::text END
               ) ORDER BY winner.sort_order, winner.id) FILTER (WHERE winner.id IS NOT NULL), '[]') AS winners
        FROM winner_categories category
        LEFT JOIN winners winner ON winner.category_id = category.id
@@ -296,6 +373,9 @@ export class PublicService {
       slug: site.slug,
       organizerName: site.organizerName,
       logoAssetId: site.logoAssetId,
+      logoUrl: site.logoAssetId
+        ? `/api/v1/public/media/${site.logoAssetId}`
+        : null,
     };
   }
 

@@ -104,6 +104,22 @@ function loadState() {
   };
 }
 let state = loadState();
+async function hydrateHome() {
+  try {
+    const loaded = await TalentaHomeApi.load();
+    state = loadState();
+    Object.entries(loaded).forEach(([type, section]) => {
+      if (state[type]) state[type] = { ...state[type], ...section };
+    });
+    sync();
+    renderAll();
+    document.dispatchEvent(
+      new CustomEvent("talenta:home-hydrated", { detail: state }),
+    );
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
 let heroPreviewResizeObserver;
 const scaledPreviewConfigs = new Map();
 document.addEventListener("DOMContentLoaded", () => {
@@ -129,6 +145,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderPartners();
   });
   lucide.createIcons();
+  void hydrateHome();
 });
 function bind() {
   document.getElementById("sidebarToggle").onclick = () =>
@@ -163,17 +180,25 @@ function bind() {
     renderScheduleCards();
     renderSchedule();
   };
-  const saveHome = () => {
+  const saveHome = async () => {
     document.dispatchEvent(
       new CustomEvent("talenta:home-before-save", { detail: state }),
     );
-    const saved = saveHomeAdminState(state);
-    Object.assign(state.winnerHighlight, saved.winnerHighlight);
-    toast("Pengaturan Beranda berhasil disimpan.");
+    try {
+      await TalentaHomeApi.save(state);
+      const saved = saveHomeAdminState(state);
+      Object.assign(state.winnerHighlight, saved.winnerHighlight);
+      toast("Pengaturan Beranda tersimpan ke database.");
+    } catch (error) {
+      toast(error.message, true);
+    }
   };
-  document.getElementById("homeEditorForm").onsubmit = (e) => {
+  document.getElementById("homeEditorForm").onsubmit = async (e) => {
     e.preventDefault();
-    saveHome();
+    const submit = e.submitter;
+    if (submit) submit.disabled = true;
+    await saveHome();
+    if (submit) submit.disabled = false;
   };
   window.TalentaHomeEditor = Object.freeze({ save: saveHome });
   document.getElementById("resetHome").onclick = async () => {
@@ -375,13 +400,26 @@ function wireIcon(el, item, render) {
     item.libraryIcon = library.value;
     refresh();
   };
-  el.querySelector("[data-icon-upload]").onchange = (e) =>
-    readImage(e.target.files[0], 1, (data) => {
-      item.uploadedIcon = data;
+  el.querySelector("[data-icon-upload]").onchange = async (e) => {
+    const input = e.target;
+    if (!input.files[0]) return;
+    input.disabled = true;
+    try {
+      const asset = await TalentaMedia.upload(input.files[0], {
+        altText: item.iconAlt || "Ikon kustom Beranda",
+      });
+      item.uploadedIconAssetId = asset.assetId;
+      item.uploadedIcon = TalentaMedia.url(asset);
       item.iconMode = "upload";
       mode.value = "upload";
       refresh();
-    });
+      toast("Ikon berhasil diunggah.");
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      input.disabled = false;
+    }
+  };
   el.querySelector("[data-icon-alt]").oninput = (e) =>
     (item.iconAlt = e.target.value);
   const remove = el.querySelector("[data-icon-remove]");
@@ -514,20 +552,7 @@ function heroPreviewIconMarkup(x, size = 18) {
     return `<img class="home-custom-icon" src="${x.uploadedIcon}" alt="${esc(x.iconAlt || "Ikon kustom")}" style="width:${size}px;height:${size}px">`;
   return `<i data-lucide="${x.libraryIcon || x.icon || "circle"}" style="width:${size}px;height:${size}px;stroke-width:1.5"></i>`;
 }
-function readImage(file, maxMb, done) {
-  if (!file) return;
-  if (
-    !["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(
-      file.type,
-    )
-  )
-    return toast("Format gambar tidak didukung.", true);
-  if (file.size > maxMb * 1024 * 1024)
-    return toast(`Ukuran maksimal ${maxMb} MB.`, true);
-  const r = new FileReader();
-  r.onload = () => done(r.result);
-  r.readAsDataURL(file);
-}
+
 async function removeItem(arr, i, name, ...renders) {
   const confirmed = await adminConfirm({
     title: `Hapus ${name}?`,

@@ -1,4 +1,4 @@
-﻿import {
+import {
   Body,
   Controller,
   Delete,
@@ -13,13 +13,16 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   IsUUID,
   MaxLength,
   Min,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -56,6 +59,7 @@ class WinnerDto {
   @IsOptional() @IsString() @MaxLength(80) rankLabel?: string;
   @IsOptional() @IsString() @MaxLength(200) school?: string;
   @IsOptional() @IsString() @MaxLength(80) examNumber?: string;
+  @IsOptional() @IsUUID() photoAssetId?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
 }
@@ -67,10 +71,47 @@ class PageDto {
   @IsOptional() @IsIn(['left', 'center']) alignment?: string;
 }
 
+class DetailCategoryDto {
+  @IsUUID() categoryId!: string;
+  @IsBoolean() isVisible!: boolean;
+}
+class DetailDocumentDto {
+  @IsUUID() documentId!: string;
+  @IsBoolean() isVisible!: boolean;
+  @IsString() @MaxLength(200) labelOverride!: string;
+}
+class DetailSettingsDto {
+  @IsOptional() @IsUUID() decreeDocumentId?: string;
+  @IsBoolean() isActive!: boolean;
+  @IsBoolean() winnersActive!: boolean;
+  @IsBoolean() documentsActive!: boolean;
+  @IsObject() metadataVisibility!: Record<string, boolean>;
+  @ValidateNested({ each: true })
+  @Type(() => DetailCategoryDto)
+  categories!: DetailCategoryDto[];
+  @ValidateNested({ each: true })
+  @Type(() => DetailDocumentDto)
+  documents!: DetailDocumentDto[];
+}
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
 export class AdminContentController {
   constructor(private readonly content: AdminContentService) {}
+
+  @Get('competitions/:competitionId/detail-settings') detailSettings(
+    @Param() p: CompetitionParams,
+    @CurrentUser() u: AuthenticatedUser,
+  ) {
+    return this.content.detailSettings(p.competitionId, u.userId);
+  }
+  @Put('competitions/:competitionId/detail-settings') putDetailSettings(
+    @Param() p: CompetitionParams,
+    @Body() input: DetailSettingsDto,
+    @CurrentUser() u: AuthenticatedUser,
+  ) {
+    return this.content.putDetailSettings(p.competitionId, u.userId, input);
+  }
 
   @Get('competitions/:competitionId/documents') documents(
     @Param() p: CompetitionParams,

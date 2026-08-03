@@ -1,0 +1,4 @@
+
+# Local uploaded media
+storage/uploads/*
+!storage/uploads/.gitkeep

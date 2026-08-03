@@ -1,4 +1,4 @@
-﻿/* Editor Detail Arsip â€” preview identik arsip-detail.html */
+/* Editor Detail Arsip â€” preview identik arsip-detail.html */
 const detailParams = new URLSearchParams(location.search);
 const compId = detailParams.get("id");
 const detailEmbedded = detailParams.get("embedded") === "1";
@@ -13,6 +13,17 @@ if (!compId) {
 let comp = compId ? archiveClone(getEffectiveCompetitionById(compId)) : null;
 if (comp && !comp.detail) comp.detail = archiveDetailDefaults();
 let archiveDetailPreviewResizeObserver;
+async function hydrateDetail() {
+  if (!compId) return;
+  try {
+    comp = await TalentaArchiveDetailApi.load(compId);
+    syncForm();
+    bindForm();
+    renderPreview();
+  } catch (error) {
+    toast(error.message);
+  }
+}
 
 function applyGlobalTheme(root) {
   applyGlobalThemeTokens(root);
@@ -123,7 +134,7 @@ function renderDocumentList() {
   root.innerHTML = docs
     .map((d) => {
       const shown = d.active !== false && !det.hiddenDocumentIds.includes(d.id);
-      return `<div class="archive-linked-doc" data-doc-id="${esc(d.id)}"><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><input class="form-input" value="${esc(det.documentLabelOverrides[d.id] || "")}" placeholder="Label custom (opsional)"></div><button type="button" data-reset-label title="Kembalikan nama asli"><i data-lucide="rotate-ccw"></i></button></div>`;
+      return `<div class="archive-linked-doc" data-doc-id="${esc(d.id)}"><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><input class="form-input" value="${esc(det.documentLabelOverrides[d.id] || "")}" placeholder="Label custom (opsional)"><label class="btn btn--outline btn--sm">${d.assetId ? "Ganti PDF" : "Upload PDF"}<input type="file" data-document-upload accept="application/pdf" hidden></label></div><button type="button" data-reset-label title="Kembalikan nama asli"><i data-lucide="rotate-ccw"></i></button></div>`;
     })
     .join("");
   root.querySelectorAll(".archive-linked-doc").forEach((row) => {
@@ -144,6 +155,26 @@ function renderDocumentList() {
       delete comp.detail.documentLabelOverrides[docId];
       input.value = "";
       renderPreview();
+    };
+    row.querySelector("[data-document-upload]").onchange = async (event) => {
+      const upload = event.target;
+      const document = docs.find((item) => item.id === docId);
+      if (!upload.files[0]) return;
+      upload.disabled = true;
+      try {
+        await TalentaArchiveDetailApi.uploadDocument(
+          comp,
+          document,
+          upload.files[0],
+        );
+        renderDocumentList();
+        renderPreview();
+        toast("PDF berhasil diunggah dan ditautkan.");
+      } catch (error) {
+        toast(error.message);
+      } finally {
+        upload.disabled = false;
+      }
     };
   });
   icons();
@@ -240,10 +271,18 @@ function bindForm() {
         requestAnimationFrame(fitArchiveDetailPreview);
       }),
   );
-  document.getElementById("archiveDetailForm").onsubmit = (e) => {
+  document.getElementById("archiveDetailForm").onsubmit = async (e) => {
     e.preventDefault();
-    saveDetail();
-    toast();
+    const submit = e.submitter;
+    if (submit) submit.disabled = true;
+    try {
+      await TalentaArchiveDetailApi.save(comp);
+      toast("Detail tersimpan ke database.");
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   };
   document.getElementById("archiveDetailReset").onclick = async () => {
     const confirmed = await adminConfirm({
@@ -255,14 +294,13 @@ function bindForm() {
       icon: "rotate-ccw",
     });
     if (!confirmed) return;
-    const state = getArchiveAdminState();
-    if (state.competitions) delete state.competitions[compId];
-    saveArchiveAdminState(state);
-    comp = archiveClone(getEffectiveCompetitionById(compId));
-    if (comp && !comp.detail) comp.detail = archiveDetailDefaults();
+    comp.detail = archiveDetailDefaults();
+    comp.skDocument = null;
+    await TalentaArchiveDetailApi.save(comp);
+    saveDetail();
     syncForm();
     renderPreview();
-    toast("Detail Arsip dikembalikan ke data sumber.");
+    toast("Detail Arsip dikembalikan dan tersimpan ke database.");
   };
 }
 
@@ -424,14 +462,17 @@ function fitArchiveDetailPreview() {
 }
 
 /* Init */
-if (comp) {
+if (compId) {
   document
     .querySelectorAll("[data-archive-back]")
     .forEach((link) => (link.href = archiveBackUrl));
-  syncForm();
-  bindForm();
-  renderPreview();
+  if (comp) {
+    syncForm();
+    bindForm();
+    renderPreview();
+  }
   setupArchiveDetailPreviewSizing();
   subscribeGlobalSettings(renderPreview);
   icons();
+  void hydrateDetail();
 }

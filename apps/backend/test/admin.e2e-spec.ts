@@ -237,6 +237,41 @@ describe('Admin tenant and locking (e2e)', () => {
     );
   });
 
+  it('uploads and serves validated local media', async () => {
+    const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0, 0, 0, 0]);
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${siteId}/media`)
+      .attach('file', png, { filename: 'logo.png', contentType: 'image/png' })
+      .expect(401);
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${siteId}/media`)
+      .set('Authorization', `Bearer ${viewerToken}`)
+      .attach('file', png, { filename: 'logo.png', contentType: 'image/png' })
+      .expect(403);
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${siteId}/media`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .attach('file', Buffer.from('not an image'), {
+        filename: 'fake.png',
+        contentType: 'image/png',
+      })
+      .expect(400);
+    const uploaded = await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${siteId}/media`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .field('altText', 'Logo demo')
+      .attach('file', png, { filename: 'logo.png', contentType: 'image/png' })
+      .expect(201);
+    const assetId = (uploaded.body as { data: { assetId: string } }).data
+      .assetId;
+    const served = await request(app.getHttpServer())
+      .get(`/api/v1/public/media/${assetId}`)
+      .expect(200)
+      .expect('Content-Type', /image\/png/)
+      .expect('X-Content-Type-Options', 'nosniff');
+    expect(served.body).toEqual(png);
+  });
+
   afterAll(async () => {
     try {
       if (siteId) {

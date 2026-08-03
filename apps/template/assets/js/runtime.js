@@ -107,12 +107,37 @@
   }
 
   applyGlobalSettings();
-  window.addEventListener("storage", (event) => {
-    if (event.key === GLOBAL_SETTINGS_KEY || event.key === null)
-      applyGlobalSettings();
+  window.addEventListener("talenta:public:bootstrap", (event) => {
+    const data = event.detail;
+    const baseline = getGlobalSettings();
+    const settings = normalizeGlobalSettings({
+      version: 3,
+      identity: {
+        ...baseline.identity,
+        eventName: data.site.name,
+        eventSlug: data.site.slug,
+        organizerName: data.site.organizerName,
+        logo: data.site.logoUrl
+          ? new URL(data.site.logoUrl, TalentaConfig.apiBaseUrl).href
+          : "",
+      },
+      theme: {
+        ...baseline.theme,
+        primaryColor: data.settings.primaryColor,
+      },
+      navigation: { ...baseline.navigation, ...data.settings.navigation },
+      contact: { ...baseline.contact, ...data.settings.contact },
+      footer: { ...baseline.footer, ...data.settings.footer },
+    });
+    applyGlobalSettings(settings);
   });
-  window.addEventListener("talenta:settings", (event) =>
-    applyGlobalSettings(event.detail),
-  );
+  if (window.TalentaPublic)
+    void TalentaPublic.bootstrap().catch((error) =>
+      console.error(
+        "Bootstrap API tidak tersedia; baseline ditampilkan.",
+        error,
+      ),
+    );
+
   window.TalentaRuntime = Object.freeze({ applyGlobalSettings });
 })();

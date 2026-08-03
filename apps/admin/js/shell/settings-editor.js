@@ -1,4 +1,4 @@
-﻿const STORAGE_KEY = GLOBAL_SETTINGS_KEY;
+const STORAGE_KEY = GLOBAL_SETTINGS_KEY;
 let globalState = getGlobalSettings(),
   globalPreviewActive = "home",
   globalPreviewResizeObserver;
@@ -13,6 +13,27 @@ const navigationItems = [
   ["archive", "Arsip", "archive", "arsip.html"],
   ["faq", "FAQ", "circle-help", "faq.html"],
 ];
+async function loadGlobalSettingsApi() {
+  const site = TalentaAdminAuth.currentSite();
+  if (!site?.id)
+    throw new TalentaApi.ApiError("Portal Admin belum dipilih", 400);
+  return (await TalentaApi.request(`/admin/sites/${site.id}/settings`)).data;
+}
+async function saveGlobalSettingsApi() {
+  const site = TalentaAdminAuth.currentSite();
+  return TalentaApi.request(`/admin/sites/${site.id}/settings`, {
+    method: "PUT",
+    body: {
+      eventName: globalState.identity.eventName,
+      organizerName: globalState.identity.organizerName,
+      primaryColor: globalState.theme.primaryColor,
+      logoAssetId: globalState.identity.logoAssetId || undefined,
+      navigation: globalState.navigation,
+      contact: globalState.contact,
+      footer: globalState.footer,
+    },
+  });
+}
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("eventSettingsForm"),
     byId = (id) => document.getElementById(id);
@@ -282,23 +303,40 @@ document.addEventListener("DOMContentLoaded", () => {
     );
   };
   logoUploadButton.onclick = () => eventLogo.click();
-  eventLogo.onchange = (e) => {
-    const file = e.target.files[0];
-    if (!file || file.size > 2 * 1024 * 1024)
-      return showToast("Logo maksimal berukuran 2 MB.", true);
-    const r = new FileReader();
-    r.onload = () => {
-      globalState.identity.logo = r.result;
-      setLogo(r.result);
+  eventLogo.onchange = async (e) => {
+    const input = e.target;
+    const file = input.files[0];
+    if (!file) return;
+    input.disabled = true;
+    try {
+      const asset = await TalentaMedia.upload(file, {
+        altText: `Logo ${globalState.identity.eventName}`,
+      });
+      globalState.identity.logoAssetId = asset.assetId;
+      globalState.identity.logo = TalentaMedia.url(asset);
+      setLogo(globalState.identity.logo);
       renderPreview();
-    };
-    r.readAsDataURL(file);
+      showToast("Logo berhasil diunggah.");
+    } catch (error) {
+      showToast(error.message, true);
+    } finally {
+      input.disabled = false;
+    }
   };
-  form.onsubmit = (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
+    const submit = e.submitter;
+    if (submit) submit.disabled = true;
     readForm();
-    globalState = saveGlobalSettings(globalState);
-    showToast("Pengaturan global berhasil disimpan.");
+    try {
+      await saveGlobalSettingsApi();
+      globalState = saveGlobalSettings(globalState);
+      showToast("Pengaturan global tersimpan ke database.");
+    } catch (error) {
+      showToast(error.message, true);
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   };
   resetSettings.onclick = async () => {
     const confirmed = await adminConfirm({
@@ -317,6 +355,28 @@ document.addEventListener("DOMContentLoaded", () => {
     adminSidebar.classList.toggle("admin-sidebar--open");
   renderPreview();
   lucide.createIcons();
+  void loadGlobalSettingsApi()
+    .then((data) => {
+      globalState = normalizeGlobalSettings({
+        ...globalState,
+        identity: {
+          ...globalState.identity,
+          eventName: data.eventName,
+          eventSlug: data.eventSlug,
+          organizerName: data.organizerName,
+          logoAssetId: data.logoAssetId || null,
+          logo: data.logoUrl ? TalentaMedia.url({ url: data.logoUrl }) : "",
+        },
+        theme: { ...globalState.theme, primaryColor: data.primaryColor },
+        navigation: { ...globalState.navigation, ...data.navigation },
+        contact: { ...globalState.contact, ...data.contact },
+        footer: { ...globalState.footer, ...data.footer },
+      });
+      fill();
+      renderNavigation();
+      renderPreview();
+    })
+    .catch((error) => showToast(error.message, true));
 });
 function setLogo(source) {
   document.getElementById("logoPreview").innerHTML =

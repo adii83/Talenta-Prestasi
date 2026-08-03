@@ -25,6 +25,11 @@ if (rootHtml.length) errors.push(`Root HTML forbidden: ${rootHtml.join(", ")}`);
 function walk(d) {
   return fs
     .readdirSync(d, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        !entry.isDirectory() ||
+        !["node_modules", "dist", "coverage", "uploads"].includes(entry.name),
+    )
     .flatMap((e) =>
       e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)],
     );

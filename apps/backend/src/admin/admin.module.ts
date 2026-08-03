@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import {
   AdminCompetitionController,
   AdminController,
+  AdminSessionController,
 } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminContentController } from './admin-content.controller';
@@ -14,6 +15,7 @@ import { AdminContentService } from './admin-content.service';
 @Module({
   imports: [TypeOrmModule.forFeature([EventSite, Competition]), AuthModule],
   controllers: [
+    AdminSessionController,
     AdminController,
     AdminCompetitionController,
     AdminContentController,

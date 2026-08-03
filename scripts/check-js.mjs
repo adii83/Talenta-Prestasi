@@ -1,9 +1,14 @@
-﻿import fs from "node:fs";
+import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 function walk(d) {
   return fs
     .readdirSync(d, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        !entry.isDirectory() ||
+        !["node_modules", "dist", "coverage", "uploads"].includes(entry.name),
+    )
     .flatMap((e) =>
       e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)],
     );

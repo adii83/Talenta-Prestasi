@@ -1,4 +1,4 @@
-﻿const ARCHIVE_KEY = ARCHIVE_STATE_KEY;
+const ARCHIVE_KEY = ARCHIVE_STATE_KEY;
 const ARCHIVE_ICONS = [
   "archive",
   "award",
@@ -18,6 +18,7 @@ const defaults = {
   removedCompetitionIds: effective.removedCompetitionIds || [],
 };
 let archiveState = load();
+let archiveRemovedItems = new Map();
 let archivePreviewResizeObserver;
 const archiveEmbedded =
   new URLSearchParams(location.search).get("embedded") === "1";
@@ -28,6 +29,51 @@ function archiveDetailAdminUrl(id) {
 }
 function load() {
   return structuredClone(defaults);
+}
+function archiveItem(row) {
+  return {
+    ...normalizeArchiveCompetition({
+      id: row.id,
+      name: row.name,
+      shortName: row.shortName || row.name,
+      description: row.description || "",
+      status: row.publicationStatus,
+      active: !row.deletedAt,
+      icon: row.fallbackIcon,
+      iconMode: row.mascotAssetId ? "upload" : "library",
+      mascotAssetId: row.mascotAssetId,
+      uploadedIcon: row.mascotUrl
+        ? TalentaMedia.url({ url: row.mascotUrl })
+        : "",
+      documents: [],
+      winnerCategories: [],
+    }),
+    slug: row.slug,
+    version: row.version,
+    lifecycle: row.lifecycle,
+  };
+}
+async function hydrateArchive() {
+  try {
+    archiveState.items = (await TalentaArchiveApi.list())
+      .filter((row) => row.lifecycle === "archived" && !row.deletedAt)
+      .map(archiveItem);
+    archiveState.removedCompetitionIds = [];
+    archiveRemovedItems = new Map();
+    renderItems();
+    renderPreview();
+  } catch (error) {
+    toast(error.message);
+  }
+}
+function slugify(value) {
+  return (
+    value
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "") || `event-${Date.now()}`
+  );
 }
 function esc(v = "") {
   const d = document.createElement("div");
@@ -49,19 +95,7 @@ function iconMarkup(item, className = "") {
     return `<img class="${className}" src="${esc(item.uploadedIcon)}" alt="${esc(item.iconAlt || "Logo atau maskot lomba")}">`;
   return `<i data-lucide="${esc(item.icon || "archive")}"></i>`;
 }
-function readIcon(file, done) {
-  if (!file) return;
-  if (
-    !["image/png", "image/jpeg", "image/webp", "image/svg+xml"].includes(
-      file.type,
-    )
-  )
-    return toast("Format ikon harus PNG, JPG, WebP, atau SVG.");
-  if (file.size > 1024 * 1024) return toast("Ukuran ikon maksimal 1 MB.");
-  const reader = new FileReader();
-  reader.onload = () => done(reader.result);
-  reader.readAsDataURL(file);
-}
+
 function applyGlobalTheme(root) {
   applyGlobalThemeTokens(root);
 }
@@ -114,13 +148,26 @@ function bindItem(el) {
     renderItems();
     renderPreview();
   };
-  el.querySelector("[data-icon-upload]").onchange = (e) =>
-    readIcon(e.target.files[0], (data) => {
-      item.uploadedIcon = data;
+  el.querySelector("[data-icon-upload]").onchange = async (e) => {
+    const input = e.target;
+    if (!input.files[0]) return;
+    input.disabled = true;
+    try {
+      const asset = await TalentaMedia.upload(input.files[0], {
+        altText: item.iconAlt || item.name,
+      });
+      item.mascotAssetId = asset.assetId;
+      item.uploadedIcon = TalentaMedia.url(asset);
       item.iconMode = "upload";
       renderItems();
       renderPreview();
-    });
+      toast("Logo atau maskot berhasil diunggah.");
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      input.disabled = false;
+    }
+  };
   el.querySelector("[data-icon-alt]").oninput = (e) => {
     item.iconAlt = e.target.value;
     renderPreview();
@@ -146,6 +193,7 @@ function bindItem(el) {
       icon: "archive-x",
     });
     if (!confirmed) return;
+    if (!item.isNew) archiveRemovedItems.set(item.id, { ...item });
     archiveState.removedCompetitionIds = [
       ...new Set([...(archiveState.removedCompetitionIds || []), item.id]),
     ];
@@ -186,6 +234,8 @@ function addItem() {
     documents: [],
     winnerCategories: [],
     skDocument: null,
+    isNew: true,
+    slug: `event-${Date.now()}`,
   });
   renderItems();
   renderPreview();
@@ -247,25 +297,41 @@ function bind() {
         requestAnimationFrame(fitArchivePreview);
       }),
   );
-  document.getElementById("archiveEditorForm").onsubmit = (e) => {
+  document.getElementById("archiveEditorForm").onsubmit = async (e) => {
     e.preventDefault();
-    saveArchiveAdminState({
-      version: 2,
-      page: {
-        active: archiveState.active,
-        eyebrow: archiveState.eyebrow,
-        title: archiveState.title,
-        description: archiveState.description,
-        alignment: archiveState.alignment,
-        action: archiveState.action,
-      },
-      order: archiveState.items.map((x) => x.id),
-      competitions: Object.fromEntries(
-        archiveState.items.map((x) => [x.id, x]),
-      ),
-      removedCompetitionIds: archiveState.removedCompetitionIds || [],
-    });
-    toast();
+    const submit = e.submitter;
+    if (submit) submit.disabled = true;
+    try {
+      for (const removedId of archiveState.removedCompetitionIds || []) {
+        const removed = archiveRemovedItems.get(removedId);
+        if (removed?.version) await TalentaArchiveApi.remove(removed);
+      }
+      for (const item of archiveState.items) {
+        if (item.isNew) {
+          const created = await TalentaArchiveApi.create({
+            ...item,
+            slug: slugify(item.slug || item.name),
+          });
+          item.id = created.id;
+          item.version = 1;
+          item.isNew = false;
+        }
+        const updated = await TalentaArchiveApi.update(item);
+        item.version = updated.version;
+        if (item.active && item.status !== "published") {
+          const published = await TalentaArchiveApi.publish(item);
+          item.version = published.version;
+          item.status = published.publicationStatus;
+        }
+      }
+      archiveState.removedCompetitionIds = [];
+      toast("Perubahan Arsip tersimpan ke database.");
+      await hydrateArchive();
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   };
   document.getElementById("archiveReset").onclick = async () => {
     const confirmed = await adminConfirm({
@@ -291,6 +357,7 @@ subscribeGlobalSettings(() => {
 });
 bind();
 icons();
+void hydrateArchive();
 
 function setupArchivePreviewSizing() {
   const frame = document.getElementById("archivePreviewFrame");

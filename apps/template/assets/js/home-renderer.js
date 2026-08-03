@@ -9,6 +9,7 @@
     partners: document.getElementById("mitra"),
   };
   if (Object.values(sections).some((section) => !section)) return;
+  let apiWinnerCategories = null;
 
   function esc(value = "") {
     return String(value).replace(
@@ -37,6 +38,8 @@
   function assetUrl(value = "", fallback = "") {
     const source = String(value || fallback).trim();
     if (/^(?:data:|blob:|https?:\/\/)/i.test(source)) return source;
+    if (source.startsWith("/api/"))
+      return new URL(source, TalentaConfig.apiBaseUrl).href;
     const match = source.match(/template\/assets\/images\/([^/?#]+)$/i);
     const relative = match ? `assets/images/${match[1]}` : source;
     try {
@@ -118,7 +121,7 @@
       winner.active !== false,
       `section${background}`,
     );
-    const categories = getHomeWinnerCategories();
+    const categories = apiWinnerCategories || getHomeWinnerCategories();
     const display = getHomeWinnerDisplay();
     sections.winner.innerHTML = buildHomeWinnerMarkup(
       winner,
@@ -154,21 +157,50 @@
     if (window.lucide) lucide.createIcons();
   }
 
-  if (hasSavedHomeAdminState()) renderHome();
-  window.addEventListener(HOME_STATE_EVENT, (event) =>
-    renderHome(event.detail || getHomeAdminState()),
+  function apiState(data) {
+    const state = getHomeAdminState();
+    data.sections.forEach((section) => {
+      const type = section.type || section.sectionType;
+      if (state[type])
+        state[type] = {
+          ...state[type],
+          ...section.settings,
+          active: section.isActive,
+        };
+    });
+    return state;
+  }
+
+  renderHome();
+  window.addEventListener("talenta:public:home", (event) =>
+    renderHome(apiState(event.detail)),
   );
-  window.addEventListener("talenta:winners", () =>
-    renderWinner(getHomeAdminState().winnerHighlight),
+  void TalentaPublic.load("home").catch((error) =>
+    console.error("Home API tidak tersedia; baseline ditampilkan.", error),
   );
-  window.addEventListener("storage", (event) => {
-    if (
-      event.key === HOME_STATE_KEY ||
-      event.key === HOME_WINNER_MANAGER_KEY ||
-      event.key === HOME_WINNER_PAGE_KEY ||
-      event.key === null
-    )
-      renderHome();
-  });
+  void TalentaApi.request(`/public/sites/${TalentaConfig.siteSlug}/winners`, {
+    auth: false,
+  })
+    .then((response) => {
+      apiWinnerCategories = response.data.categories.map((category) => ({
+        name: category.name,
+        icon: category.icon,
+        winners: category.winners.map((winner) => ({
+          name: winner.fullName,
+          rank: winner.rankLabel,
+          school: winner.school,
+          exam: winner.examNumber,
+          district: winner.district,
+          regency: winner.regency,
+          province: winner.province,
+          photo: "",
+        })),
+      }));
+      renderWinner(getHomeAdminState().winnerHighlight);
+    })
+    .catch((error) =>
+      console.error("Winner Highlight API tidak tersedia.", error),
+    );
+
   window.TalentaHome = Object.freeze({ render: renderHome });
 })();

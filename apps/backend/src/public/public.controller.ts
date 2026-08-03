@@ -31,6 +31,11 @@ export class PublicController {
     return this.publicService.bootstrap(params.hostname);
   }
 
+  @Get(':siteSlug/bootstrap')
+  bootstrapBySlug(@Param() params: SiteSlugParams) {
+    return this.publicService.bootstrapBySlug(params.siteSlug);
+  }
+
   @Get(':siteSlug/home')
   home(@Param() params: SiteSlugParams) {
     return this.publicService.home(params.siteSlug);

@@ -12,9 +12,32 @@ function loadDisplay() {
 function applyGlobalTheme(root) {
   applyGlobalThemeTokens(root);
 }
-function save() {
-  saveWinnerAdminState(wmState, wmDisplay);
-  toast("Data pemenang berhasil disimpan.");
+async function save() {
+  try {
+    await TalentaWinnerApi.save(wmState, wmDisplay);
+    toast("Data pemenang tersimpan ke database.");
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
+async function hydrateWinners() {
+  try {
+    const loaded = await TalentaWinnerApi.load();
+    wmState = loaded.state;
+    wmDisplay = normalizeWinnerPageState({
+      ...wmDisplay,
+      ...(loaded.page || {}),
+    });
+    if (loaded.competition)
+      loaded.competition.winnerCategories = loaded.state.categories;
+    window.TalentaActiveCompetition = loaded.competition;
+    renderActiveComp();
+    renderCategories();
+    syncDisplay();
+    renderPreview();
+  } catch (error) {
+    toast(error.message, true);
+  }
 }
 function uid() {
   return (
@@ -74,6 +97,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   bindGlobal();
   icons();
+  void hydrateWinners();
 });
 
 function refreshWinnerArchiveSources() {
@@ -84,7 +108,7 @@ function refreshWinnerArchiveSources() {
 }
 
 function renderActiveComp() {
-  const comp = getActiveCompetition(),
+  const comp = window.TalentaActiveCompetition || getActiveCompetition(),
     el = document.getElementById("wmActiveCompetition");
   if (!comp) {
     el.innerHTML =
@@ -223,9 +247,12 @@ function bindGlobal() {
     document
       .getElementById("adminSidebar")
       .classList.toggle("admin-sidebar--open");
-  document.getElementById("winnerManagerForm").onsubmit = (e) => {
+  document.getElementById("winnerManagerForm").onsubmit = async (e) => {
     e.preventDefault();
-    save();
+    const submit = e.submitter;
+    if (submit) submit.disabled = true;
+    await save();
+    if (submit) submit.disabled = false;
   };
   document.getElementById("resetWinnerManager").onclick = async () => {
     const confirmed = await adminConfirm({
@@ -464,20 +491,24 @@ function renderCategories() {
         renderCategories();
         renderPreview();
       };
-      wEl.querySelector("[data-w-photo]").onchange = (e) => {
+      wEl.querySelector("[data-w-photo]").onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
-        if (file.size > 2 * 1024 * 1024) {
-          toast("Maksimal 2 MB.", true);
-          return;
-        }
-        const reader = new FileReader();
-        reader.onload = () => {
-          w.photo = reader.result;
+        e.target.disabled = true;
+        try {
+          const asset = await TalentaMedia.upload(file, {
+            altText: `Foto ${w.name || "pemenang"}`,
+          });
+          w.photoAssetId = asset.assetId;
+          w.photo = TalentaMedia.url(asset);
           renderCategories();
           renderPreview();
-        };
-        reader.readAsDataURL(file);
+          toast("Foto berhasil diunggah.");
+        } catch (error) {
+          toast(error.message, true);
+        } finally {
+          e.target.disabled = false;
+        }
       };
       wList.appendChild(wEl);
     });

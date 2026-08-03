@@ -25,26 +25,27 @@ scope repository ini.
 - Modul/section/menu, tombol, badge, dan satu kartu data dapat dinonaktifkan tanpa menghapus data.
 - Admin mengubah konten melalui komponen terstruktur, bukan CSS bebas, agar responsif.
 - Penghapusan permanen adalah tindakan terpisah dan meminta konfirmasi.
-- `localStorage` hanya untuk demonstrasi, bukan penyimpanan produksi.
+- PostgreSQL/backend adalah sumber data otoritatif untuk konten Admin dan publik.
+- `sessionStorage` hanya untuk sesi JWT Admin; state memori hanya untuk preview form belum disimpan.
+- Media demonstrasi disimpan pada filesystem backend `apps/backend/storage/uploads/`; PostgreSQL menyimpan metadata dan referensi asset.
+- Object storage baru diperlukan saat deployment multi-instance/cloud dipilih.
 
 ## Status Saat Ini
 
 ### Selesai
 
-- Template publik responsif untuk Beranda, Unduh, Pemenang, Arsip, Detail Arsip,
-  dan FAQ.
-- Shell Admin dan editor terstruktur untuk Pengaturan Global serta seluruh halaman.
-- Database dummy, repository bersama, CRUD demo, Simpan/Reset, live sync, dan
-  preview responsif berbasis design system Template.
-- Sinkronisasi tema global ke seluruh halaman Template dan preview Admin.
-- Validator route, sintaks, format, kontrak tema, serta audit browser tema.
+- Template publik responsif untuk Beranda, Unduh, Pemenang, Arsip, Detail Arsip, dan FAQ.
+- NestJS + TypeScript + TypeORM + PostgreSQL, autentikasi JWT, tenant/RBAC, audit log, API Admin dan API publik.
+- Seluruh editor Admin dan renderer publik terhubung ke API/PostgreSQL.
+- Upload lokal nyata untuk logo site, maskot Competition, ikon Home, foto pemenang, dan PDF dokumen.
+- Delivery gambar/PDF melalui URL API opaque; storage key/path filesystem tidak dipublikasikan.
+- Validasi role/tenant, batas ukuran, MIME/signature, SVG aktif, checksum, dan header `nosniff`.
+- Public Template tidak membaca `localStorage`; tidak ada `FileReader`/Data URL pada upload Admin.
+- Final automated gate lulus: frontend check + seluruh relation/parity audit; backend TypeScript, lint, 11 E2E, audit 0 vulnerability, 6/6 migration terpasang.
 
-### Belum Dibuat
+### Tersisa
 
-- Backend, database, autentikasi, API, dan subdomain nyata.
-- Upload file server dan penyimpanan media produksi.
-- Test end-to-end browser untuk seluruh operasi CRUD dan seluruh kombinasi konten;
-  audit browser otomatis saat ini khusus paritas tema.
+- Browser black-box demonstrasi login → upload → save → refresh → verifikasi publik/download.
 
 ## Urutan Pekerjaan
 
@@ -58,6 +59,17 @@ scope repository ini.
 8. Backend/database/subdomain.
 
 ## Riwayat Perubahan
+
+### 3 Agustus 2026 — Media Lokal dan Backend sebagai Sumber Utama
+
+- Menambahkan modul media NestJS untuk upload multipart terautentikasi dan delivery publik.
+- File disimpan lokal per organisasi; metadata, checksum, creator, status, dan referensi disimpan di PostgreSQL.
+- Menghubungkan logo global, maskot Competition, ikon Home, foto pemenang, dan PDF.
+- Mengganti seluruh upload base64/FileReader Admin dengan shared `TalentaMedia` client.
+- Menghapus listener `localStorage` dan event state Admin dari Template publik.
+- Menambahkan E2E media untuk JWT, role, signature palsu, upload valid, delivery, dan `nosniff`.
+- Final regression: 11/11 backend E2E, 0 vulnerability produksi, frontend structural/parity/relation/dialog audit seluruhnya lulus.
+
 
 ### 25 Juli 2026 — Fondasi Admin
 
@@ -805,3 +817,9 @@ diganti adapter API tanpa mengubah struktur UI final.
   update, soft-delete, publish, audit transaction, dan optimistic locking `If-Match`.
 - Menjalankan enam migration; TypeScript, ESLint, unit test, audit dependency, dan
   sembilan E2E PostgreSQL lulus termasuk cross-tenant, role, stale version, dan publish.
+
+## Integrasi Backend Final � 3 Agustus 2026
+
+Seluruh editor Admin dan halaman Template publik telah dihubungkan ke NestJS/PostgreSQL tanpa perubahan desain. Alur yang terhubung meliputi session/auth, global settings, Beranda, Arsip list/detail, Pemenang, Unduh, dan FAQ. `localStorage` tersisa sebagai baseline/fallback preview, bukan persistensi utama saat API tersedia.
+
+Verifikasi final: frontend check lulus, seluruh audit relasi/parity lulus, backend TypeScript/lint/unit/E2E lulus (10/10 E2E), audit dependency production 0 vulnerability, dan HTTP contract seluruh public API lulus. Browser black-box interaktif dijadwalkan belakangan sesuai arahan pengguna.

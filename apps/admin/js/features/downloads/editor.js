@@ -1,11 +1,14 @@
 let previewCompetitionId = "";
 let downloadPreviewResizeObserver;
 function archive(id) {
-  return typeof getDownloadCompetition === "function"
-    ? getDownloadCompetition(id)
-    : typeof getEffectiveCompetitionById === "function"
-      ? getEffectiveCompetitionById(id)
-      : MOCK_ARCHIVE_DATABASE.competitions.find((x) => x.id === id);
+  return (
+    window.TalentaDownloadCompetitions?.find((item) => item.id === id) ||
+    (typeof getDownloadCompetition === "function"
+      ? getDownloadCompetition(id)
+      : typeof getEffectiveCompetitionById === "function"
+        ? getEffectiveCompetitionById(id)
+        : MOCK_ARCHIVE_DATABASE.competitions.find((x) => x.id === id))
+  );
 }
 function load() {
   const s = getDownloadAdminState();
@@ -21,6 +24,28 @@ function load() {
   return s;
 }
 let state = load();
+async function hydrateDownloads() {
+  try {
+    const loaded = await TalentaDownloadApi.load();
+    window.TalentaDownloadCompetitions = loaded.available;
+    state = {
+      ...state,
+      active: loaded.page?.isActive ?? state.active,
+      eyebrow: loaded.page?.eyebrow ?? state.eyebrow,
+      title: loaded.page?.title ?? state.title,
+      description: loaded.page?.description ?? state.description,
+      alignment: loaded.page?.alignment ?? state.alignment,
+      competitions: loaded.configs,
+    };
+    normalize(state);
+    sync();
+    renderPicker();
+    renderCompetitions();
+    renderPreview();
+  } catch (error) {
+    toast(error.message, true);
+  }
+}
 document.addEventListener("DOMContentLoaded", () => {
   bind();
   sync();
@@ -30,6 +55,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupDownloadPreviewSizing();
   subscribeGlobalSettings(renderPreview);
   lucide.createIcons();
+  void hydrateDownloads();
 });
 function normalize(s) {
   if (!s.competitions.length) return;
@@ -80,11 +106,19 @@ function bind() {
     renderCompetitions();
     renderPreview();
   };
-  document.getElementById("downloadEditorForm").onsubmit = (e) => {
+  document.getElementById("downloadEditorForm").onsubmit = async (e) => {
     e.preventDefault();
+    const submit = e.submitter;
+    if (submit) submit.disabled = true;
     normalize(state);
-    saveDownloadAdminState(state);
-    toast("Konfigurasi Unduh berhasil disimpan.");
+    try {
+      await TalentaDownloadApi.save(state);
+      toast("Konfigurasi Unduh tersimpan ke database.");
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   };
   document.getElementById("resetDownload").onclick = async () => {
     const confirmed = await adminConfirm({
@@ -167,13 +201,14 @@ function renderPicker() {
         ? getActiveCompetition()
         : null,
     allComps =
-      typeof getDownloadCompetitions === "function"
+      window.TalentaDownloadCompetitions ||
+      (typeof getDownloadCompetitions === "function"
         ? getDownloadCompetitions()
         : typeof getEffectiveArchivedCompetitions === "function"
           ? getEffectiveArchivedCompetitions()
           : MOCK_ARCHIVE_DATABASE.competitions.filter(
               (x) => x.status === "published",
-            ),
+            )),
     available = allComps.filter(
       (x) => x.active !== false && !selected.has(x.id),
     ),

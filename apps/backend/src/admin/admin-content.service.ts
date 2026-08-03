@@ -28,6 +28,7 @@ type Win = {
   rankLabel?: string;
   school?: string;
   examNumber?: string;
+  photoAssetId?: string;
   isActive?: boolean;
   sortOrder?: number;
 };
@@ -43,10 +44,132 @@ type Page = {
 export class AdminContentService {
   constructor(private readonly db: DataSource) {}
 
+  async detailSettings(competitionId: string, userId: string) {
+    await this.competitionAccess(competitionId, userId, false);
+    const settings =
+      (
+        await this.db.query(
+          `SELECT decree_document_id AS "decreeDocumentId",is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM competition_detail_settings WHERE competition_id=$1`,
+          [competitionId],
+        )
+      )[0] ?? null;
+    const categories = await this.db.query(
+      `SELECT category_id AS "categoryId",is_visible AS "isVisible",sort_order AS "sortOrder" FROM archive_category_settings WHERE competition_id=$1 ORDER BY sort_order,category_id`,
+      [competitionId],
+    );
+    const documents = await this.db.query(
+      `SELECT document_id AS "documentId",is_visible AS "isVisible",label_override AS "labelOverride",sort_order AS "sortOrder" FROM archive_document_settings WHERE competition_id=$1 ORDER BY sort_order,document_id`,
+      [competitionId],
+    );
+    return { data: { settings, categories, documents }, errors: [] };
+  }
+
+  async putDetailSettings(
+    competitionId: string,
+    userId: string,
+    input: {
+      decreeDocumentId?: string;
+      isActive: boolean;
+      winnersActive: boolean;
+      documentsActive: boolean;
+      metadataVisibility: Record<string, boolean>;
+      categories: { categoryId: string; isVisible: boolean }[];
+      documents: {
+        documentId: string;
+        isVisible: boolean;
+        labelOverride: string;
+      }[];
+    },
+  ) {
+    await this.competitionAccess(competitionId, userId, true);
+    await this.db.transaction(async (manager) => {
+      if (input.decreeDocumentId) {
+        const decree = await manager.query(
+          `SELECT id FROM competition_documents WHERE id=$1 AND competition_id=$2`,
+          [input.decreeDocumentId, competitionId],
+        );
+        if (!decree[0])
+          throw new NotFoundException(
+            'Decree document does not belong to competition',
+          );
+      }
+      await manager.query(
+        `INSERT INTO competition_detail_settings(competition_id,decree_document_id,is_active,winners_active,documents_active,metadata_visibility) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(competition_id) DO UPDATE SET decree_document_id=EXCLUDED.decree_document_id,is_active=EXCLUDED.is_active,winners_active=EXCLUDED.winners_active,documents_active=EXCLUDED.documents_active,metadata_visibility=EXCLUDED.metadata_visibility`,
+        [
+          competitionId,
+          input.decreeDocumentId ?? null,
+          input.isActive,
+          input.winnersActive,
+          input.documentsActive,
+          input.metadataVisibility,
+        ],
+      );
+      await manager.query(
+        `DELETE FROM archive_category_settings WHERE competition_id=$1`,
+        [competitionId],
+      );
+      for (const [sortOrder, category] of input.categories.entries()) {
+        const owned = await manager.query(
+          `SELECT id FROM winner_categories WHERE id=$1 AND competition_id=$2`,
+          [category.categoryId, competitionId],
+        );
+        if (!owned[0])
+          throw new NotFoundException(
+            'Winner category does not belong to competition',
+          );
+        await manager.query(
+          `INSERT INTO archive_category_settings(competition_id,category_id,is_visible,sort_order) VALUES($1,$2,$3,$4)`,
+          [competitionId, category.categoryId, category.isVisible, sortOrder],
+        );
+      }
+      await manager.query(
+        `DELETE FROM archive_document_settings WHERE competition_id=$1`,
+        [competitionId],
+      );
+      for (const [sortOrder, document] of input.documents.entries()) {
+        const owned = await manager.query(
+          `SELECT id FROM competition_documents WHERE id=$1 AND competition_id=$2`,
+          [document.documentId, competitionId],
+        );
+        if (!owned[0])
+          throw new NotFoundException(
+            'Document does not belong to competition',
+          );
+        await manager.query(
+          `INSERT INTO archive_document_settings(competition_id,document_id,is_visible,label_override,sort_order) VALUES($1,$2,$3,$4,$5)`,
+          [
+            competitionId,
+            document.documentId,
+            document.isVisible,
+            document.labelOverride.trim(),
+            sortOrder,
+          ],
+        );
+      }
+      await manager.query(
+        `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes) SELECT event_site_id,$2,'update','competition_detail_settings',$1,$3 FROM competitions WHERE id=$1`,
+        [
+          competitionId,
+          userId,
+          JSON.stringify({
+            categories: input.categories.length,
+            documents: input.documents.length,
+          }),
+        ],
+      );
+    });
+    return this.detailSettings(competitionId, userId);
+  }
+
   async list(table: Table, competitionId: string, userId: string) {
     await this.competitionAccess(competitionId, userId, false);
+    const columns = {
+      competition_documents: `id,title,category,document_role AS "documentRole",asset_id AS "assetId",is_active AS "isActive",sort_order AS "sortOrder"`,
+      winner_categories: `id,name,rank_prefix AS "rankPrefix",icon,is_active AS "isActive",sort_order AS "sortOrder"`,
+      winners: `id,category_id AS "categoryId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",is_active AS "isActive",sort_order AS "sortOrder"`,
+    }[table];
     const rows = await this.db.query(
-      `SELECT * FROM ${table} WHERE competition_id=$1 ORDER BY sort_order,id`,
+      `SELECT ${columns} FROM ${table} WHERE competition_id=$1 ORDER BY sort_order,id`,
       [competitionId],
     );
     return { data: rows, errors: [] };
@@ -153,7 +276,7 @@ export class AdminContentService {
       async (m) =>
         (
           await m.query(
-            `INSERT INTO winners(competition_id,category_id,full_name,rank_label,school,exam_number,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+            `INSERT INTO winners(competition_id,category_id,full_name,rank_label,school,exam_number,photo_asset_id,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
             [
               c,
               d.categoryId,
@@ -161,6 +284,7 @@ export class AdminContentService {
               d.rankLabel ?? '',
               d.school ?? '',
               d.examNumber ?? '',
+              d.photoAssetId ?? null,
               d.isActive ?? true,
               d.sortOrder ?? 0,
             ],
@@ -177,7 +301,7 @@ export class AdminContentService {
       async (m) =>
         (
           await m.query(
-            `UPDATE winners SET category_id=$3,full_name=$4,rank_label=$5,school=$6,exam_number=$7,is_active=$8,sort_order=$9 WHERE id=$1 AND competition_id=$2 RETURNING *`,
+            `UPDATE winners SET category_id=$3,full_name=$4,rank_label=$5,school=$6,exam_number=$7,photo_asset_id=$8,is_active=$9,sort_order=$10 WHERE id=$1 AND competition_id=$2 RETURNING *`,
             [
               id,
               c,
@@ -186,6 +310,7 @@ export class AdminContentService {
               d.rankLabel ?? '',
               d.school ?? '',
               d.examNumber ?? '',
+              d.photoAssetId ?? null,
               d.isActive ?? true,
               d.sortOrder ?? 0,
             ],

@@ -20,16 +20,16 @@
 Rancangan `DATABASE_DESIGN.md` sudah mencocokkan **seluruh** kebutuhan frontend
 tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
 
-| Frontend State Key | Target Database Tables | Status |
-|---|---|---|
-| `talenta_event_settings_v1` | `event_sites` + `site_settings` + `site_domains` | ✅ |
-| `talenta_home_editor_v1` | `home_sections` + 7 item tables | ✅ |
-| `talenta_download_editor_v2` | `download_competitions` + `download_document_settings` | ✅ |
-| `talenta_winner_manager_v1` | `winner_categories` + `winners` + SK via dokumen | ✅ |
-| `talenta_winner_page_v1` | `winner_page_settings` | ✅ |
-| `talenta_archive_manager_v2` | `competitions` + documents + categories + detail settings | ✅ |
-| `talenta_faq_manager_v1` | `faq_categories` + `faq_questions` | ✅ |
-| Mock database (`MOCK_ARCHIVE_DATABASE`) | `competitions` + nested relations | ✅ |
+| Frontend State Key                      | Target Database Tables                                    | Status |
+| --------------------------------------- | --------------------------------------------------------- | ------ |
+| `talenta_event_settings_v1`             | `event_sites` + `site_settings` + `site_domains`          | ✅     |
+| `talenta_home_editor_v1`                | `home_sections` + 7 item tables                           | ✅     |
+| `talenta_download_editor_v2`            | `download_competitions` + `download_document_settings`    | ✅     |
+| `talenta_winner_manager_v1`             | `winner_categories` + `winners` + SK via dokumen          | ✅     |
+| `talenta_winner_page_v1`                | `winner_page_settings`                                    | ✅     |
+| `talenta_archive_manager_v2`            | `competitions` + documents + categories + detail settings | ✅     |
+| `talenta_faq_manager_v1`                | `faq_categories` + `faq_questions`                        | ✅     |
+| Mock database (`MOCK_ARCHIVE_DATABASE`) | `competitions` + nested relations                         | ✅     |
 
 ### Relasi Kunci yang Diverifikasi
 
@@ -44,6 +44,7 @@ tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
 ## Rencana Implementasi
 
 ### Fase 1 — Fondasi (SELESAI)
+
 - [x] Scaffold NestJS project di `apps/backend/`
 - [x] Konfigurasi TypeORM + PostgreSQL connection
 - [x] Entity: `organizations`, `users`, `organization_memberships`
@@ -54,6 +55,7 @@ tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
 - [x] Auth module (JWT) — service, strategy, guard, controller
 
 ### Fase 2 — Data Inti Lomba (SELESAI)
+
 - [x] Entity: `competitions` (lifecycle + publication_status)
 - [x] Entity: `competition_documents`
 - [x] Entity: `winner_categories`, `winners`
@@ -65,6 +67,7 @@ tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
 - [x] Schema terverifikasi: 16 tabel, 22 foreign key, 1 migration applied
 
 ### Fase 3 — Halaman & Konfigurasi (SELESAI)
+
 - [x] Entity: `page_settings`
 - [x] Entity: `winner_page_settings` (1:1 portal)
 - [x] Migration `AddPageSettings` dijalankan dan diverifikasi
@@ -81,6 +84,7 @@ tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
 - [x] Final audit: 5 migration applied, schema drift nihil, TypeScript/ESLint/Jest lulus
 
 ### Fase 4 — API Endpoints (SEDANG BERJALAN)
+
 - [x] Audit `organization.entity.ts` dan `competition.entity.ts`: compiler, ESLint, migration metadata bersih; merah IDE adalah diagnostic stale
 - [x] Perbaikan `LoginDto`: email/password tervalidasi dan kompatibel dengan whitelist pipe
 - [x] JWT memverifikasi user aktif ke database dan tidak memakai fallback secret lemah
@@ -109,13 +113,13 @@ tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
 
 ## Keputusan Teknis
 
-| Keputusan | Nilai | Alasan |
-|---|---|---|
-| Framework | NestJS + TypeScript | Satu ekosistem JS, modular, type-safe |
-| Database | PostgreSQL | Sesuai DATABASE_DESIGN.md |
-| ORM | TypeORM | Dipakai oleh implementasi backend dan migration SQL manual |
-| Lokasi backend | `apps/backend/` | Sejajar dengan template dan admin |
-| Auth | JWT | Standard untuk REST API |
+| Keputusan      | Nilai               | Alasan                                                     |
+| -------------- | ------------------- | ---------------------------------------------------------- |
+| Framework      | NestJS + TypeScript | Satu ekosistem JS, modular, type-safe                      |
+| Database       | PostgreSQL          | Sesuai DATABASE_DESIGN.md                                  |
+| ORM            | TypeORM             | Dipakai oleh implementasi backend dan migration SQL manual |
+| Lokasi backend | `apps/backend/`     | Sejajar dengan template dan admin                          |
+| Auth           | JWT                 | Standard untuk REST API                                    |
 
 ## Untuk AI Selanjutnya
 
@@ -125,3 +129,26 @@ tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
 4. **Ikuti urutan fase** — jangan loncat
 5. **Update file ini** setelah menyelesaikan setiap task
 6. **Tabel database harus persis** sesuai DATABASE_DESIGN.md — tidak menambah, tidak mengurangi
+
+## Integrasi Frontend�Backend (3 Agustus 2026)
+
+Status: **selesai untuk seluruh state/data aplikasi yang tersedia di UI**.
+
+- Admin: autentikasi/session, Competition, Detail Arsip, Pemenang, Unduh, FAQ, Beranda, dan Pengaturan Global sudah memakai API PostgreSQL.
+- Template publik: bootstrap global, Beranda, Unduh, FAQ, Pemenang, Arsip, dan Detail Arsip sudah memakai public API berdasarkan `siteSlug`.
+- `localStorage` pada renderer/editor dipertahankan hanya sebagai baseline/fallback/preview compatibility, bukan sumber persistensi utama setelah API berhasil dimuat.
+- Public API memakai slug competition untuk tautan Detail Arsip; konfigurasi heading, active state, metadata visibility, kategori, dokumen, tab, dan footer/theme ikut berasal dari database.
+- Media yang sudah berbentuk Data URL pada editor Home tetap tersimpan lossless di JSONB. Penyimpanan file fisik/object storage production belum dipilih dan tidak dibuat tanpa kebutuhan/infrastruktur deployment.
+
+### Gate final
+
+- Backend TypeScript: lulus.
+- Backend lint: lulus.
+- Backend unit: 1/1 lulus.
+- Backend E2E: 10/10 lulus.
+- Backend production dependency audit: 0 vulnerability.
+- Frontend route/asset/ID, syntax 42 JS, theme sync, dan Prettier: lulus.
+- Home parity desktop/tablet/mobile: lulus.
+- Audit relasi Archive, Downloads, Winners, FAQ, dan dialog Admin: lulus.
+- HTTP smoke seluruh endpoint public: lulus.
+- Browser black-box interaktif ditunda atas arahan pengguna.

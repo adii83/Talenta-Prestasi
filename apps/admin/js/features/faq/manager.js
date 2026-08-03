@@ -1,4 +1,4 @@
-﻿/* Manajemen FAQ — kategori dan pertanyaan bebas dengan preview template publik. */
+/* Manajemen FAQ — kategori dan pertanyaan bebas dengan preview template publik. */
 let faqState = getFaqAdminState();
 let faqPreviewResizeObserver;
 const faqEsc = (v = "") => {
@@ -7,11 +7,34 @@ const faqEsc = (v = "") => {
   return n.innerHTML;
 };
 const faqIcons = () => lucide.createIcons();
-function faqToast(message = "FAQ tersimpan.") {
+function faqToast(message = "FAQ tersimpan.", error = false) {
   const t = document.getElementById("adminToast");
   t.querySelector("span").textContent = message;
+  t.classList.toggle("admin-toast--error", error);
   t.classList.add("admin-toast--show");
   setTimeout(() => t.classList.remove("admin-toast--show"), 2200);
+}
+async function faqHydrate() {
+  try {
+    const loaded = await TalentaFaqApi.load();
+    faqState = normalizeFaqState({
+      page: loaded.page
+        ? {
+            active: loaded.page.isActive,
+            eyebrow: loaded.page.eyebrow,
+            title: loaded.page.title,
+            description: loaded.page.description,
+            alignment: loaded.page.alignment,
+          }
+        : faqState.page,
+      categories: loaded.categories,
+    });
+    faqSyncPage();
+    faqRenderEditor();
+    faqRenderPreview();
+  } catch (error) {
+    faqToast(error.message, true);
+  }
 }
 function faqSyncPage() {
   const map = {
@@ -199,13 +222,20 @@ function faqBindPage() {
     faqRenderPreview();
     faqToast("FAQ dikembalikan ke template awal.");
   };
-  document.getElementById("faqEditorForm").onsubmit = (e) => {
+  document.getElementById("faqEditorForm").onsubmit = async (e) => {
     e.preventDefault();
-    saveFaqAdminState(faqState);
-    faqState = getFaqAdminState();
-    faqRenderEditor();
-    faqRenderPreview();
-    faqToast();
+    const submit = e.submitter;
+    if (submit) submit.disabled = true;
+    try {
+      faqState.categories = await TalentaFaqApi.save(faqState);
+      faqRenderEditor();
+      faqRenderPreview();
+      faqToast("FAQ tersimpan ke database.");
+    } catch (error) {
+      faqToast(error.message, true);
+    } finally {
+      if (submit) submit.disabled = false;
+    }
   };
 }
 faqBindPage();
@@ -215,6 +245,7 @@ faqRenderPreview();
 setupFaqPreviewSizing();
 subscribeGlobalSettings(faqRenderPreview);
 faqIcons();
+void faqHydrate();
 
 function setupFaqPreviewSizing() {
   const frame = document.getElementById("faqPreviewFrame");

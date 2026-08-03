@@ -1,4 +1,4 @@
-/* Renderer publik Unduh — markup dan data berasal dari repository shared. */
+/* Renderer publik Unduh — data API memakai markup shared. */
 (() => {
   const root = document.getElementById("unduh");
   if (!root) return;
@@ -12,6 +12,32 @@
     });
   }
 
+  function apiState(data) {
+    const baseline = getPublicDownloadState();
+    return {
+      ...baseline,
+      active: data.page?.isActive ?? baseline.active,
+      eyebrow: data.page?.eyebrow || baseline.eyebrow,
+      title: data.page?.title || baseline.title,
+      description: data.page?.description || baseline.description,
+      alignment: data.page?.alignment || baseline.alignment,
+      competitions: data.competitions.map((competition) => ({
+        competitionId: competition.slug,
+        customTabName: competition.tabName,
+        isDefault: competition.isDefault,
+        documents: competition.documents.map((document) => ({
+          title: document.title,
+          category: document.category,
+          type: document.fileType || "PDF",
+          size: document.displaySize || "-",
+          url: document.url
+            ? new URL(document.url, TalentaConfig.apiBaseUrl).href
+            : "",
+        })),
+      })),
+    };
+  }
+
   function render(state = getPublicDownloadState()) {
     root.className = `section${state.active ? "" : " section--disabled"}`;
     root.innerHTML = buildDownloadMarkup(state);
@@ -22,19 +48,11 @@
   }
 
   render();
-  window.addEventListener(DOWNLOAD_STATE_EVENT, () =>
-    render(getPublicDownloadState()),
+  window.addEventListener("talenta:public:download", (event) =>
+    render(apiState(event.detail)),
   );
-  window.addEventListener("talenta:archive", () =>
-    render(getPublicDownloadState()),
+  void TalentaPublic.load("download").catch((error) =>
+    console.error("Downloads API tidak tersedia; baseline ditampilkan.", error),
   );
-  window.addEventListener("storage", (event) => {
-    if (
-      event.key === DOWNLOAD_STATE_KEY ||
-      event.key === ARCHIVE_STATE_KEY ||
-      event.key === null
-    )
-      render();
-  });
   window.TalentaDownload = Object.freeze({ render });
 })();

@@ -6,18 +6,25 @@ import {
   Headers,
   Param,
   Patch,
+  ParseUUIDPipe,
   Post,
+  Put,
   UseGuards,
 } from '@nestjs/common';
 import {
+  IsBoolean,
+  IsArray,
   IsIn,
   IsOptional,
+  IsObject,
   IsString,
   IsUUID,
   Matches,
   MaxLength,
   MinLength,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -40,9 +47,94 @@ class CompetitionParams {
   @IsUUID() competitionId!: string;
 }
 
+class SiteSettingsDto {
+  @IsString() @MinLength(1) @MaxLength(160) eventName!: string;
+  @IsString() @MinLength(1) @MaxLength(160) organizerName!: string;
+  @IsString() @MaxLength(20) primaryColor!: string;
+  @IsOptional() @IsUUID() logoAssetId?: string;
+  @IsObject() navigation!: Record<string, boolean>;
+  @IsObject() contact!: Record<string, string>;
+  @IsObject() footer!: Record<string, string>;
+}
+
+class FaqQuestionDto {
+  @IsOptional() @IsUUID() id?: string;
+  @IsString() @MinLength(1) @MaxLength(500) question!: string;
+  @IsString() @MinLength(1) @MaxLength(10000) answer!: string;
+  @IsBoolean() active!: boolean;
+}
+class FaqCategoryDto {
+  @IsOptional() @IsUUID() id?: string;
+  @IsString() @MinLength(1) @MaxLength(160) title!: string;
+  @IsBoolean() active!: boolean;
+  @ValidateNested({ each: true })
+  @Type(() => FaqQuestionDto)
+  questions!: FaqQuestionDto[];
+}
+class FaqAggregateDto {
+  @ValidateNested({ each: true })
+  @Type(() => FaqCategoryDto)
+  categories!: FaqCategoryDto[];
+}
+
+class DownloadDocumentDto {
+  @IsUUID() documentId!: string;
+  @IsBoolean() isVisible!: boolean;
+  @IsString() @MaxLength(200) labelOverride!: string;
+}
+class DownloadCompetitionDto {
+  @IsUUID() competitionId!: string;
+  @IsString() @MaxLength(160) customTabName!: string;
+  @IsBoolean() isDefault!: boolean;
+  @IsBoolean() isActive!: boolean;
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DownloadDocumentDto)
+  documents!: DownloadDocumentDto[];
+}
+class DownloadAggregateDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => DownloadCompetitionDto)
+  competitions!: DownloadCompetitionDto[];
+}
+
+class HomeSectionDto {
+  @IsString()
+  @IsIn([
+    'hero',
+    'winnerHighlight',
+    'schedule',
+    'pricing',
+    'benefit',
+    'partners',
+  ])
+  sectionType!: string;
+  @IsBoolean() isActive!: boolean;
+  @IsObject() settings!: Record<string, unknown>;
+}
+class HomeAggregateDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HomeSectionDto)
+  sections!: HomeSectionDto[];
+}
+
 class UpdateCompetitionDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(160) name?: string;
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
+  @IsOptional() @IsUUID() mascotAssetId?: string;
+}
+
+@Controller('admin')
+@UseGuards(JwtAuthGuard)
+export class AdminSessionController {
+  constructor(private readonly adminService: AdminService) {}
+
+  @Get('session')
+  session(@CurrentUser() user: AuthenticatedUser) {
+    return this.adminService.session(user.userId, user.email);
+  }
 }
 
 @Controller('admin/sites/:siteId')
@@ -53,6 +145,78 @@ export class AdminController {
   @Get()
   site(@Param() params: SiteParams, @CurrentUser() user: AuthenticatedUser) {
     return this.adminService.site(params.siteId, user.userId);
+  }
+
+  @Get('settings')
+  settings(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.settings(siteId, user.userId);
+  }
+
+  @Put('settings')
+  putSettings(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: SiteSettingsDto,
+  ) {
+    return this.adminService.putSettings(siteId, user.userId, input);
+  }
+
+  @Get('faq')
+  faq(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.faq(siteId, user.userId);
+  }
+
+  @Put('faq')
+  putFaq(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: FaqAggregateDto,
+  ) {
+    return this.adminService.putFaq(siteId, user.userId, input.categories);
+  }
+
+  @Get('downloads')
+  downloads(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.downloads(siteId, user.userId);
+  }
+
+  @Put('downloads')
+  putDownloads(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: DownloadAggregateDto,
+  ) {
+    return this.adminService.putDownloads(
+      siteId,
+      user.userId,
+      input.competitions,
+    );
+  }
+
+  @Get('home')
+  home(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.home(siteId, user.userId);
+  }
+
+  @Put('home')
+  putHome(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: HomeAggregateDto,
+  ) {
+    return this.adminService.putHome(siteId, user.userId, input.sections);
   }
 
   @Get('competitions')

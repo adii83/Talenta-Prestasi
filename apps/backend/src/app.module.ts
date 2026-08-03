@@ -6,6 +6,7 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { PublicModule } from './public/public.module';
 import { AdminModule } from './admin/admin.module';
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { AdminModule } from './admin/admin.module';
     AuthModule,
     PublicModule,
     AdminModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
