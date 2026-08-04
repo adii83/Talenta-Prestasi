@@ -4,18 +4,170 @@ Dokumen ini dipakai untuk menguji integrasi aplikasi sebelum demonstrasi.
 
 > **Status integrasi:** seluruh modul frontend yang tersedia sudah terhubung ke backend NestJS dan PostgreSQL. Media disimpan sebagai file nyata di filesystem backend, sementara metadata dan referensinya disimpan di PostgreSQL. Pengujian otomatis sudah lulus; checklist browser ini memverifikasi alur nyata pada perangkat Anda.
 
-## 1. Persiapan
+## 0. Gambaran layanan yang harus hidup
+
+Pengujian lokal lengkap memakai PostgreSQL dan empat terminal. Jangan menutup
+terminal selama pengujian berlangsung.
+
+| Komponen          | Lokasi command  | Command                | Port/tujuan                    |
+| ----------------- | --------------- | ---------------------- | ------------------------------ |
+| PostgreSQL        | Windows service | pastikan service aktif | `localhost:5432`               |
+| Backend NestJS    | `apps/backend`  | `npm run start:dev`    | `http://localhost:3000`        |
+| Frontend statis   | root repository | `npm run dev`          | `http://localhost:4173`        |
+| Gateway publik    | root repository | `npm run gateway`      | `http://127.0.0.1:8080`        |
+| Cloudflare Tunnel | root repository | `npm run tunnel`       | Cloudflare → gateway port 8080 |
+
+URL utama pengujian:
+
+- Admin lokal: `http://localhost:4173/apps/admin/?events=1`
+- Template lokal: `http://localhost:4173/apps/template/`
+- Event publik: `https://<slug>.nexaplaymetadata.online/`
+- Event seed saat aktif:
+  `https://talenta-prestasi-local.nexaplaymetadata.online/`
+
+> **Penting:** buka Admin menggunakan `localhost`, bukan `127.0.0.1`. Konfigurasi
+> CORS backend mengizinkan origin `http://localhost:4173`.
+
+## 1. Persiapan dan cara mengaktifkan aplikasi
+
+### 1A. Persiapan pertama kali atau setelah mengambil project baru
+
+Langkah ini tidak perlu diulang setiap kali komputer dinyalakan.
+
+```powershell
+cd D:\Kuliah\Magang\Web1
+npm install
+
+cd apps\backend
+npm install
+npx typeorm-ts-node-commonjs migration:run -d src/database/data-source.ts
+npm run seed:local
+```
+
+- [ ] File `apps/backend/.env` tersedia dan koneksi database benar.
+- [ ] `LOCAL_ADMIN_EMAIL` dan `LOCAL_ADMIN_PASSWORD` sudah diisi untuk akun lokal.
+- [ ] `PUBLIC_BASE_DOMAIN=nexaplaymetadata.online` sudah benar.
+- [ ] Seluruh migration berhasil tanpa rollback/error.
+- [ ] Seed menampilkan `"seeded": true` tanpa menampilkan password.
+
+> Jalankan `npm run seed:local` hanya saat instalasi awal atau saat sengaja
+> memperbarui kredensial/data seed lokal. Seed bukan command startup harian.
+
+Cloudflare Tunnel sudah disiapkan satu kali pada komputer pengujian ini. Pastikan
+berkas berikut masih tersedia sebelum menjalankan `npm run tunnel`:
+
+```powershell
+Test-Path "$env:LOCALAPPDATA\Programs\cloudflared\cloudflared.exe"
+Test-Path "$env:USERPROFILE\.cloudflared\config.yml"
+```
+
+Keduanya harus menghasilkan `True`. Jangan menjalankan `tunnel create` atau
+`tunnel route dns` setiap hari. Jika project dipindahkan ke komputer lain,
+lakukan otorisasi Cloudflare dan instalasi connector sebagai setup deployment
+terpisah; jangan mengunggah credential Tunnel ke Git.
+
+- [ ] DNS Cloudflare mempertahankan record R2 `meta` dan dua TXT validasi.
+- [ ] CNAME wildcard aktif adalah `*.nexaplaymetadata.online` menuju Tunnel.
+- [ ] Record percobaan `*.talenta.nexaplaymetadata.online` sudah dihapus jika masih ada.
+
+### 1B. Urutan menjalankan setiap sesi pengujian
+
+1. Pastikan PostgreSQL aktif. Di PowerShell, nama servicenya dapat diperiksa
+   dengan `Get-Service *postgres*`.
+2. Buka empat terminal terpisah dan jalankan command berikut.
+
+**Terminal 1 — Backend**
+
+```powershell
+cd D:\Kuliah\Magang\Web1\apps\backend
+npm run start:dev
+```
+
+Tunggu sampai NestJS selesai start dan tidak ada error database atau port.
+
+**Terminal 2 — Frontend**
+
+```powershell
+cd D:\Kuliah\Magang\Web1
+npm run dev
+```
+
+**Terminal 3 — Gateway publik**
+
+```powershell
+cd D:\Kuliah\Magang\Web1
+npm run gateway
+```
+
+Terminal harus menampilkan gateway `127.0.0.1:8080` menuju frontend dan backend.
+
+**Terminal 4 — Cloudflare Tunnel**
+
+```powershell
+cd D:\Kuliah\Magang\Web1
+npm run tunnel
+```
+
+Biarkan keempat terminal tetap terbuka. Jika salah satu dihentikan, sebagian
+alur pengujian akan gagal.
+
+### 1C. Pemeriksaan cepat sebelum login
+
+Jalankan dari terminal kelima atau PowerShell biasa:
+
+```powershell
+curl.exe -I http://localhost:4173/apps/admin/
+curl.exe -I http://127.0.0.1:8080/
+curl.exe -I https://talenta-prestasi-local.nexaplaymetadata.online/
+curl.exe -i http://localhost:3000/api/v1/admin/session
+```
+
+Hasil yang diharapkan:
+
+- [ ] Frontend Admin merespons `200`.
+- [ ] Gateway lokal merespons `200`.
+- [ ] URL publik merespons `200` ketika kartu Event berstatus **Aktif**.
+- [ ] `/admin/session` tanpa token merespons `401`; ini membuktikan backend hidup dan auth bekerja.
+- [ ] Terminal Tunnel menunjukkan connector aktif dan tidak terus-menerus reconnect/error.
+
+Jika URL publik `404` tetapi layanan lain hidup, periksa apakah Event sedang
+berstatus Draft/Nonaktif. Jika muncul Cloudflare `1033`, periksa Terminal 3 dan
+Terminal 4.
+
+### 1D. Gate otomatis sebelum pengujian manual
+
+```powershell
+cd D:\Kuliah\Magang\Web1
+npm run check
+
+cd apps\backend
+npm run build
+npm run test:e2e -- --runInBand
+```
+
+- [ ] `npm run check` lulus untuk route, sintaks JavaScript, tema, dan format.
+- [ ] Build backend berhasil.
+- [ ] E2E backend lulus 16/16.
+
+### 1E. Bahan pengujian
 
 - [ ] PostgreSQL aktif dan database `talenta_prestasi` dapat diakses.
-- [ ] Dari `apps/backend`, jalankan `npm run start:dev`.
-- [ ] Backend tidak menampilkan error dan tersedia di `http://localhost:3000/api/v1`.
-- [ ] Dari root repository, jalankan `npm run dev`.
-- [ ] Buka alamat frontend dari terminal, biasanya `http://localhost:4173`.
 - [ ] Siapkan gambar PNG/JPG/WebP kurang dari 2 MB.
 - [ ] Siapkan PDF kurang dari 10 MB.
+- [ ] Tentukan nama dan slug Event uji yang tidak memakai data penting.
 - [ ] Buka Developer Tools → Console dan Network → Fetch/XHR.
 
 > Jangan memakai data penting saat pertama menguji tombol hapus. Gunakan record uji.
+
+### 1F. Menghentikan layanan setelah selesai
+
+Tekan `Ctrl+C` pada Terminal 4, 3, 2, lalu 1. Menghentikan Tunnel atau komputer
+akan membuat URL publik tidak tersedia, tetapi tidak menghapus Event, database,
+file upload, maupun record DNS.
+
+- [ ] Event utama sudah dikembalikan ke status yang diinginkan.
+- [ ] Data uji yang tidak diperlukan sudah dihapus melalui UI.
+- [ ] Keempat proses berhenti tanpa memakai force-kill.
 
 ## 2. Login dan sesi Admin
 
@@ -26,6 +178,48 @@ Dokumen ini dipakai untuk menguji integrasi aplikasi sebelum demonstrasi.
 - [ ] Refresh halaman; sesi masih dapat digunakan.
 - [ ] Logout berhasil dan editor tidak dapat dipakai tanpa login ulang.
 - [ ] Login kembali untuk melanjutkan pengujian.
+
+## 2A. Daftar Event
+
+- [ ] Setelah login manual, halaman **Daftar Event** tampil sebelum editor.
+- [ ] Setiap kartu menampilkan status **Draft**, **Aktif**, atau **Nonaktif**, serta tindakan **Kelola Event**, **Publikasikan/Nonaktifkan**, dan **Hapus Event**.
+- [ ] Klik **Buat Event Baru**; dialog berada di tengah dan hanya meminta Nama event.
+- [ ] Event baru langsung dapat dikelola melalui editor.
+- [ ] Slug/subdomain dapat ditentukan dari bagian Identitas Utama di Pengaturan Event.
+- [ ] Tombol **Publikasikan** belum aktif selama slug/subdomain masih berupa slug sementara `event-*`.
+- [ ] Slug hanya menerima huruf kecil, angka, dan tanda hubung.
+- [ ] Slug duplikat milik Event lain ditolak dengan pesan yang jelas.
+- [ ] Tombol **Daftar Event** dari sidebar editor kembali ke dashboard tanpa logout.
+
+## 2B. Publish, Unpublish, dan domain publik
+
+- [ ] Setelah slug disimpan, klik **Publikasikan** dan pastikan status kartu berubah menjadi **Aktif** serta hostname tampil.
+- [ ] Hostname kartu sesuai `https://<slug>.nexaplaymetadata.online/`.
+- [ ] Saat Event aktif, perubahan slug dari editor ditolak dan Admin diminta menonaktifkan Event terlebih dahulu.
+- [ ] Klik **Nonaktifkan** dan pastikan URL publik tidak dapat dibuka; publikasi ulang mengaktifkannya kembali.
+- [ ] Setelah Nonaktif, ubah slug, simpan, lalu Publish kembali; hostname kartu dan URL publik ikut berubah.
+- [ ] URL lama tidak lagi mengembalikan konten Event setelah slug diganti.
+- [ ] Buka `https://<slug>.nexaplaymetadata.online` dari jaringan/browser lain dan pastikan HTTPS valid.
+- [ ] Seluruh menu publik memakai route bersih seperti `/unduh/`, `/pemenang/`, `/arsip/`, dan `/faq/`, bukan `/apps/template/...`.
+- [ ] Pastikan `meta.nexaplaymetadata.online` tetap menuju aplikasi metadata, bukan Template Talenta.
+- [ ] Di Cloudflare DNS, record R2 `meta`, TXT `_acme-challenge`, dan wildcard Tunnel tidak saling tertimpa.
+- [ ] Setelah selesai, kembalikan Event utama ke status **Aktif**.
+
+## 2C. Pewarisan Arsip lintas Event
+
+- [ ] Siapkan dokumen dan pemenang pada event lama, kemudian buat event baru.
+- [ ] Buka Arsip pada event baru; event lama beserta dokumen dan pemenangnya tetap tampil.
+- [ ] Record dokumen/pemenang lama tidak digandakan dan tetap dimiliki event sumber.
+- [ ] Mengubah data Event baru tidak mengubah identitas Event sumber Arsip.
+- [ ] Menghapus Event baru tidak menghapus dokumen/pemenang pada Event sumber.
+- [ ] Klik **Hapus Event**, konfirmasi dialog, lalu pastikan kartu hilang dari daftar.
+
+## 2D. Isolasi gateway publik
+
+- [ ] `https://<slug>.nexaplaymetadata.online/apps/admin/` menghasilkan `404`.
+- [ ] `https://<slug>.nexaplaymetadata.online/README.md` menghasilkan `404`.
+- [ ] `/api/v1/public/...` dapat diakses sesuai status publikasi.
+- [ ] Endpoint `/api/v1/admin/...` tetap memerlukan JWT walaupun diakses melalui domain publik.
 
 ## 3. Pengaturan Global dan logo
 
@@ -156,6 +350,9 @@ Uji Beranda, Unduh, Pemenang, Arsip, Detail Arsip, FAQ, dan editor utama Admin.
 
 - [ ] Tampilkan Beranda publik.
 - [ ] Login Admin.
+- [ ] Tampilkan Daftar Event dan status Aktif/Nonaktif.
+- [ ] Nonaktifkan Event dan tunjukkan URL publik menjadi `404`.
+- [ ] Publikasikan kembali dan tunjukkan URL HTTPS kembali aktif.
 - [ ] Ubah satu teks Beranda dan simpan.
 - [ ] Upload satu gambar/foto/logo dan simpan.
 - [ ] Upload atau ganti satu PDF.
@@ -170,7 +367,12 @@ Uji Beranda, Unduh, Pemenang, Arsip, Detail Arsip, FAQ, dan editor utama Admin.
 | Area                    | Status | Catatan |
 | ----------------------- | ------ | ------- |
 | Server frontend/backend | ⬜     |         |
+| Gateway dan Tunnel      | ⬜     |         |
 | Login dan sesi          | ⬜     |         |
+| Daftar Event            | ⬜     |         |
+| Publish/Unpublish       | ⬜     |         |
+| Domain dan HTTPS publik | ⬜     |         |
+| Pewarisan Arsip Event   | ⬜     |         |
 | Pengaturan Global       | ⬜     |         |
 | Beranda                 | ⬜     |         |
 | FAQ                     | ⬜     |         |
@@ -182,6 +384,7 @@ Uji Beranda, Unduh, Pemenang, Arsip, Detail Arsip, FAQ, dan editor utama Admin.
 | Keamanan dasar          | ⬜     |         |
 | Desktop/tablet/mobile   | ⬜     |         |
 | Console dan Network     | ⬜     |         |
+| Isolasi aplikasi R2     | ⬜     |         |
 
 Gunakan status `✅ Lulus`, `❌ Gagal`, atau `⚠️ Perlu diperiksa`.
 
@@ -191,12 +394,15 @@ Gunakan status `✅ Lulus`, `❌ Gagal`, atau `⚠️ Perlu diperiksa`.
 ### Judul masalah
 
 - Halaman:
+- Event/slug:
+- URL lokal atau publik:
 - Waktu pengujian:
 - Perangkat/ukuran layar:
 - Langkah reproduksi: 1. 2. 3.
 - Hasil aktual:
 - Hasil yang diharapkan:
 - Status HTTP/API terkait:
+- Status Terminal backend/gateway/tunnel:
 - Pesan Console:
 - Screenshot:
 ```

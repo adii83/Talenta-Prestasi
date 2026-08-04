@@ -3,6 +3,8 @@
   "private": true,
   "scripts": {
     "dev": "npx -y http-server@14.1.1 . -p 4173 -c-1 -o /apps/template/",
+    "gateway": "node scripts/public-gateway.mjs",
+    "tunnel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-cloudflare-tunnel.ps1",
     "check:routes": "node scripts/validate-routes.mjs",
     "check:js": "node scripts/check-js.mjs",
     "check:theme": "node scripts/audit-theme-sync.mjs",

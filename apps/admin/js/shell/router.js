@@ -74,7 +74,11 @@
     document.title = `${r.title} — TalentaPanel`;
     document.getElementById("routeTitle").textContent = r.title;
     document.getElementById("routeBreadcrumb").textContent = r.crumb;
-    document.getElementById("routePublicLink").href = r.public;
+    const publicUrl = new URL(r.public, location.href);
+    const selectedSite = TalentaAdminAuth.currentSite();
+    if (selectedSite?.slug)
+      publicUrl.searchParams.set("site", selectedSite.slug);
+    document.getElementById("routePublicLink").href = publicUrl.href;
     document
       .querySelectorAll("[data-route]")
       .forEach((a) =>
@@ -94,22 +98,29 @@
     lucide.createIcons();
     syncActions();
   }
-  document.querySelectorAll("[data-route]").forEach((a) =>
-    a.addEventListener("click", (e) => {
-      e.preventDefault();
-      render(a.dataset.route, true);
-    }),
-  );
-  resetButton.addEventListener("click", () => nativeActions().reset?.click());
-  saveButton.addEventListener("click", () => {
-    const save = activeDocument()?.defaultView?.TalentaHomeEditor?.save;
-    if (typeof save === "function") save();
-    else nativeActions().submit?.click();
-  });
-  frame.addEventListener("load", () => {
-    view.classList.remove("admin-route-view--loading");
-    syncActions();
-  });
-  addEventListener("popstate", () => render(routeName()));
-  render(routeName());
+  let initialized = false;
+  function initialize() {
+    if (initialized || !TalentaAdminAuth.currentSite()) return;
+    initialized = true;
+    document.querySelectorAll("[data-route]").forEach((a) =>
+      a.addEventListener("click", (e) => {
+        e.preventDefault();
+        render(a.dataset.route, true);
+      }),
+    );
+    resetButton.addEventListener("click", () => nativeActions().reset?.click());
+    saveButton.addEventListener("click", () => {
+      const save = activeDocument()?.defaultView?.TalentaHomeEditor?.save;
+      if (typeof save === "function") save();
+      else nativeActions().submit?.click();
+    });
+    frame.addEventListener("load", () => {
+      view.classList.remove("admin-route-view--loading");
+      syncActions();
+    });
+    addEventListener("popstate", () => render(routeName()));
+    render(routeName());
+  }
+  initialize();
+  document.addEventListener("talenta:admin-ready", initialize);
 })();

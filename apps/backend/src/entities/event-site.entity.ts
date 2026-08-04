@@ -40,6 +40,12 @@ export class EventSite {
   @Column({ default: 'active' })
   status!: string; // active | suspended
 
+  @Column({ name: 'publication_status', default: 'draft' })
+  publicationStatus!: string; // draft | published | unpublished
+
+  @Column({ name: 'published_at', type: 'timestamptz', nullable: true })
+  publishedAt!: Date | null;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

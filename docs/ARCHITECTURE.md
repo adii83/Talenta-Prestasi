@@ -35,6 +35,12 @@ Kode Admin tidak boleh ditempatkan di Template. Admin boleh menggunakan design s
 
 `apps/admin/` memiliki shell, router, navigasi bagian, editor iframe, serta feature manager. Admin boleh membaca/menulis repository shared dan membuka canonical route Template.
 
+Setelah autentikasi manual, `portal-dashboard.js` menampilkan **Daftar Event** sebelum editor. Pembuatan event hanya meminta nama; slug/subdomain dikelola kemudian dari Identitas Utama editor. Kartu menampilkan status Draft/Aktif/Nonaktif dan mengelola publikasi melalui API. Publish ditolak selama slug masih sementara, membuat hostname primer `slug.PUBLIC_BASE_DOMAIN`, dan membuka resolver publik; Unpublish menutup resolver tanpa menghapus data. Event baru memperoleh relasi `event_site_archive_sources` ke event-event sebelumnya dalam organisasi yang sama. Arsip, dokumen, dan pemenang dibaca melalui relasi tersebut tanpa menyalin record, sedangkan penghapusan kartu Event menggunakan soft delete.
+
+Untuk uji domain dari komputer lokal, `scripts/public-gateway.mjs` menyatukan frontend port `4173` dan backend `/api` port `3000` pada `127.0.0.1:8080`. Cloudflare Tunnel meneruskan wildcard hostname ke gateway tersebut. Gateway hanya mengekspos route Template, aset shared yang dibutuhkan, dan API; Admin serta file repository lain tidak diekspos.
+
+Domain uji memakai first-level wildcard `*.nexaplaymetadata.online` agar tercakup Universal SSL Cloudflare Free. Record eksplisit yang sudah ada, termasuk `meta.nexaplaymetadata.online` untuk R2, tetap memiliki prioritas dan tidak diarahkan ke Tunnel.
+
 ### Shared
 
 `packages/shared/` memiliki:
@@ -56,7 +62,7 @@ HTML entry
   → Template renderer atau Admin feature
 ```
 
-Feature bukan sumber data permanen. Repository localStorage nantinya dapat diganti HTTP adapter tanpa menulis ulang form atau renderer.
+Feature bukan sumber data permanen. Persistensi otoritatif berada pada PostgreSQL melalui Admin/Public API; repository/browser state hanya dipakai sebagai baseline preview dan cache sesi.
 
 ## Storage Contracts
 

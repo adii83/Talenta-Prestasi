@@ -180,7 +180,15 @@ export class PublicService {
         [site.id],
       ),
       this.sites.manager.query<Array<Record<string, unknown>>>(
-        `SELECT slug,name,description,fallback_icon AS icon FROM competitions WHERE event_site_id=$1 AND lifecycle='archived' AND publication_status='published' AND deleted_at IS NULL ORDER BY sort_order,id`,
+        `SELECT CASE WHEN competition.event_site_id=$1 THEN competition.slug ELSE owner_site.slug || '-' || competition.slug END AS slug,
+                competition.name,competition.description,competition.fallback_icon AS icon
+         FROM competitions competition
+         JOIN event_sites owner_site ON owner_site.id=competition.event_site_id
+         LEFT JOIN event_site_archive_sources source
+           ON source.event_site_id=$1 AND source.source_event_site_id=competition.event_site_id
+         WHERE ((competition.event_site_id=$1 AND competition.lifecycle='archived') OR source.source_event_site_id IS NOT NULL)
+           AND competition.publication_status='published' AND competition.deleted_at IS NULL
+         ORDER BY competition.published_at DESC NULLS LAST,competition.sort_order,competition.id`,
         [site.id],
       ),
     ]);
@@ -216,11 +224,16 @@ export class PublicService {
     const site = await this.requirePublicSite(siteSlug);
     const [competitions, pages] = await Promise.all([
       this.sites.manager.query<Array<Record<string, unknown>>>(
-        `SELECT slug, name, short_name AS "shortName", description, fallback_icon AS "fallbackIcon", mascot_asset_id AS "mascotAssetId"
-         FROM competitions
-         WHERE event_site_id = $1 AND lifecycle = 'archived'
-           AND publication_status = 'published' AND deleted_at IS NULL
-         ORDER BY sort_order, published_at DESC NULLS LAST, id`,
+        `SELECT CASE WHEN competition.event_site_id=$1 THEN competition.slug ELSE owner_site.slug || '-' || competition.slug END AS slug,
+                competition.name,competition.short_name AS "shortName",competition.description,
+                competition.fallback_icon AS "fallbackIcon",competition.mascot_asset_id AS "mascotAssetId"
+         FROM competitions competition
+         JOIN event_sites owner_site ON owner_site.id=competition.event_site_id
+         LEFT JOIN event_site_archive_sources source
+           ON source.event_site_id=$1 AND source.source_event_site_id=competition.event_site_id
+         WHERE ((competition.event_site_id=$1 AND competition.lifecycle='archived') OR source.source_event_site_id IS NOT NULL)
+           AND competition.publication_status='published' AND competition.deleted_at IS NULL
+         ORDER BY competition.published_at DESC NULLS LAST,competition.sort_order,competition.id`,
         [site.id],
       ),
       this.sites.manager.query<Array<Record<string, unknown>>>(
@@ -294,13 +307,26 @@ export class PublicService {
         mascotAssetId: string | null;
       }>
     >(
-      `SELECT id, slug, name, short_name AS "shortName", description, fallback_icon AS "fallbackIcon", mascot_asset_id AS "mascotAssetId"
-       FROM competitions
-       WHERE event_site_id = $1 AND lifecycle = $2
-         AND publication_status = 'published' AND deleted_at IS NULL
-         AND ($3::varchar IS NULL OR slug = $3)
-       ORDER BY sort_order, id LIMIT 1`,
-      [siteId, lifecycle, slug ?? null],
+      lifecycle === 'current'
+        ? `SELECT id,slug,name,short_name AS "shortName",description,fallback_icon AS "fallbackIcon",mascot_asset_id AS "mascotAssetId"
+           FROM competitions
+           WHERE event_site_id=$1 AND lifecycle='current'
+             AND publication_status='published' AND deleted_at IS NULL
+             AND ($2::varchar IS NULL OR slug=$2)
+           ORDER BY sort_order,id LIMIT 1`
+        : `SELECT competition.id,
+                  CASE WHEN competition.event_site_id=$1 THEN competition.slug ELSE owner_site.slug || '-' || competition.slug END AS slug,
+                  competition.name,competition.short_name AS "shortName",competition.description,
+                  competition.fallback_icon AS "fallbackIcon",competition.mascot_asset_id AS "mascotAssetId"
+           FROM competitions competition
+           JOIN event_sites owner_site ON owner_site.id=competition.event_site_id
+           LEFT JOIN event_site_archive_sources source
+             ON source.event_site_id=$1 AND source.source_event_site_id=competition.event_site_id
+           WHERE ((competition.event_site_id=$1 AND competition.lifecycle='archived') OR source.source_event_site_id IS NOT NULL)
+             AND competition.publication_status='published' AND competition.deleted_at IS NULL
+             AND ($2::varchar IS NULL OR CASE WHEN competition.event_site_id=$1 THEN competition.slug ELSE owner_site.slug || '-' || competition.slug END=$2)
+           ORDER BY competition.published_at DESC NULLS LAST,competition.sort_order,competition.id LIMIT 1`,
+      [siteId, slug ?? null],
     );
     return rows[0] ?? null;
   }
@@ -362,6 +388,7 @@ export class PublicService {
       )
       .leftJoin('site_settings', 'settings', 'settings.event_site_id = site.id')
       .where("site.status = 'active'")
+      .andWhere("site.publication_status = 'published'")
       .andWhere('site.deleted_at IS NULL')
       .andWhere("organization.status = 'active'")
       .andWhere('organization.deleted_at IS NULL');

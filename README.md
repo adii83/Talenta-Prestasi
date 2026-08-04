@@ -139,7 +139,13 @@ mendukung keyboard/mobile, dan diaudit dengan `npm run test:admin-dialogs` serta
 
 ## Menjalankan Proyek
 
-Jalankan dari root proyek:
+Jalankan backend dari `apps/backend/`:
+
+```bash
+npm run start:dev
+```
+
+Kemudian jalankan frontend dari root proyek pada terminal kedua:
 
 ```bash
 npm run dev
@@ -150,7 +156,7 @@ npm run dev
 | Template utama | `http://localhost:4173/apps/template/` |
 | Admin CMS      | `http://localhost:4173/apps/admin/`    |
 
-Jangan membuka file menggunakan `file://`. Directory routing, iframe Admin, dan localStorage dirancang berjalan melalui satu HTTP origin.
+Jangan membuka file menggunakan `file://`. Directory routing dan iframe Admin harus berjalan melalui HTTP origin.
 
 ## Canonical Routes
 
@@ -177,18 +183,35 @@ Route dinamis tidak boleh dibuat dengan string filename `.html`. Gunakan `Talent
 
 ## Alur Penggunaan
 
-1. Jalankan `npm run dev`.
-2. Buka Admin dan pilih halaman yang dikelola.
-3. Ubah data melalui form editor.
-4. Tekan **Simpan perubahan**.
-5. Tekan **Lihat Halaman** untuk memeriksa Template.
-6. Template membaca data tersimpan pada origin yang sama.
+1. Jalankan backend dengan `npm run start:dev`, lalu frontend dengan `npm run dev`.
+2. Login ke Admin dan pilih **Event** yang akan dikelola.
+3. Klik **Buat Event Baru** dan cukup masukkan nama event.
+4. Ubah data melalui form editor dan tekan **Simpan perubahan**.
+5. Tentukan slug/subdomain dari Pengaturan Event, kembali ke Daftar Event, lalu tekan **Publikasikan**.
+6. Kartu menampilkan status Aktif/Nonaktif dan hostname publik; tombol **Nonaktifkan** menutup akses publik tanpa menghapus data.
+7. Template membaca data event dan riwayat arsipnya dari API.
+
+Untuk pengujian dari internet melalui domain sementara, jalankan `npm run gateway`
+sebagai terminal ketiga. Gateway lokal pada port `8080` menyatukan Template dan
+backend `/api`; Cloudflare Tunnel diarahkan ke `http://127.0.0.1:8080` dengan
+hostname wildcard `*.nexaplaymetadata.online`. Contoh konfigurasi tersedia di
+`infra/cloudflared/config.example.yml`. Komputer, PostgreSQL, backend, frontend,
+gateway, dan tunnel harus tetap hidup selama URL publik digunakan.
+
+Untuk sesi pengujian berikutnya, jalankan empat proses: backend
+`npm run start:dev`, frontend `npm run dev`, gateway `npm run gateway`, dan
+Tunnel `npm run tunnel`. Wildcard DNS tidak menggantikan record hostname yang
+lebih spesifik seperti `meta.nexaplaymetadata.online`.
+
+Urutan instalasi pertama, empat terminal startup, pemeriksaan HTTP, dan seluruh
+skenario uji browser tersedia di
+[`docs/MANUAL_TEST_CHECKLIST.md`](docs/MANUAL_TEST_CHECKLIST.md).
 
 ## Status Database
 
-Proyek masih menggunakan database dummy JavaScript, repository JavaScript, dan `localStorage`. Ini merupakan demonstrasi frontend, bukan database produksi.
+Persistensi utama sudah menggunakan backend NestJS, PostgreSQL, dan API tenant-scoped. `sessionStorage` dipakai untuk JWT dan event Admin yang sedang dipilih; baseline JavaScript hanya menjadi fallback/preview compatibility.
 
-Pemisahan repository memungkinkan sumber data diganti menjadi REST API/backend tanpa menulis ulang UI. Key penyimpanan yang sudah ada harus dipertahankan ketika refactor agar data Admin lama tidak hilang.
+Model multi-event yang diterapkan adalah **Organisasi → Event → Data Event**. Saat event baru dibuat, backend menambahkan relasi `event_site_archive_sources` ke event-event sebelumnya. Halaman Arsip event baru dapat membaca dokumen dan pemenang lama melalui relasi tersebut tanpa menggandakan atau memindahkan record aslinya.
 
 Rancangan target multi-tenant, ERD, aturan foreign key, kontrak API, keamanan
 data, serta tahap migrasinya tersedia di
@@ -196,12 +219,12 @@ data, serta tahap migrasinya tersedia di
 
 ## Menggunakan Template untuk Lomba Berikutnya
 
-Target implementasi selanjutnya:
+Alur membuat event berikutnya:
 
-1. buat record event baru pada backend/CMS;
+1. buat Event baru atau pilih event yang sudah ada;
 2. tentukan nama, slug/subdomain, logo, dan warna tema;
 3. isi jadwal, biaya, benefit, dokumen, pemenang, FAQ, dan kontak;
-4. backend mengirim data event melalui repository/API;
+4. backend mengirim data event melalui API;
 5. Template yang sama merender identitas dan konten event tersebut.
 
 ```text

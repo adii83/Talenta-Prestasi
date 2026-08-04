@@ -25,9 +25,10 @@
   async function loadSession() {
     const response = await TalentaApi.request("/admin/session");
     const session = response.data;
-    if (!session.sites.length)
-      throw new TalentaApi.ApiError("Akun belum memiliki portal aktif", 403);
-    sessionStorage.setItem(SITE_KEY, JSON.stringify(session.sites[0]));
+    const selected = JSON.parse(sessionStorage.getItem(SITE_KEY) || "null");
+    if (selected && !session.sites.some((site) => site.id === selected.id)) {
+      sessionStorage.removeItem(SITE_KEY);
+    }
     window.TalentaAdminSession = Object.freeze(session);
     return session;
   }
@@ -50,11 +51,13 @@
           });
           TalentaApi.setToken(login.access_token);
         }
-        await loadSession();
+        const interactive = email !== undefined;
+        if (interactive) sessionStorage.removeItem(SITE_KEY);
+        const session = await loadSession();
         gate.remove();
         document.dispatchEvent(
           new CustomEvent("talenta:admin-ready", {
-            detail: window.TalentaAdminSession,
+            detail: { session, interactive },
           }),
         );
       } catch (reason) {
@@ -81,6 +84,26 @@
 
   window.TalentaAdminAuth = Object.freeze({
     currentSite: () => JSON.parse(sessionStorage.getItem(SITE_KEY) || "null"),
+    selectSite: (site) => {
+      sessionStorage.setItem(SITE_KEY, JSON.stringify(site));
+      sessionStorage.setItem("talenta_public_site_slug", site.slug);
+      location.assign(`${location.pathname}?page=settings`);
+    },
+    updateCurrentSite: (patch) => {
+      const current = JSON.parse(sessionStorage.getItem(SITE_KEY) || "null");
+      if (!current) return;
+      const updated = { ...current, ...patch };
+      sessionStorage.setItem(SITE_KEY, JSON.stringify(updated));
+      if (updated.slug)
+        sessionStorage.setItem("talenta_public_site_slug", updated.slug);
+    },
+    clearCurrentSite: (siteId) => {
+      const current = JSON.parse(sessionStorage.getItem(SITE_KEY) || "null");
+      if (!siteId || current?.id === siteId)
+        sessionStorage.removeItem(SITE_KEY);
+    },
+    showPortals: () =>
+      document.dispatchEvent(new CustomEvent("talenta:show-portals")),
     logout: () => {
       TalentaApi.setToken("");
       sessionStorage.removeItem(SITE_KEY);

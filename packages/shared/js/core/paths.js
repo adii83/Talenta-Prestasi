@@ -7,6 +7,9 @@
     : location.pathname;
   const markerIndex = pathname.lastIndexOf(marker);
   const basePath = markerIndex >= 0 ? pathname.slice(0, markerIndex) : "";
+  const isPublicRoot =
+    !["localhost", "127.0.0.1"].includes(location.hostname) &&
+    !location.pathname.startsWith("/apps/");
   const routes = Object.freeze({
     "template.home": "/apps/template/",
     "template.download": "/apps/template/unduh/",
@@ -24,7 +27,11 @@
   });
   function to(id, options = {}) {
     if (!routes[id]) throw new Error(`Unknown route: ${id}`);
-    const url = new URL(`${basePath}${routes[id]}`, location.origin);
+    const route =
+      isPublicRoot && id.startsWith("template.")
+        ? routes[id].replace(/^\/apps\/template/, "") || "/"
+        : `${basePath}${routes[id]}`;
+    const url = new URL(route, location.origin);
     Object.entries(options.query || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== "")
         url.searchParams.set(key, value);
@@ -34,10 +41,11 @@
   }
   function is(id) {
     if (!routes[id]) return false;
-    return (
-      location.pathname.replace(/index\.html$/, "") ===
-      `${basePath}${routes[id]}`
-    );
+    const route =
+      isPublicRoot && id.startsWith("template.")
+        ? routes[id].replace(/^\/apps\/template/, "") || "/"
+        : `${basePath}${routes[id]}`;
+    return location.pathname.replace(/index\.html$/, "") === route;
   }
   window.TalentaPaths = Object.freeze({ basePath, routes, to, is });
 })();

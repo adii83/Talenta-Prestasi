@@ -12,6 +12,9 @@ describe('Admin tenant and locking (e2e)', () => {
   let organizationId: string;
   let otherOrganizationId: string;
   let siteId: string;
+  let sourceEventId: string;
+  let inheritedEventId: string;
+  let ownerToken: string;
   let editorToken: string;
   let viewerToken: string;
   let outsiderToken: string;
@@ -54,7 +57,7 @@ describe('Admin tenant and locking (e2e)', () => {
     );
     otherOrganizationId = b.rows[0].id;
     const site = await db.query<{ id: string }>(
-      `INSERT INTO event_sites(organization_id,name,slug) VALUES($1,'Admin Site',$2) RETURNING id`,
+      `INSERT INTO event_sites(organization_id,name,slug,publication_status,published_at) VALUES($1,'Admin Site',$2,'published',now()) RETURNING id`,
       [organizationId, `admin-${suffix}`],
     );
     siteId = site.rows[0].id;
@@ -71,6 +74,11 @@ describe('Admin tenant and locking (e2e)', () => {
       }),
     );
     await app.init();
+    ownerToken = await createUser(
+      `owner-${suffix}@test.local`,
+      organizationId,
+      'owner',
+    );
     editorToken = await createUser(
       `editor-${suffix}@test.local`,
       organizationId,
@@ -96,6 +104,204 @@ describe('Admin tenant and locking (e2e)', () => {
       .get(`/api/v1/admin/sites/${siteId}`)
       .set('Authorization', `Bearer ${outsiderToken}`)
       .expect(403);
+  });
+
+  it('creates an event from its name only and exposes it in the session', async () => {
+    const payload = { name: 'Event Sumber Arsip' };
+    await request(app.getHttpServer())
+      .post('/api/v1/admin/sites')
+      .set('Authorization', `Bearer ${editorToken}`)
+      .send(payload)
+      .expect(403);
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/admin/sites')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send(payload)
+      .expect(201);
+    const createdBody = created.body as {
+      data: { id: string; currentCompetitionId: string };
+    };
+    const portal = createdBody.data;
+    sourceEventId = portal.id;
+    const settings = await db.query(
+      `SELECT 1 FROM site_settings WHERE event_site_id=$1`,
+      [portal.id],
+    );
+    expect(settings.rowCount).toBe(1);
+    const session = await request(app.getHttpServer())
+      .get('/api/v1/admin/session')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    const sessionBody = session.body as { data: { sites: { id: string }[] } };
+    expect(sessionBody.data.sites.some((item) => item.id === portal.id)).toBe(
+      true,
+    );
+  });
+
+  it('updates the event slug from the settings editor contract', async () => {
+    const response = await request(app.getHttpServer())
+      .put(`/api/v1/admin/sites/${sourceEventId}/settings`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        eventName: 'Event Sumber Arsip',
+        eventSlug: `sumber-${suffix}`,
+        organizerName: 'Admin Test',
+        primaryColor: '#1e4b8c',
+        navigation: {},
+        contact: {},
+        footer: {},
+      })
+      .expect(200);
+    const body = response.body as { data: { eventSlug: string } };
+    expect(body.data.eventSlug).toBe(`sumber-${suffix}`);
+  });
+
+  it('publishes and unpublishes an event only after its slug is configured', async () => {
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${sourceEventId}/publish`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .expect(403);
+    const published = await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${sourceEventId}/publish`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(201);
+    const publishedBody = published.body as {
+      data: { hostname: string; publicationStatus: string };
+    };
+    expect(publishedBody.data.publicationStatus).toBe('published');
+    expect(publishedBody.data.hostname).toBe(
+      `sumber-${suffix}.nexaplaymetadata.online`,
+    );
+    await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/sumber-${suffix}/bootstrap`)
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${sourceEventId}/unpublish`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(201);
+    await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/sumber-${suffix}/bootstrap`)
+      .expect(404);
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${sourceEventId}/publish`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(201);
+  });
+
+  it('inherits previous event archives with documents and winners', async () => {
+    const previous = await db.query<{ id: string }>(
+      `SELECT id FROM competitions WHERE event_site_id=$1 AND lifecycle='current'`,
+      [sourceEventId],
+    );
+    const document = await db.query<{ id: string }>(
+      `INSERT INTO competition_documents(competition_id,title) VALUES($1,'Dokumen Edisi Lama') RETURNING id`,
+      [previous.rows[0].id],
+    );
+    const category = await db.query<{ id: string }>(
+      `INSERT INTO winner_categories(competition_id,name) VALUES($1,'Juara Umum') RETURNING id`,
+      [previous.rows[0].id],
+    );
+    await db.query(
+      `INSERT INTO winners(competition_id,category_id,full_name) VALUES($1,$2,'Pemenang Lama')`,
+      [previous.rows[0].id, category.rows[0].id],
+    );
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/admin/sites')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({ name: 'Event Penerus Arsip' })
+      .expect(201);
+    const eventBody = created.body as {
+      data: { id: string; slug: string };
+    };
+    inheritedEventId = eventBody.data.id;
+    const inheritance = await db.query(
+      `SELECT 1 FROM event_site_archive_sources WHERE event_site_id=$1 AND source_event_site_id=$2`,
+      [inheritedEventId, sourceEventId],
+    );
+    expect(inheritance.rowCount).toBe(1);
+    const publication = await db.query<{ publicationStatus: string }>(
+      `SELECT publication_status AS "publicationStatus" FROM competitions WHERE id=$1`,
+      [previous.rows[0].id],
+    );
+    expect(publication.rows[0].publicationStatus).toBe('published');
+    const relation = await db.query(
+      `SELECT 1 FROM competition_documents WHERE id=$1 AND competition_id=$2`,
+      [document.rows[0].id, previous.rows[0].id],
+    );
+    expect(relation.rowCount).toBe(1);
+    const adminList = await request(app.getHttpServer())
+      .get(`/api/v1/admin/sites/${inheritedEventId}/competitions`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .expect(200);
+    const adminBody = adminList.body as {
+      data: { id: string; lifecycle: string; inherited: boolean }[];
+    };
+    expect(adminBody.data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: previous.rows[0].id,
+          lifecycle: 'archived',
+          inherited: true,
+        }),
+      ]),
+    );
+    const inheritedSlug = `penerus-${suffix}`;
+    await request(app.getHttpServer())
+      .put(`/api/v1/admin/sites/${inheritedEventId}/settings`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .send({
+        eventName: 'Event Penerus Arsip',
+        eventSlug: inheritedSlug,
+        organizerName: 'Admin Test',
+        primaryColor: '#1e4b8c',
+        navigation: {},
+        contact: {},
+        footer: {},
+      })
+      .expect(200);
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/sites/${inheritedEventId}/publish`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(201);
+    const archives = await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/${inheritedSlug}/archives`)
+      .expect(200);
+    const archivesBody = archives.body as {
+      data: { competitions: { slug: string }[] };
+    };
+    expect(archivesBody.data.competitions).toHaveLength(1);
+    const detail = await request(app.getHttpServer())
+      .get(
+        `/api/v1/public/sites/${inheritedSlug}/archives/${archivesBody.data.competitions[0].slug}`,
+      )
+      .expect(200);
+    const detailBody = detail.body as {
+      data: {
+        documents: { title: string }[];
+        categories: { winners: unknown[] }[];
+      };
+    };
+    expect(detailBody.data.documents[0].title).toBe('Dokumen Edisi Lama');
+    expect(detailBody.data.categories[0].winners).toHaveLength(1);
+  });
+
+  it('soft deletes an event and removes it from the session', async () => {
+    await request(app.getHttpServer())
+      .delete(`/api/v1/admin/sites/${inheritedEventId}`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .delete(`/api/v1/admin/sites/${inheritedEventId}`)
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    const session = await request(app.getHttpServer())
+      .get('/api/v1/admin/session')
+      .set('Authorization', `Bearer ${ownerToken}`)
+      .expect(200);
+    const body = session.body as { data: { sites: { id: string }[] } };
+    expect(body.data.sites.some((site) => site.id === inheritedEventId)).toBe(
+      false,
+    );
   });
 
   it('prevents viewer writes and creates an audited draft for editor', async () => {

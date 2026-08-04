@@ -25,6 +25,7 @@ async function saveGlobalSettingsApi() {
     method: "PUT",
     body: {
       eventName: globalState.identity.eventName,
+      eventSlug: globalState.identity.eventSlug,
       organizerName: globalState.identity.organizerName,
       primaryColor: globalState.theme.primaryColor,
       logoAssetId: globalState.identity.logoAssetId || undefined,
@@ -37,6 +38,7 @@ async function saveGlobalSettingsApi() {
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("eventSettingsForm"),
     byId = (id) => document.getElementById(id);
+  byId("eventDomainSuffix").textContent = `.${TalentaConfig.publicBaseDomain}`;
   function esc(value) {
     return String(value ?? "")
       .replaceAll("&", "&amp;")
@@ -329,7 +331,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (submit) submit.disabled = true;
     readForm();
     try {
-      await saveGlobalSettingsApi();
+      const response = await saveGlobalSettingsApi();
+      TalentaAdminAuth.updateCurrentSite({
+        name: response.data.eventName,
+        slug: response.data.eventSlug,
+      });
       globalState = saveGlobalSettings(globalState);
       showToast("Pengaturan global tersimpan ke database.");
     } catch (error) {

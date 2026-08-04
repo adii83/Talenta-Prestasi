@@ -43,12 +43,20 @@ class CreateCompetitionDto {
   @IsIn(['current', 'archived']) lifecycle!: 'current' | 'archived';
 }
 
+class CreateSiteDto {
+  @IsString() @MinLength(1) @MaxLength(160) name!: string;
+}
+
 class CompetitionParams {
   @IsUUID() competitionId!: string;
 }
 
 class SiteSettingsDto {
   @IsString() @MinLength(1) @MaxLength(160) eventName!: string;
+  @IsString()
+  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  @MaxLength(100)
+  eventSlug!: string;
   @IsString() @MinLength(1) @MaxLength(160) organizerName!: string;
   @IsString() @MaxLength(20) primaryColor!: string;
   @IsOptional() @IsUUID() logoAssetId?: string;
@@ -135,6 +143,14 @@ export class AdminSessionController {
   session(@CurrentUser() user: AuthenticatedUser) {
     return this.adminService.session(user.userId, user.email);
   }
+
+  @Post('sites')
+  createSite(
+    @Body() input: CreateSiteDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.createSite(user.userId, input);
+  }
 }
 
 @Controller('admin/sites/:siteId')
@@ -145,6 +161,30 @@ export class AdminController {
   @Get()
   site(@Param() params: SiteParams, @CurrentUser() user: AuthenticatedUser) {
     return this.adminService.site(params.siteId, user.userId);
+  }
+
+  @Delete()
+  removeSite(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.deleteSite(siteId, user.userId);
+  }
+
+  @Post('publish')
+  publishSite(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.publishSite(siteId, user.userId);
+  }
+
+  @Post('unpublish')
+  unpublishSite(
+    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.unpublishSite(siteId, user.userId);
   }
 
   @Get('settings')

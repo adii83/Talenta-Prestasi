@@ -97,6 +97,11 @@ tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
   - [x] Publication/active/tenant filtering diterapkan pada seluruh query publik
   - [x] Parameter hostname dan slug tervalidasi
 - [x] Admin CRUD endpoints
+  - [x] Session mengembalikan organisasi dan seluruh event yang dapat diakses
+  - [x] Pembuatan Event hanya memerlukan nama; slug sementara dibuat backend dan dapat diubah di editor
+  - [x] `event_site_archive_sources` mewariskan Arsip, dokumen, dan pemenang event lama tanpa duplikasi
+  - [x] Soft delete Event tersedia untuk owner/admin
+  - [x] Publish/Unpublish Event tersedia untuk owner/admin, mewajibkan slug final, dan mengelola hostname primer
   - [x] Site detail dan daftar competition tenant-scoped
   - [x] Create, update, soft-delete, dan publish competition
   - [x] Documents CRUD dengan validasi ownership media organisasi
@@ -108,7 +113,7 @@ tanpa ada gap. Tidak diperlukan penambahan tabel, kolom, atau relasi. Detail:
 - [x] Publish workflow + audit log untuk competition dan content CRUD
 - [x] Optimistic locking competition (`version` + `If-Match`)
 - [x] Full-flow E2E: event → media dummy → document → category → winner → page → publish → public → update/delete
-- [x] Final gate: TypeScript, ESLint, unit 1/1, E2E 10/10, detectOpenHandles, npm audit 0, 6/6 migration
+- [x] Final gate: TypeScript, unit, E2E 16/16, dan seluruh migration
 - [x] Cleanup terverifikasi: 0 fixture test tersisa; schema drift nihil
 
 ## Keputusan Teknis

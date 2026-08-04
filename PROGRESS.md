@@ -70,7 +70,6 @@ scope repository ini.
 - Menambahkan E2E media untuk JWT, role, signature palsu, upload valid, delivery, dan `nosniff`.
 - Final regression: 11/11 backend E2E, 0 vulnerability produksi, frontend structural/parity/relation/dialog audit seluruhnya lulus.
 
-
 ### 25 Juli 2026 — Fondasi Admin
 
 - Menetapkan dokumentasi permanen dan pemisahan tiga area.
@@ -823,3 +822,19 @@ diganti adapter API tanpa mengubah struktur UI final.
 Seluruh editor Admin dan halaman Template publik telah dihubungkan ke NestJS/PostgreSQL tanpa perubahan desain. Alur yang terhubung meliputi session/auth, global settings, Beranda, Arsip list/detail, Pemenang, Unduh, dan FAQ. `localStorage` tersisa sebagai baseline/fallback preview, bukan persistensi utama saat API tersedia.
 
 Verifikasi final: frontend check lulus, seluruh audit relasi/parity lulus, backend TypeScript/lint/unit/E2E lulus (10/10 E2E), audit dependency production 0 vulnerability, dan HTTP contract seluruh public API lulus. Browser black-box interaktif dijadwalkan belakangan sesuai arahan pengguna.
+
+### 4 Agustus 2026 — Dashboard Event dan Pewarisan Arsip
+
+- Menambahkan dashboard **Daftar Event** setelah login dengan kartu yang hanya menyediakan **Kelola Event** dan **Hapus Event**.
+- Menyederhanakan **Buat Event Baru** menjadi satu input Nama event; dialog dipusatkan, sedangkan slug/subdomain dikelola dari editor Event.
+- Menambahkan migration `event_site_archive_sources` agar event baru mewarisi daftar Arsip, dokumen, dan pemenang event sebelumnya tanpa menggandakan record.
+- Menambahkan soft delete Event serta pembaruan slug/subdomain tenant-scoped dari Pengaturan Event.
+- Menguji TypeScript backend, 14/14 E2E PostgreSQL, relasi Arsip lintas-event, sintaks frontend, dan alur browser.
+
+### 4 Agustus 2026 — Publikasi Event dan Gateway Domain Lokal
+
+- Menambahkan status publikasi Event `draft`, `published`, dan `unpublished` beserta waktu publikasi melalui migration kesembilan.
+- Menambahkan tombol **Publikasikan/Nonaktifkan**, badge Draft/Aktif/Nonaktif, validasi slug final, dan hostname `slug.nexaplaymetadata.online` pada Daftar Event.
+- Menutup seluruh resolver publik ketika Event tidak aktif tanpa menghapus konten atau relasi Arsip.
+- Menambahkan gateway lokal port `8080` untuk menyatukan Template dan backend `/api`, serta contoh wildcard Cloudflare Tunnel.
+- Memverifikasi migration, lint/build backend, 16/16 E2E PostgreSQL, frontend check, dan HTTP gateway untuk halaman, aset, serta API.

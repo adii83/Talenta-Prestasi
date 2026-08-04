@@ -29,7 +29,7 @@ describe('Public API visibility (e2e)', () => {
     );
     organizationId = organization.rows[0].id;
     const site = await db.query<{ id: string }>(
-      `INSERT INTO event_sites (organization_id, name, slug) VALUES ($1, 'Public Site', $2) RETURNING id`,
+      `INSERT INTO event_sites (organization_id, name, slug, publication_status, published_at) VALUES ($1, 'Public Site', $2, 'published', now()) RETURNING id`,
       [organizationId, slug],
     );
     siteId = site.rows[0].id;

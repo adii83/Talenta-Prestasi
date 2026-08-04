@@ -4,7 +4,9 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
 import { DataSource, Repository } from 'typeorm';
 import { Competition } from '../entities/competition.entity';
 import { EventSite } from '../entities/event-site.entity';
@@ -15,24 +17,44 @@ interface NewCompetition {
   lifecycle: 'current' | 'archived';
 }
 
+interface NewSite {
+  name: string;
+}
+
 @Injectable()
 export class AdminService {
   constructor(
     @InjectRepository(EventSite) private readonly sites: Repository<EventSite>,
-    @InjectRepository(Competition)
-    private readonly competitionRepo: Repository<Competition>,
     private readonly dataSource: DataSource,
+    private readonly config: ConfigService,
   ) {}
 
   async session(userId: string, email: string) {
+    const organizations = await this.dataSource.query<
+      { id: string; name: string; role: string }[]
+    >(
+      `SELECT organization.id,organization.name,membership.role
+       FROM organizations organization
+       JOIN organization_memberships membership ON membership.organization_id=organization.id
+       WHERE membership.user_id=$1 AND organization.status='active' AND organization.deleted_at IS NULL
+       ORDER BY organization.name`,
+      [userId],
+    );
     const sites = await this.sites
       .createQueryBuilder('site')
       .select([
         'site.id AS "id"',
+        'site.organization_id AS "organizationId"',
         'site.name AS "name"',
         'site.slug AS "slug"',
+        'site.publication_status AS "publicationStatus"',
+        'site.published_at AS "publishedAt"',
         'organization.name AS "organizationName"',
         'membership.role AS "role"',
+        'currentCompetition.id AS "currentCompetitionId"',
+        'currentCompetition.name AS "currentCompetitionName"',
+        'currentCompetition.publication_status AS "currentPublicationStatus"',
+        'primaryDomain.hostname AS "hostname"',
       ])
       .innerJoin(
         'organizations',
@@ -44,6 +66,16 @@ export class AdminService {
         'membership',
         'membership.organization_id = organization.id',
       )
+      .leftJoin(
+        'competitions',
+        'currentCompetition',
+        "currentCompetition.event_site_id = site.id AND currentCompetition.lifecycle = 'current' AND currentCompetition.deleted_at IS NULL",
+      )
+      .leftJoin(
+        'site_domains',
+        'primaryDomain',
+        'primaryDomain.event_site_id = site.id AND primaryDomain.is_primary = true',
+      )
       .where('membership.user_id = :userId', { userId })
       .andWhere("site.status = 'active'")
       .andWhere('site.deleted_at IS NULL')
@@ -53,12 +85,278 @@ export class AdminService {
       .addOrderBy('site.name', 'ASC')
       .getRawMany<{
         id: string;
+        organizationId: string;
         name: string;
         slug: string;
+        publicationStatus: string;
+        publishedAt: Date | null;
         organizationName: string;
         role: string;
+        currentCompetitionId: string | null;
+        currentCompetitionName: string | null;
+        currentPublicationStatus: string | null;
+        hostname: string | null;
       }>();
-    return { data: { user: { id: userId, email }, sites }, errors: [] };
+    return {
+      data: { user: { id: userId, email }, organizations, sites },
+      errors: [],
+    };
+  }
+
+  async createSite(userId: string, input: NewSite) {
+    return this.dataSource.transaction(async (manager) => {
+      const memberships = await manager.query<
+        { organizationId: string; organizationName: string; role: string }[]
+      >(
+        `SELECT organization.id AS "organizationId",organization.name AS "organizationName",membership.role
+         FROM organization_memberships membership
+         JOIN organizations organization ON organization.id=membership.organization_id
+         WHERE membership.user_id=$1
+           AND membership.role IN ('owner','admin')
+           AND organization.status='active' AND organization.deleted_at IS NULL
+         ORDER BY CASE membership.role WHEN 'owner' THEN 0 ELSE 1 END,organization.name
+         LIMIT 1`,
+        [userId],
+      );
+      if (!memberships[0])
+        throw new ForbiddenException('Organization access denied');
+
+      const membership = memberships[0];
+      const provisionalSlug = `event-${randomUUID().slice(0, 12)}`;
+
+      const site = await manager.save(
+        manager.create(EventSite, {
+          organizationId: membership.organizationId,
+          name: input.name.trim(),
+          slug: provisionalSlug,
+          organizerName: membership.organizationName,
+          status: 'active',
+        }),
+      );
+      await manager.query(
+        `INSERT INTO site_settings(event_site_id) VALUES($1)`,
+        [site.id],
+      );
+      const competition = await manager.save(
+        manager.create(Competition, {
+          eventSiteId: site.id,
+          name: input.name.trim(),
+          slug: 'current',
+          lifecycle: 'current',
+          publicationStatus: 'draft',
+        }),
+      );
+      await manager.query(
+        `INSERT INTO event_site_archive_sources(event_site_id,source_event_site_id,organization_id)
+         SELECT $1,previous.id,$2 FROM event_sites previous
+         WHERE previous.organization_id=$2 AND previous.id<>$1 AND previous.deleted_at IS NULL
+         ON CONFLICT DO NOTHING`,
+        [site.id, membership.organizationId],
+      );
+      await manager.query(
+        `UPDATE competitions competition SET publication_status='published',published_at=COALESCE(published_at,now()),version=version+1,updated_at=now()
+         FROM event_site_archive_sources source
+         WHERE source.event_site_id=$1 AND source.source_event_site_id=competition.event_site_id
+           AND competition.lifecycle='current' AND competition.deleted_at IS NULL
+           AND competition.publication_status='draft'`,
+        [site.id],
+      );
+      await manager.query(
+        `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
+         VALUES($1,$2,'create','event_site',$1,$3),($1,$2,'create','competition',$4,$5)`,
+        [
+          site.id,
+          userId,
+          JSON.stringify({ name: site.name, provisionalSlug: site.slug }),
+          competition.id,
+          JSON.stringify({ name: competition.name }),
+        ],
+      );
+      return {
+        data: {
+          id: site.id,
+          organizationId: site.organizationId,
+          name: site.name,
+          slug: site.slug,
+          organizerName: site.organizerName,
+          role: memberships[0].role,
+          currentCompetitionId: competition.id,
+          currentCompetitionName: competition.name,
+          currentPublicationStatus: competition.publicationStatus,
+          publicationStatus: site.publicationStatus,
+          hostname: null,
+        },
+        errors: [],
+      };
+    });
+  }
+
+  async deleteSite(siteId: string, userId: string) {
+    await this.authorizedSite(siteId, userId, ['owner', 'admin']);
+    await this.dataSource.transaction(async (manager) => {
+      await manager.query(
+        `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
+         VALUES($1,$2,'delete','event_site',$1,$3)`,
+        [siteId, userId, JSON.stringify({ softDelete: true })],
+      );
+      await manager.query(
+        `UPDATE event_sites SET status='suspended',deleted_at=now(),updated_at=now() WHERE id=$1`,
+        [siteId],
+      );
+    });
+    return { data: { id: siteId, deleted: true }, errors: [] };
+  }
+
+  async publishSite(siteId: string, userId: string) {
+    await this.authorizedSite(siteId, userId, ['owner', 'admin']);
+    return this.dataSource.transaction(async (manager) => {
+      const sites = await manager.query<
+        { id: string; slug: string; publicationStatus: string }[]
+      >(
+        `SELECT id,slug,publication_status AS "publicationStatus" FROM event_sites WHERE id=$1 AND deleted_at IS NULL FOR UPDATE`,
+        [siteId],
+      );
+      const site = sites[0];
+      if (!site) throw new ForbiddenException('Site access denied');
+      if (site.slug.startsWith('event-'))
+        throw new BadRequestException(
+          'Atur slug/subdomain di Pengaturan Event sebelum publikasi',
+        );
+      const hostname = `${site.slug}.${this.publicBaseDomain()}`;
+      const hostnameOwner = await manager.query<{ eventSiteId: string }[]>(
+        `SELECT event_site_id AS "eventSiteId" FROM site_domains WHERE hostname=$1`,
+        [hostname],
+      );
+      if (hostnameOwner[0] && hostnameOwner[0].eventSiteId !== siteId)
+        throw new ConflictException('Subdomain sudah dipakai event lain');
+      const competitions = await manager.query<{ id: string }[]>(
+        `SELECT id FROM competitions WHERE event_site_id=$1 AND lifecycle='current' AND deleted_at IS NULL FOR UPDATE`,
+        [siteId],
+      );
+      const primaryDomains = await manager.query<{ id: string }[]>(
+        `SELECT id FROM site_domains WHERE event_site_id=$1 AND is_primary=true LIMIT 1`,
+        [siteId],
+      );
+      if (primaryDomains[0]) {
+        await manager.query(
+          `UPDATE site_domains SET hostname=$2,verified_at=now() WHERE id=$1`,
+          [primaryDomains[0].id, hostname],
+        );
+      } else {
+        await manager.query(
+          `INSERT INTO site_domains(event_site_id,hostname,is_primary,verified_at) VALUES($1,$2,true,now())`,
+          [siteId, hostname],
+        );
+      }
+      if (competitions[0])
+        await manager.query(
+          `UPDATE competitions SET publication_status='published',published_at=COALESCE(published_at,now()),version=version+1,updated_at=now()
+           WHERE id=$1`,
+          [competitions[0].id],
+        );
+      await manager.query(
+        `UPDATE event_sites SET publication_status='published',published_at=COALESCE(published_at,now()),updated_at=now() WHERE id=$1`,
+        [siteId],
+      );
+      await manager.query(
+        `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
+         VALUES($1,$2,'publish','event_site',$1,$3)`,
+        [siteId, userId, JSON.stringify({ hostname })],
+      );
+      return {
+        data: {
+          id: siteId,
+          publicationStatus: 'published',
+          hostname,
+          publicUrl: `https://${hostname}/`,
+        },
+        errors: [],
+      };
+    });
+  }
+
+  async unpublishSite(siteId: string, userId: string) {
+    await this.authorizedSite(siteId, userId, ['owner', 'admin']);
+    await this.dataSource.transaction(async (manager) => {
+      await manager.query(
+        `UPDATE event_sites SET publication_status='unpublished',updated_at=now() WHERE id=$1`,
+        [siteId],
+      );
+      await manager.query(
+        `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
+         VALUES($1,$2,'unpublish','event_site',$1,$3)`,
+        [siteId, userId, JSON.stringify({ publicationStatus: 'unpublished' })],
+      );
+    });
+    return {
+      data: { id: siteId, publicationStatus: 'unpublished' },
+      errors: [],
+    };
+  }
+
+  async createEdition(
+    siteId: string,
+    userId: string,
+    input: { name: string; slug: string },
+  ) {
+    await this.authorizedSite(siteId, userId, ['owner', 'admin', 'editor']);
+    return this.dataSource.transaction(async (manager) => {
+      const duplicate = await manager.query<{ id: string }[]>(
+        `SELECT id FROM competitions WHERE event_site_id=$1 AND slug=$2 AND deleted_at IS NULL`,
+        [siteId, input.slug],
+      );
+      if (duplicate[0])
+        throw new ConflictException('Edition slug already used in this portal');
+
+      const previous = await manager.query<{ id: string; name: string }[]>(
+        `SELECT id,name FROM competitions
+         WHERE event_site_id=$1 AND lifecycle='current' AND deleted_at IS NULL
+         FOR UPDATE`,
+        [siteId],
+      );
+      await manager.query(
+        `UPDATE competitions SET lifecycle='archived',version=version+1,updated_at=now()
+         WHERE event_site_id=$1 AND lifecycle='current' AND deleted_at IS NULL`,
+        [siteId],
+      );
+      const competition = await manager.save(
+        manager.create(Competition, {
+          eventSiteId: siteId,
+          name: input.name.trim(),
+          slug: input.slug,
+          lifecycle: 'current',
+          publicationStatus: 'draft',
+        }),
+      );
+      for (const old of previous) {
+        await manager.query(
+          `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
+           VALUES($1,$2,'archive','competition',$3,$4)`,
+          [siteId, userId, old.id, JSON.stringify({ lifecycle: 'archived' })],
+        );
+      }
+      await manager.query(
+        `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
+         VALUES($1,$2,'create','competition',$3,$4)`,
+        [
+          siteId,
+          userId,
+          competition.id,
+          JSON.stringify({ name: competition.name, slug: competition.slug }),
+        ],
+      );
+      return {
+        data: {
+          id: competition.id,
+          name: competition.name,
+          slug: competition.slug,
+          lifecycle: competition.lifecycle,
+          publicationStatus: competition.publicationStatus,
+          archivedCompetitionIds: previous.map((item) => item.id),
+        },
+        errors: [],
+      };
+    });
   }
 
   async site(siteId: string, userId: string) {
@@ -113,6 +411,7 @@ export class AdminService {
     userId: string,
     input: {
       eventName: string;
+      eventSlug: string;
       organizerName: string;
       primaryColor: string;
       logoAssetId?: string;
@@ -123,6 +422,35 @@ export class AdminService {
   ) {
     await this.authorizedSite(siteId, userId, ['owner', 'admin', 'editor']);
     await this.dataSource.transaction(async (manager) => {
+      const currentSiteRows = await manager.query<
+        { slug: string; publicationStatus: string }[]
+      >(
+        `SELECT slug,publication_status AS "publicationStatus" FROM event_sites WHERE id=$1 FOR UPDATE`,
+        [siteId],
+      );
+      const currentSite = currentSiteRows[0];
+      if (
+        currentSite?.publicationStatus === 'published' &&
+        currentSite.slug !== input.eventSlug
+      )
+        throw new BadRequestException(
+          'Nonaktifkan event sebelum mengganti slug/subdomain',
+        );
+      const duplicateSlug = await manager.query<{ id: string }[]>(
+        `SELECT other.id FROM event_sites current_site
+         JOIN event_sites other ON other.organization_id=current_site.organization_id
+         WHERE current_site.id=$1 AND other.id<>$1 AND other.slug=$2 AND other.deleted_at IS NULL`,
+        [siteId, input.eventSlug],
+      );
+      if (duplicateSlug[0])
+        throw new ConflictException('Slug/subdomain sudah dipakai event lain');
+      const hostname = `${input.eventSlug}.${this.publicBaseDomain()}`;
+      const duplicateDomain = await manager.query<{ id: string }[]>(
+        `SELECT id FROM site_domains WHERE hostname=$1 AND event_site_id<>$2`,
+        [hostname, siteId],
+      );
+      if (duplicateDomain[0])
+        throw new ConflictException('Subdomain sudah dipakai event lain');
       if (input.logoAssetId) {
         const owned = await manager.query<Array<{ id: string }>>(
           `SELECT asset.id FROM media_assets asset JOIN event_sites site ON site.organization_id=asset.organization_id WHERE asset.id=$1 AND site.id=$2 AND asset.status='active'`,
@@ -131,13 +459,18 @@ export class AdminService {
         if (!owned[0]) throw new BadRequestException('Invalid logo asset');
       }
       await manager.query(
-        `UPDATE event_sites SET name=$2,organizer_name=$3,logo_asset_id=COALESCE($4,logo_asset_id),updated_at=now() WHERE id=$1`,
+        `UPDATE event_sites SET name=$2,organizer_name=$3,logo_asset_id=COALESCE($4,logo_asset_id),slug=$5,updated_at=now() WHERE id=$1`,
         [
           siteId,
           input.eventName.trim(),
           input.organizerName.trim(),
           input.logoAssetId ?? null,
+          input.eventSlug,
         ],
+      );
+      await manager.query(
+        `UPDATE site_domains SET hostname=$2,verified_at=now() WHERE event_site_id=$1 AND is_primary=true`,
+        [siteId, hostname],
       );
       await manager.query(
         `INSERT INTO site_settings(event_site_id,primary_color,navigation,contact,footer) VALUES($1,$2,$3,$4,$5) ON CONFLICT(event_site_id) DO UPDATE SET primary_color=EXCLUDED.primary_color,navigation=EXCLUDED.navigation,contact=EXCLUDED.contact,footer=EXCLUDED.footer`,
@@ -402,10 +735,37 @@ export class AdminService {
 
   async competitions(siteId: string, userId: string) {
     await this.authorizedSite(siteId, userId);
-    const rows = await this.competitionRepo.find({
-      where: { eventSiteId: siteId },
-      order: { sortOrder: 'ASC', createdAt: 'ASC' },
-    });
+    const rows = await this.dataSource.query<
+      Array<{
+        id: string;
+        name: string;
+        shortName: string;
+        slug: string;
+        lifecycle: string;
+        publicationStatus: string;
+        description: string;
+        mascotAssetId: string | null;
+        fallbackIcon: string;
+        sortOrder: number;
+        version: number;
+        updatedAt: Date;
+        deletedAt: Date | null;
+        inherited: boolean;
+      }>
+    >(
+      `SELECT competition.id,competition.name,competition.short_name AS "shortName",competition.slug,
+              CASE WHEN competition.event_site_id=$1 THEN competition.lifecycle ELSE 'archived' END AS lifecycle,
+              competition.publication_status AS "publicationStatus",competition.description,
+              competition.mascot_asset_id AS "mascotAssetId",competition.fallback_icon AS "fallbackIcon",
+              competition.sort_order AS "sortOrder",competition.version,competition.updated_at AS "updatedAt",
+              competition.deleted_at AS "deletedAt",(competition.event_site_id<>$1) AS inherited
+       FROM competitions competition
+       LEFT JOIN event_site_archive_sources source
+         ON source.event_site_id=$1 AND source.source_event_site_id=competition.event_site_id
+       WHERE (competition.event_site_id=$1 OR source.source_event_site_id IS NOT NULL)
+       ORDER BY inherited,competition.sort_order,competition.created_at`,
+      [siteId],
+    );
     return {
       data: rows.map((row) => ({
         id: row.id,
@@ -424,6 +784,7 @@ export class AdminService {
         version: row.version,
         updatedAt: row.updatedAt,
         deletedAt: row.deletedAt,
+        inherited: row.inherited,
       })),
       errors: [],
     };
@@ -434,6 +795,9 @@ export class AdminService {
     userId: string,
     input: NewCompetition,
   ) {
+    if (input.lifecycle === 'current') {
+      return this.createEdition(siteId, userId, input);
+    }
     await this.authorizedSite(siteId, userId, ['owner', 'admin', 'editor']);
     const competition = await this.dataSource.transaction(async (manager) => {
       const row = manager.create(Competition, {
@@ -575,6 +939,14 @@ export class AdminService {
       throw new BadRequestException('A valid If-Match version is required');
     }
     return version;
+  }
+
+  private publicBaseDomain() {
+    return this.config
+      .get<string>('PUBLIC_BASE_DOMAIN', 'nexaplaymetadata.online')
+      .trim()
+      .toLowerCase()
+      .replace(/^\.+|\.+$/g, '');
   }
 
   private async authorizedSite(

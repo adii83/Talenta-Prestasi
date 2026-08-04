@@ -64,15 +64,16 @@ disimpan di object storage; database hanya menyimpan metadata serta lokasi file.
 
 ### 1. Organisasi dan Portal
 
-| Entitas                    | Fungsi                                              | Relasi utama                                     |
-| -------------------------- | --------------------------------------------------- | ------------------------------------------------ |
-| `organizations`            | Tenant/client penyelenggara                         | memiliki portal dan anggota                      |
-| `users`                    | Identitas akun                                      | bergabung ke organisasi melalui membership       |
-| `organization_memberships` | Role pengguna per organisasi                        | FK organisasi dan pengguna                       |
-| `event_sites`              | Satu portal publik beserta slug                     | dimiliki organisasi                              |
-| `site_domains`             | Domain/subdomain dan status verifikasi              | dimiliki portal                                  |
-| `site_settings`            | Tema, kontak, footer, SEO, dan konfigurasi navigasi | satu-ke-satu dengan portal                       |
-| `media_assets`             | Metadata file pada object storage                   | dimiliki organisasi, opsional dibatasi ke portal |
+| Entitas                      | Fungsi                                                    | Relasi utama                                       |
+| ---------------------------- | --------------------------------------------------------- | -------------------------------------------------- |
+| `organizations`              | Tenant/client penyelenggara                               | memiliki portal dan anggota                        |
+| `users`                      | Identitas akun                                            | bergabung ke organisasi melalui membership         |
+| `organization_memberships`   | Role pengguna per organisasi                              | FK organisasi dan pengguna                         |
+| `event_sites`                | Satu portal publik beserta slug                           | dimiliki organisasi                                |
+| `event_site_archive_sources` | Relasi event baru ke event lama yang menjadi sumber Arsip | target dan sumber berada pada organisasi yang sama |
+| `site_domains`               | Domain/subdomain dan status verifikasi                    | dimiliki portal                                    |
+| `site_settings`              | Tema, kontak, footer, SEO, dan konfigurasi navigasi       | satu-ke-satu dengan portal                         |
+| `media_assets`               | Metadata file pada object storage                         | dimiliki organisasi, opsional dibatasi ke portal   |
 
 Role minimum yang direkomendasikan:
 
@@ -98,6 +99,12 @@ Role minimum yang direkomendasikan:
 mencegah istilah “aktif” dipakai untuk dua arti yang berbeda.
 
 Satu portal hanya boleh mempunyai satu lomba `current` yang belum dihapus.
+
+Pada alur Admin yang disederhanakan, satu kartu dashboard merepresentasikan satu
+`event_site`. Ketika event baru dibuat, backend menghubungkannya ke event lama
+melalui `event_site_archive_sources`. Competition milik event sumber dibaca
+sebagai Arsip efektif pada event baru; dokumen dan pemenang tetap memakai primary
+key serta foreign key aslinya, sehingga tidak ada copy data.
 Perubahan lomba aktif dilakukan dalam transaksi:
 
 1. lomba aktif lama diubah menjadi `archived`;
@@ -638,6 +645,7 @@ POST   /api/v1/admin/competitions/{competitionId}/winner-categories
 GET    /api/v1/admin/sites/{siteId}/pages/{pageType}
 PUT    /api/v1/admin/sites/{siteId}/pages/{pageType}
 POST   /api/v1/admin/sites/{siteId}/publish
+POST   /api/v1/admin/sites/{siteId}/unpublish
 POST   /api/v1/admin/uploads/presign
 ```
 
