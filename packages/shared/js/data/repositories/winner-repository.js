@@ -30,7 +30,8 @@ function winnerEscape(value = "") {
 
 function winnerSafeUrl(value = "") {
   const source = String(value).trim();
-  return source && !/^(?:javascript|vbscript):/i.test(source) ? source : "#";
+  if (!source) return "";
+  return !/^(?:javascript|vbscript):/i.test(source) ? source : "#";
 }
 
 function winnerInitials(name = "") {
@@ -46,8 +47,14 @@ function winnerInitials(name = "") {
 }
 
 function winnerManagerBaseline() {
-  const competition =
-    typeof getActiveCompetition === "function" ? getActiveCompetition() : null;
+  const competition = Object.prototype.hasOwnProperty.call(
+    window,
+    "TalentaActiveCompetition",
+  )
+    ? window.TalentaActiveCompetition
+    : typeof getActiveCompetition === "function"
+      ? getActiveCompetition()
+      : null;
   if (!competition)
     return {
       version: 1,
@@ -75,13 +82,24 @@ function winnerManagerBaseline() {
           description: competition.skDocument.description,
           url: competition.skDocument.url,
         }
-      : { title: "SK Penetapan Pemenang", description: "", url: "" },
+      : {
+          title: "SK Penetapan Pemenang",
+          description:
+            "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+          url: "",
+        },
   };
 }
 
 function winnerPageBaseline() {
-  const competition =
-    typeof getActiveCompetition === "function" ? getActiveCompetition() : null;
+  const competition = Object.prototype.hasOwnProperty.call(
+    window,
+    "TalentaActiveCompetition",
+  )
+    ? window.TalentaActiveCompetition
+    : typeof getActiveCompetition === "function"
+      ? getActiveCompetition()
+      : null;
   return {
     version: 1,
     active: true,
@@ -94,7 +112,6 @@ function winnerPageBaseline() {
     showPhoto: true,
     showSchool: true,
     showExam: true,
-    showDistrict: true,
     showRegency: true,
     showProvince: true,
     archiveActive: true,
@@ -141,7 +158,6 @@ function normalizeWinnerManagerState(source) {
           name: winnerString(winner.name),
           school: winnerString(winner.school),
           exam: winnerString(winner.exam),
-          district: winnerString(winner.district),
           regency: winnerString(winner.regency),
           province: winnerString(winner.province),
           photo: winnerString(winner.photo),
@@ -183,7 +199,6 @@ function normalizeWinnerPageState(source) {
     showPhoto: state.showPhoto !== false,
     showSchool: state.showSchool !== false,
     showExam: state.showExam !== false,
-    showDistrict: state.showDistrict !== false,
     showRegency: state.showRegency !== false,
     showProvince: state.showProvince !== false,
     archiveActive: state.archiveActive !== false,
@@ -262,14 +277,24 @@ function getWinnerArchiveAvailableCount() {
   return getAvailableWinnerArchiveCompetitions().length;
 }
 
-function getPublicWinnerArchiveCompetitions(page = getWinnerPageState()) {
+function getPublicWinnerArchiveCompetitions(
+  page = getWinnerPageState(),
+  archiveSource,
+) {
   if (!page.archiveActive) return [];
-  return getAvailableWinnerArchiveCompetitions()
-    .slice(0, page.archiveLimit)
-    .map(winnerClone);
+  const available = Array.isArray(archiveSource)
+    ? archiveSource.filter((competition) =>
+        (competition.winnerCategories || []).some(
+          (category) =>
+            category.active !== false &&
+            (category.winners || []).some((winner) => winner.active !== false),
+        ),
+      )
+    : getAvailableWinnerArchiveCompetitions();
+  return available.slice(0, page.archiveLimit).map(winnerClone);
 }
 
-function resolvePublicWinnerState(managerSource, pageSource) {
+function resolvePublicWinnerState(managerSource, pageSource, archiveSource) {
   const manager = normalizeWinnerManagerState(managerSource);
   const page = normalizeWinnerPageState(pageSource);
   return {
@@ -284,7 +309,7 @@ function resolvePublicWinnerState(managerSource, pageSource) {
         .filter((category) => category.winners.length),
     },
     page,
-    archives: getPublicWinnerArchiveCompetitions(page),
+    archives: getPublicWinnerArchiveCompetitions(page, archiveSource),
   };
 }
 
@@ -299,9 +324,6 @@ function buildWinnerMetaMarkup(winner, page) {
   return [
     page.showExam && winner.exam
       ? `<span><span class="meta-label">No. Ujian:</span> ${winnerEscape(winner.exam)}</span>`
-      : "",
-    page.showDistrict && winner.district
-      ? `<span><span class="meta-label">Kecamatan:</span> ${winnerEscape(winner.district)}</span>`
       : "",
     page.showRegency && winner.regency
       ? `<span><span class="meta-label">Kabupaten:</span> ${winnerEscape(winner.regency)}</span>`
@@ -327,7 +349,7 @@ function buildWinnerPageMarkup(source, options = {}) {
   const { manager, page, archives = [] } = source;
   const headerClass = page.alignment === "left" ? " section__header--left" : "";
   const sk =
-    page.showSk && manager.sk?.title
+    page.showSk && manager.sk?.title && manager.sk?.url
       ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${winnerEscape(manager.sk.title)}</h3><p>${winnerEscape(manager.sk.description)}</p></div></div><a href="${winnerEscape(winnerSafeUrl(manager.sk.url))}" class="btn btn--primary" style="border:1px solid rgba(255,255,255,.2)"${manager.sk.url ? ' target="_blank" rel="noopener"' : ""}><i data-lucide="download" style="width:16px;height:16px"></i> Unduh PDF</a></div>`
       : "";
   const categories = manager.categories.length

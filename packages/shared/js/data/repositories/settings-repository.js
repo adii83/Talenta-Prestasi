@@ -4,6 +4,8 @@ const GLOBAL_SETTINGS_BASELINE = {
   version: 3,
   identity: {
     eventName: "Olimpiade Sains Nusantara",
+    eventDescription:
+      "Ajang talenta untuk mengembangkan prestasi peserta secara terukur dan transparan.",
     eventSlug: "osn2026",
     organizerName: "Talenta Prestasi Indonesia",
     logo: "",
@@ -106,6 +108,7 @@ function normalizeGlobalSettings(source) {
   b.identity = {
     ...b.identity,
     eventName: source.eventName || b.identity.eventName,
+    eventDescription: source.eventDescription || b.identity.eventDescription,
     eventSlug: source.eventSlug || b.identity.eventSlug,
     organizerName: source.organizerName || b.identity.organizerName,
     logo: source.logo || "",

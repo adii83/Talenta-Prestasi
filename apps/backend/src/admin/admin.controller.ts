@@ -53,6 +53,7 @@ class CompetitionParams {
 
 class SiteSettingsDto {
   @IsString() @MinLength(1) @MaxLength(160) eventName!: string;
+  @IsOptional() @IsString() @MaxLength(5000) eventDescription?: string;
   @IsString()
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   @MaxLength(100)

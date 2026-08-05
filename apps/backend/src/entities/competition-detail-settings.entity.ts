@@ -20,6 +20,17 @@ export class CompetitionDetailSettings {
   @Column({ name: 'decree_document_id', type: 'uuid', nullable: true })
   decreeDocumentId!: string | null;
 
+  @Column({ name: 'decree_title', default: 'SK Penetapan Pemenang' })
+  decreeTitle!: string;
+
+  @Column({
+    name: 'decree_description',
+    type: 'text',
+    default:
+      'Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.',
+  })
+  decreeDescription!: string;
+
   @Column({ name: 'is_active', default: true })
   isActive!: boolean;
 
@@ -36,11 +47,8 @@ export class CompetitionDetailSettings {
   @JoinColumn({ name: 'competition_id' })
   competition!: Competition;
 
-  @ManyToOne(() => CompetitionDocument, { nullable: true })
-  @JoinColumn([
-    { name: 'decree_document_id', referencedColumnName: 'id' },
-    { name: 'competition_id', referencedColumnName: 'competitionId' },
-  ])
+  @ManyToOne(() => CompetitionDocument, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'decree_document_id' })
   decreeDocument!: CompetitionDocument | null;
 
   @OneToMany(() => ArchiveCategorySettings, (s) => s.detailSettings)

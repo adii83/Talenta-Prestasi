@@ -13,10 +13,10 @@ import { DataSource, Repository } from 'typeorm';
 import { MediaAsset } from '../entities/media-asset.entity';
 
 const TYPES: Record<string, { ext: string; max: number }> = {
-  'image/png': { ext: '.png', max: 2_097_152 },
-  'image/jpeg': { ext: '.jpg', max: 2_097_152 },
-  'image/webp': { ext: '.webp', max: 2_097_152 },
-  'image/svg+xml': { ext: '.svg', max: 2_097_152 },
+  'image/png': { ext: '.png', max: 5_242_880 },
+  'image/jpeg': { ext: '.jpg', max: 5_242_880 },
+  'image/webp': { ext: '.webp', max: 5_242_880 },
+  'image/svg+xml': { ext: '.svg', max: 5_242_880 },
   'application/pdf': { ext: '.pdf', max: 10_485_760 },
 };
 

@@ -1,5 +1,6 @@
 const STORAGE_KEY = GLOBAL_SETTINGS_KEY;
 let globalState = getGlobalSettings(),
+  globalHomeState = null,
   globalPreviewActive = "home",
   globalPreviewResizeObserver;
 const globalPreviewConfigs = [
@@ -19,12 +20,55 @@ async function loadGlobalSettingsApi() {
     throw new TalentaApi.ApiError("Portal Admin belum dipilih", 400);
   return (await TalentaApi.request(`/admin/sites/${site.id}/settings`)).data;
 }
+async function loadHomeSettingsApi() {
+  const site = TalentaAdminAuth.currentSite();
+  if (!site?.id) return null;
+  const response = await TalentaApi.request(`/admin/sites/${site.id}/home`);
+  const sections = Object.fromEntries(
+    response.data.sections.map((section) => [
+      section.sectionType,
+      { ...section.settings, active: section.isActive },
+    ])
+  );
+
+  let categories = [];
+  let display = { showPhoto: true, showSchool: true, showExam: true, showRegency: true, showProvince: true };
+  
+  try {
+    const pagesReq = await TalentaApi.request(`/admin/sites/${site.id}/pages/winners`);
+    display = pagesReq.data.metadataVisibility || display;
+
+    const compsReq = await TalentaApi.request(`/admin/sites/${site.id}/competitions`);
+    const activeComp = compsReq.data.find(c => c.lifecycle === "current" && !c.deletedAt);
+    if (activeComp) {
+      const [catReq, winReq] = await Promise.all([
+        TalentaApi.request(`/admin/competitions/${activeComp.id}/winner-categories`),
+        TalentaApi.request(`/admin/competitions/${activeComp.id}/winners`)
+      ]);
+      categories = catReq.data.filter(c => c.isActive).map(c => ({
+        ...c,
+        winners: winReq.data.filter(w => w.categoryId === c.id && w.isActive).map(w => ({
+          ...w,
+          name: w.fullName,
+          rank: w.rankLabel,
+          exam: w.examNumber,
+          photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : ""
+        }))
+      })).filter(c => c.winners.length > 0);
+    }
+  } catch (e) {
+    console.warn("Gagal memuat data pemenang untuk pratinjau global", e);
+  }
+
+  return { sections, categories, display };
+}
 async function saveGlobalSettingsApi() {
   const site = TalentaAdminAuth.currentSite();
   return TalentaApi.request(`/admin/sites/${site.id}/settings`, {
     method: "PUT",
     body: {
       eventName: globalState.identity.eventName,
+      eventDescription: globalState.identity.eventDescription,
       eventSlug: globalState.identity.eventSlug,
       organizerName: globalState.identity.organizerName,
       primaryColor: globalState.theme.primaryColor,
@@ -57,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
       f = globalState.footer,
       values = {
         eventName: i.eventName,
+        eventDescription: i.eventDescription,
         eventSlug: i.eventSlug,
         organizerName: i.organizerName,
         primaryColor: t.primaryColor,
@@ -74,7 +119,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const e = byId(id);
       if (e) e.value = v || "";
     });
-    if (i.logo) setLogo(i.logo);
+    setLogo(i.logo);
   }
   function renderNavigation() {
     byId("globalNavigationList").innerHTML = navigationItems
@@ -108,10 +153,10 @@ document.addEventListener("DOMContentLoaded", () => {
     globalState.identity = {
       ...globalState.identity,
       eventName: eventName.value,
+      eventDescription: eventDescription.value,
       eventSlug: eventSlug.value,
       organizerName: organizerName.value,
       logo:
-        document.querySelector("#logoPreview img")?.src ||
         globalState.identity.logo ||
         "",
     };
@@ -157,12 +202,56 @@ document.addEventListener("DOMContentLoaded", () => {
       header = isDesktop
         ? `<nav class="navbar" aria-label="Preview menu utama"><div class="navbar__inner"><span class="navbar__brand">${brandMark("navbar__logo", short)}<span class="navbar__brand-text">${esc(brand)}</span></span><div class="navbar__menu">${active.map(([id, label]) => `<span class="navbar__link ${id === "home" ? "navbar__link--active" : ""}">${label}</span>`).join("")}<span class="navbar__link navbar__link--desktop-only">Kontak Kami</span></div></div></nav>`
         : `<header class="mobile-header"><span class="mobile-header__brand">${brandMark("mobile-header__logo", short)}<span class="mobile-header__text">${esc(brand)}</span></span></header>`;
-    const winners = [
-      ["Peringkat 1", "AR", "Anisa Rahmawati", "SDN 1 Coblong", "Jawa Barat"],
-      ["Peringkat 2", "BP", "Bimo Prasetyo", "SMPN 2 Gubeng", "Jawa Timur"],
-      ["Peringkat 3", "CW", "Citra Wulandari", "SMAN 3 Menteng", "DKI Jakarta"],
-    ];
-    return `${header}<main><section class="hero"><div class="container hero__layout"><div class="hero__inner"><p class="t-eyebrow">PENDAFTARAN DIBUKA</p><h1 class="t-h1">${esc(brand)}</h1><div class="hero__image hero__image--mobile"><img src="../template/assets/images/garuda.png" alt="Garuda Logo"></div><p class="hero__subtitle">Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.</p><div class="hero__badges"><span class="hero__badge">SD / MI</span><span class="hero__badge">SMP / MTs</span><span class="hero__badge">SMA / MA / SMK</span></div><div class="hero__buttons"><span class="btn btn--white btn--lg">Daftar Sekarang <i data-lucide="arrow-right"></i></span><span class="btn btn--outline btn--lg global-theme-preview__hero-outline">Unduh Juknis <i data-lucide="download"></i></span></div></div><div class="hero__image hero__image--desktop"><img src="../template/assets/images/garuda.png" alt="Garuda Logo"></div></div></section><section class="section global-theme-preview__winner-section"><div class="container"><div class="section__header"><p class="t-eyebrow">Kombinasi Tema</p><h2 class="t-h2">Warna utama dipadukan dengan putih</h2><p>Badge dan detail kontras otomatis menyesuaikan latar terang atau gelap.</p></div><div class="winner-section"><section class="winner-group home-winner-group"><h3 class="winner-group__title"><i data-lucide="trophy"></i>Juara Umum <span class="badge badge--gold">3 Pemenang</span></h3><div class="champion-grid">${winners.map(([rank, initials, name, school, province]) => `<div class="champion-card"><div class="champion-card__photo">${initials}</div><p class="champion-card__rank t-mono">${rank}</p><p class="champion-card__name">${name}</p><p class="champion-card__school">${school}</p><div class="champion-card__meta"><span><span class="meta-label">Provinsi:</span> ${province}</span></div></div>`).join("")}</div></section></div></div></section></main>`;
+    const h = globalHomeState?.sections?.hero || {};
+    const w = globalHomeState?.sections?.winnerHighlight || {};
+    const categories = globalHomeState?.categories || [];
+    const display = globalHomeState?.display || { showPhoto: true, showSchool: true, showExam: true, showRegency: true, showProvince: true };
+    
+    const heroEyebrow = h.eyebrow || "PENDAFTARAN DIBUKA";
+    const heroTitle = h.title || "Judul Utama Event Anda";
+    const heroDesc = h.description || "Deskripsi singkat atau subtitle event akan muncul di sini. Teks ini dikendalikan dari pengaturan Kelola Halaman > Beranda.";
+    let heroImage = h.image || "../template/assets/images/garuda.png";
+    if (heroImage.startsWith("../../../template/")) {
+      heroImage = heroImage.replace("../../../template/", "../template/");
+    }
+    const heroImageAlt = h.imageAlt || "Hero Image";
+    const heroBadges = (h.badges || [{label: "SD / MI"}, {label: "SMP / MTs"}, {label: "SMA / MA / SMK"}]).filter(b => b.active !== false);
+    const heroButtons = (h.buttons || [
+      {label: "Daftar Sekarang", style: "primary", libraryIcon: "arrow-right"},
+      {label: "Unduh Juknis", style: "outline", libraryIcon: "download"}
+    ]).filter(b => b.active !== false);
+
+    const winnerEyebrow = w.eyebrow || "Kombinasi Tema";
+    const winnerTitle = w.title || "Warna utama dipadukan dengan putih";
+    const winnerDesc = w.description || "Badge dan detail kontras otomatis menyesuaikan latar terang atau gelap.";
+    const winnerAlignment = w.alignment === "left" ? " section__header--left" : "";
+
+    const groups = categories.length ? categories.map(category => 
+      `<section class="winner-group home-winner-group"><h3 class="winner-group__title"><i data-lucide="${category.icon || "trophy"}"></i>${esc(category.name)} <span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${
+        category.winners.map(item => {
+          const initials = (item.name || "?").trim().split(/\s+/).slice(0, 2).map(p => p[0] || "").join("").toUpperCase();
+          const meta = [
+            display.showExam && item.exam ? `<span><span class="meta-label">No. Ujian:</span> ${esc(item.exam)}</span>` : "",
+            display.showRegency && item.regency ? `<span><span class="meta-label">Kabupaten:</span> ${esc(item.regency)}</span>` : "",
+            display.showProvince && item.province ? `<span><span class="meta-label">Provinsi:</span> ${esc(item.province)}</span>` : ""
+          ].join("");
+          return `<div class="champion-card">${display.showPhoto ? `<div class="champion-card__photo">${item.photo ? `<img src="${esc(item.photo)}" alt="Foto ${esc(item.name)}">` : initials}</div>` : ""}<p class="champion-card__rank t-mono">${esc(item.rank)}</p><p class="champion-card__name">${esc(item.name)}</p>${display.showSchool ? `<p class="champion-card__school">${esc(item.school)}</p>` : ""}<div class="champion-card__meta">${meta}</div></div>`;
+        }).join("")
+      }</div></section>`
+    ).join("") : `<div class="public-empty-state home-winner-empty"><i data-lucide="trophy"></i><p>Belum ada data pemenang aktif.</p></div>`;
+
+    const badgeMarkup = heroBadges.map(b => `<span class="hero__badge">${esc(b.label)}</span>`).join("");
+    const buttonMarkup = heroButtons.map(b => {
+      const icon = b.iconMode === "upload" && b.uploadedIcon 
+        ? `<img class="home-custom-icon" src="${esc(b.uploadedIcon)}" alt="${esc(b.iconAlt || "")}" style="width:18px;height:18px">`
+        : `<i data-lucide="${b.libraryIcon || b.icon || "arrow-right"}"></i>`;
+      const btnClass = b.style === "outline" ? "btn--outline global-theme-preview__hero-outline" : "btn--white";
+      return `<span class="btn ${btnClass} btn--lg">${esc(b.label)} ${icon}</span>`;
+    }).join("");
+
+    const winnerBackground = w.background === "soft" ? " section--soft" : " section--navy section--winner-gradient";
+
+    return `${header}<main><section class="hero"><div class="container hero__layout"><div class="hero__inner"><p class="t-eyebrow">${esc(heroEyebrow)}</p><h1 class="t-h1">${esc(heroTitle)}</h1><div class="hero__image hero__image--mobile"><img src="${esc(heroImage)}" alt="${esc(heroImageAlt)}"></div><p class="hero__subtitle">${esc(heroDesc)}</p><div class="hero__badges">${badgeMarkup}</div><div class="hero__buttons">${buttonMarkup}</div></div><div class="hero__image hero__image--desktop"><img src="${esc(heroImage)}" alt="${esc(heroImageAlt)}"></div></div></section><section class="section global-theme-preview__winner-section${winnerBackground}"><div class="container"><div class="section__header${winnerAlignment}"><p class="t-eyebrow">${esc(winnerEyebrow)}</p><h2 class="t-h2">${esc(winnerTitle)}</h2><p>${esc(winnerDesc)}</p></div><div class="winner-section">${groups}</div></div></section></main>`;
   }
   function renderPreview() {
     readForm();
@@ -325,6 +414,13 @@ document.addEventListener("DOMContentLoaded", () => {
       input.disabled = false;
     }
   };
+  logoDeleteButton.onclick = () => {
+    globalState.identity.logo = "";
+    delete globalState.identity.logoAssetId;
+    setLogo("");
+    renderPreview();
+    showToast("Logo berhasil dihapus. Jangan lupa klik simpan.");
+  };
   form.onsubmit = async (e) => {
     e.preventDefault();
     const submit = e.submitter;
@@ -355,19 +451,33 @@ document.addEventListener("DOMContentLoaded", () => {
     });
     if (!confirmed) return;
     globalState = resetGlobalSettings();
-    location.reload();
+    try {
+      await saveGlobalSettingsApi();
+      TalentaAdminAuth.updateCurrentSite({
+        name: globalState.identity.eventName,
+        slug: globalState.identity.eventSlug,
+      });
+      fill();
+      renderNavigation();
+      renderPreview();
+      showToast("Pengaturan global berhasil direset.");
+    } catch (error) {
+      showToast(error.message, true);
+    }
   };
   sidebarToggle.onclick = () =>
     adminSidebar.classList.toggle("admin-sidebar--open");
   renderPreview();
   lucide.createIcons();
-  void loadGlobalSettingsApi()
-    .then((data) => {
+  void Promise.all([loadGlobalSettingsApi(), loadHomeSettingsApi()])
+    .then(([data, homeData]) => {
+      if (homeData) globalHomeState = homeData;
       globalState = normalizeGlobalSettings({
         ...globalState,
         identity: {
           ...globalState.identity,
           eventName: data.eventName,
+          eventDescription: data.eventDescription,
           eventSlug: data.eventSlug,
           organizerName: data.organizerName,
           logoAssetId: data.logoAssetId || null,
@@ -383,10 +493,40 @@ document.addEventListener("DOMContentLoaded", () => {
       renderPreview();
     })
     .catch((error) => showToast(error.message, true));
+
+  window.addEventListener("storage", async (e) => {
+    if (e.key === "talenta_home_editor_v1") {
+      try {
+        const local = JSON.parse(e.newValue);
+        if (local && globalHomeState && globalHomeState.sections) {
+          if (local.hero) Object.assign(globalHomeState.sections.hero, local.hero);
+          if (local.winnerHighlight) Object.assign(globalHomeState.sections.winnerHighlight, local.winnerHighlight);
+          renderPreview();
+        }
+      } catch (err) {
+        console.warn("Gagal update pratinjau Beranda realtime:", err);
+      }
+    } else if (e.key === "talenta_winner_manager_v1") {
+      try {
+        const homeData = await loadHomeSettingsApi();
+        if (homeData) {
+          globalHomeState = homeData;
+          renderPreview();
+        }
+      } catch (err) {
+        console.warn("Gagal update pratinjau realtime:", err);
+      }
+    }
+  });
 });
 function setLogo(source) {
-  document.getElementById("logoPreview").innerHTML =
-    `<img src="${source}" alt="Pratinjau logo event">`;
+  const brand = globalState?.identity?.eventName || "Nama Event";
+  const short = brand.split(/\s+/).map((x) => x[0]).slice(0, 3).join("").toUpperCase();
+  document.getElementById("logoPreview").innerHTML = source
+    ? `<img src="${source}" alt="Pratinjau logo event">`
+    : short;
+  const delBtn = document.getElementById("logoDeleteButton");
+  if (delBtn) delBtn.hidden = !source;
 }
 function showToast(message, error = false) {
   const toast = document.getElementById("adminToast");

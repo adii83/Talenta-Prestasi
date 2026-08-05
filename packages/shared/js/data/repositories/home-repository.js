@@ -49,9 +49,6 @@ function buildHomeWinnerMarkup(winner, categories, display, options = {}) {
       display.showExam && item.exam
         ? `<span><span class="meta-label">No. Ujian:</span> ${escape(item.exam)}</span>`
         : "",
-      display.showDistrict && item.district
-        ? `<span><span class="meta-label">Kecamatan:</span> ${escape(item.district)}</span>`
-        : "",
       display.showRegency && item.regency
         ? `<span><span class="meta-label">Kabupaten:</span> ${escape(item.regency)}</span>`
         : "",
@@ -491,7 +488,6 @@ function getHomeWinnerDisplay() {
     showPhoto: true,
     showSchool: true,
     showExam: true,
-    showDistrict: true,
     showRegency: true,
     showProvince: true,
     ...(homeReadJson(HOME_WINNER_PAGE_KEY) || {}),

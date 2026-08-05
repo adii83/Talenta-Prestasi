@@ -157,3 +157,11 @@ Status: **selesai untuk seluruh state/data aplikasi yang tersedia di UI**.
 - Audit relasi Archive, Downloads, Winners, FAQ, dan dialog Admin: lulus.
 - HTTP smoke seluruh endpoint public: lulus.
 - Browser black-box interaktif ditunda atas arahan pengguna.
+
+## Penyempurnaan Relasi Event - 4 Agustus 2026
+
+- Dokumen Competition aktif kini dapat diunggah dan dikelola langsung dari editor Unduh.
+- Sumber tambahan Unduh dibatasi pada Competition published dari Event sebelumnya yang diwariskan.
+- Pemenang Sebelumnya hanya berasal dari Arsip nyata yang memiliki pemenang aktif; data dummy tidak menjadi fallback API.
+- Field Kecamatan dihapus dari kontrak UI/public; Kabupaten dan Provinsi dipersistensikan.
+- Seluruh upload gambar/logo/ikon diseragamkan maksimal 5 MB; PDF tetap maksimal 10 MB.

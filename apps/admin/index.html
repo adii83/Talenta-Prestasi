@@ -123,6 +123,17 @@
                         required
                       />
                     </div>
+                    <div class="admin-field admin-field--wide">
+                      <label for="eventDescription"
+                        >Deskripsi singkat event</label
+                      ><textarea
+                        class="form-input editor-textarea"
+                        id="eventDescription"
+                        name="eventDescription"
+                        maxlength="5000"
+                        placeholder="Ringkasan yang akan ditampilkan ketika event ini menjadi Arsip."
+                      ></textarea>
+                    </div>
                     <div class="admin-field">
                       <label for="eventSlug">Slug / subdomain</label>
                       <div class="admin-input-suffix">
@@ -176,6 +187,9 @@
                           ><strong>Unggah logo event</strong
                           ><small>PNG, JPG, atau WebP</small></span
                         ><i data-lucide="upload-cloud"></i>
+                      </button>
+                      <button type="button" class="btn btn--outline btn--danger btn--sm" id="logoDeleteButton" style="width: 100%; margin-top: 8px;" hidden>
+                        <i data-lucide="trash-2"></i> Hapus Logo
                       </button>
                     </div>
                     <div class="admin-colors">

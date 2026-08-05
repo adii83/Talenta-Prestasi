@@ -59,7 +59,6 @@ function archiveDetailDefaults() {
     showPhoto: true,
     showSchool: true,
     showExam: true,
-    showDistrict: true,
     showRegency: true,
     showProvince: true,
     hiddenCategoryIds: [],
@@ -124,7 +123,6 @@ function normalizeArchiveCompetition(source) {
           name: archiveString(winner.name),
           school: archiveString(winner.school),
           exam: archiveString(winner.exam),
-          district: archiveString(winner.district),
           regency: archiveString(winner.regency),
           province: archiveString(winner.province),
           photo: archiveSafeUrl(winner.photo || "", ""),
@@ -197,7 +195,6 @@ function normalizeArchiveCompetition(source) {
     showPhoto: detailSource.showPhoto !== false,
     showSchool: detailSource.showSchool !== false,
     showExam: detailSource.showExam !== false,
-    showDistrict: detailSource.showDistrict !== false,
     showRegency: detailSource.showRegency !== false,
     showProvince: detailSource.showProvince !== false,
     hiddenCategoryIds,
@@ -470,7 +467,7 @@ function buildArchiveListMarkup(page, competitions, options = {}) {
 }
 
 function buildArchiveWinnerMetaMarkup(winner, detail) {
-  return `<div class="champion-card__meta">${detail.showExam ? `<span><span class="meta-label">No. Ujian:</span> ${archiveEscape(winner.exam || "-")}</span>` : ""}${detail.showDistrict ? `<span><span class="meta-label">Kecamatan:</span> ${archiveEscape(winner.district || "-")}</span>` : ""}${detail.showRegency ? `<span><span class="meta-label">Kabupaten:</span> ${archiveEscape(winner.regency || "-")}</span>` : ""}${detail.showProvince ? `<span><span class="meta-label">Provinsi:</span> ${archiveEscape(winner.province || "-")}</span>` : ""}</div>`;
+  return `<div class="champion-card__meta">${detail.showExam ? `<span><span class="meta-label">No. Ujian:</span> ${archiveEscape(winner.exam || "-")}</span>` : ""}${detail.showRegency ? `<span><span class="meta-label">Kabupaten:</span> ${archiveEscape(winner.regency || "-")}</span>` : ""}${detail.showProvince ? `<span><span class="meta-label">Provinsi:</span> ${archiveEscape(winner.province || "-")}</span>` : ""}</div>`;
 }
 
 function buildArchiveWinnerCardMarkup(winner, detail) {

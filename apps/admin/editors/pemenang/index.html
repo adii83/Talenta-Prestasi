@@ -155,13 +155,33 @@
                   />
                 </div>
                 <div class="admin-field">
-                  <label for="wmSkUrl">URL file SK</label
-                  ><input
-                    class="form-input"
-                    id="wmSkUrl"
-                    value="#"
-                    placeholder="URL atau upload nanti"
-                  />
+                  <label for="wmSkFile">Upload file SK</label>
+                  <label class="btn btn--outline" style="width: 100%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: normal;">
+                    <span id="wmSkFileBtnText" style="color: var(--c-gray); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Pilih file PDF... (Maks 10MB)</span>
+                    <i data-lucide="upload" style="color: var(--c-primary); flex-shrink: 0;"></i>
+                    <input
+                      id="wmSkFile"
+                      type="file"
+                      accept="application/pdf"
+                      hidden
+                    />
+                  </label>
+                  <a
+                    class="btn btn--outline btn--sm"
+                    id="wmSkFileLink"
+                    href="#"
+                    target="_blank"
+                    rel="noopener"
+                    hidden
+                    ><i data-lucide="external-link"></i> Lihat file SK</a
+                  ><button
+                    type="button"
+                    class="btn btn--outline btn--danger btn--sm"
+                    id="wmSkDeleteBtn"
+                    style="width: 100%; margin-top: 8px;"
+                    hidden
+                    ><i data-lucide="trash-2"></i> Hapus file SK</button
+                  >
                 </div>
               </div>
             </section>
@@ -275,10 +295,6 @@ Selamat kepada para pemenang ajang talenta nasional tahun ini.</textarea>
                   ><label
                     ><input type="checkbox" id="wmShowExam" checked /><span
                       ><i data-lucide="hash"></i>No. Ujian</span
-                    ></label
-                  ><label
-                    ><input type="checkbox" id="wmShowDistrict" checked /><span
-                      ><i data-lucide="map-pin"></i>Kecamatan</span
                     ></label
                   ><label
                     ><input type="checkbox" id="wmShowRegency" checked /><span
@@ -409,9 +425,8 @@ Selamat kepada para pemenang ajang talenta nasional tahun ini.</textarea>
     </div>
     <script src="../../../../packages/shared/js/core/runtime-config.js"></script>
     <script src="../../../../packages/shared/js/core/api-client.js"></script>
-    `n
     <script src="../../../../packages/shared/js/core/media-client.js"></script>
-    <script src="../../../../packages/shared/js/data/mock-archive-database.js"></script>
+    
     <script src="../../../../packages/shared/js/data/repositories/settings-repository.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/archive-repository.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/winner-repository.js"></script>

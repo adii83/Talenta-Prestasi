@@ -180,43 +180,104 @@ Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
                   <div>
                     <h2>Sumber Dokumen Lomba</h2>
                     <p>
-                      Pilih lomba aktif sekarang atau lomba terdahulu dari
-                      Arsip. Halaman Unduh hanya menampilkan sumber yang
-                      dipilih.
+                      Unggah dokumen untuk lomba saat ini, lalu pilih sumber
+                      tambahan hanya dari event-event sebelumnya.
                     </p>
                   </div>
                 </div>
               </div>
-              <div class="archive-source-picker">
-                <div class="admin-field">
-                  <label for="archiveCompetitionSelect"
-                    >Tambahkan sumber lomba</label
-                  ><select
-                    class="form-input"
-                    id="archiveCompetitionSelect"
-                  ></select>
+              <div class="download-current-source">
+                <div class="editor-subsection__head">
+                  <div>
+                    <h3>Dokumen lomba saat ini</h3>
+                    <p id="downloadCurrentCompetitionName">
+                      Memuat lomba yang sedang dikelolaâ€¦
+                    </p>
+                  </div>
                 </div>
-                <button
-                  class="btn btn--outline btn--sm"
-                  type="button"
-                  id="addArchiveCompetition"
-                >
-                  <i data-lucide="plus"></i> Tambahkan
-                </button>
+                <div class="download-document-create">
+                  <div class="admin-field">
+                    <label for="downloadDocumentTitle">Nama dokumen</label>
+                    <input
+                      class="form-input"
+                      id="downloadDocumentTitle"
+                      placeholder="Contoh: Petunjuk Teknis"
+                    />
+                  </div>
+                  <div class="admin-field">
+                    <label for="downloadDocumentCategory">Banner</label>
+                    <input
+                      class="form-input"
+                      id="downloadDocumentCategory"
+                      placeholder="Contoh: Juknis"
+                    />
+                  </div>
+                  <div class="admin-field">
+                    <label for="downloadDocumentFile">File PDF</label>
+                    <input
+                      class="form-input"
+                      id="downloadDocumentFile"
+                      type="file"
+                      accept="application/pdf"
+                    />
+                  </div>
+                  <button
+                    class="btn btn--outline btn--sm"
+                    type="button"
+                    id="addCurrentDocument"
+                  >
+                    <i data-lucide="upload"></i> Unggah dokumen
+                  </button>
+                </div>
+                <p class="admin-field__hint">
+                  Dokumen PDF maksimal 10 MB. Dokumen ini akan menjadi bagian
+                  Arsip ketika Event berikutnya dibuat.
+                </p>
+                <div
+                  id="downloadCurrentDocumentList"
+                  class="download-current-document-list"
+                ></div>
               </div>
-              <p class="wm-source-note" id="downloadSourceSummary"></p>
-              <div
-                id="downloadCompetitionEditor"
-                class="download-period-list"
-              ></div>
+              <div class="download-archive-sources">
+                <div class="editor-subsection__head">
+                  <div>
+                    <h3>Sumber dari event sebelumnya</h3>
+                    <p>
+                      Bagian ini kosong pada Event pertama dan otomatis tersedia
+                      setelah pernah ada Event sebelumnya.
+                    </p>
+                  </div>
+                </div>
+                <div class="archive-source-picker">
+                  <div class="admin-field">
+                    <label for="archiveCompetitionSelect"
+                      >Tambahkan sumber arsip</label
+                    ><select
+                      class="form-input"
+                      id="archiveCompetitionSelect"
+                    ></select>
+                  </div>
+                  <button
+                    class="btn btn--outline btn--sm"
+                    type="button"
+                    id="addArchiveCompetition"
+                  >
+                    <i data-lucide="plus"></i> Tambahkan
+                  </button>
+                </div>
+                <p class="wm-source-note" id="downloadSourceSummary"></p>
+                <div
+                  id="downloadCompetitionEditor"
+                  class="download-period-list"
+                ></div>
+              </div>
             </section>
             <section class="admin-card" id="download-preview-section">
               <div class="editor-subsection__head">
                 <div>
                   <h2>Pratinjau Responsif</h2>
                   <p>
-                    Tab dapat diklik; seluruh dokumen berasal dari database
-                    dummy Arsip.
+                    Tab dapat diklik; seluruh dokumen berasal dari database.
                   </p>
                 </div>
                 <div class="preview-switch">
@@ -251,7 +312,7 @@ Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
           </div>
         </div>
         <div class="admin-savebar">
-          <p><i data-lucide="hard-drive"></i> Penyimpanan demo lokal</p>
+          <p><i data-lucide="database"></i> Tersimpan di database</p>
           <div>
             <button type="button" class="btn btn--outline" id="resetDownload">
               Reset</button
@@ -267,9 +328,8 @@ Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
     </div>
     <script src="../../../../packages/shared/js/core/runtime-config.js"></script>
     <script src="../../../../packages/shared/js/core/api-client.js"></script>
-    `n
     <script src="../../../../packages/shared/js/core/media-client.js"></script>
-    <script src="../../../../packages/shared/js/data/mock-archive-database.js"></script>
+    
     <script src="../../../../packages/shared/js/data/repositories/settings-repository.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/archive-repository.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/download-repository.js"></script>

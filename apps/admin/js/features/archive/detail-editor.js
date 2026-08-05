@@ -366,8 +366,6 @@ function renderLegacyPreview() {
             html += `<div class="champion-card__meta">`;
             if (det.showExam !== false)
               html += `<span><span class="meta-label">No. Ujian:</span> ${esc(w.exam)}</span>`;
-            if (det.showDistrict !== false)
-              html += `<span><span class="meta-label">Kecamatan:</span> ${esc(w.district)}</span>`;
             if (det.showRegency !== false)
               html += `<span><span class="meta-label">Kabupaten:</span> ${esc(w.regency)}</span>`;
             if (det.showProvince !== false)

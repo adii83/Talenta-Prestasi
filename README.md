@@ -110,14 +110,20 @@ daripada panel Admin, `ResizeObserver` mengecilkan seluruh kanvas secara propors
 dan menyesuaikan tinggi frame tanpa scrollbar. Paritas seluruh Beranda diperiksa
 dengan `npm run test:home-parity`; `test:hero-parity` tetap tersedia sebagai alias.
 
-Arsip menjadi pemilik data historis lomba beserta kategori, pemenang, dokumen, dan
-SK. Halaman Unduh dan Pemenang hanya mengonsumsi data Arsip yang sudah dipublikasikan;
-referensi detail selalu memakai ID milik lomba terkait. Penghapusan data bawaan
+Setiap Competition menjadi pemilik kategori, pemenang, dokumen, dan SK-nya sendiri.
+Editor Unduh mengelola dokumen Competition aktif dan dapat menambahkan sumber dari
+Event sebelumnya. Halaman Pemenang hanya menampilkan riwayat Arsip yang benar-benar
+memiliki pemenang aktif; referensi detail selalu memakai ID milik lomba terkait. Penghapusan data bawaan
 disimpan sebagai tombstone agar data yang telah dihapus tidak muncul kembali setelah
 reload. Daftar Arsip dan Detail Arsip pada Template serta preview Admin memakai
 builder markup bersama dan kanvas responsif berskala yang sama. Kontrak relasinya
 diperiksa dengan `npm run test:archive-relations`, sedangkan paritas visual lintas
 viewport diperiksa dengan `npm run test:theme-browser`.
+
+File SK Pemenang diunggah sebagai PDF, bukan URL manual. Satu record dokumen dengan
+role `winner_decree` dipakai bersama oleh banner Pemenang, halaman Unduh, dan Detail
+Arsip. Saat Event baru dibuat, relasi Arsip membawa Competition beserta dokumen SK
+yang sama tanpa menggandakan file.
 
 FAQ memakai aggregate mandiri `Halaman → Kategori → Pertanyaan`. Repository menjaga
 ID unik, owner kategori, urutan, status publik, sanitasi teks, dan atribut
@@ -126,7 +132,7 @@ accordion yang sama. Kontrak datanya diperiksa dengan `npm run test:faq-relation
 dan paritas visual/interaksinya termasuk dalam `npm run test:theme-browser`.
 
 Perbedaan jumlah antarhalaman mengikuti fungsi datanya: Arsip berisi seluruh lomba
-terdahulu yang published, Unduh berisi subset lomba aktif/Arsip yang dipilih sebagai
+terdahulu yang published, Unduh selalu memuat lomba aktif dan subset Arsip yang dipilih
 sumber dokumen, sedangkan Pemenang Sebelumnya hanya memakai Arsip yang memiliki
 pemenang aktif. Batas kartu Pemenang otomatis mengikuti jumlah sumber valid dan tidak
 dapat dinaikkan melewatinya. Identitas Arsip dapat memakai logo/maskot unggahan

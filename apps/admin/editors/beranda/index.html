@@ -173,13 +173,30 @@
 Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.</textarea>
                 </div>
                 <div class="admin-field">
-                  <label for="heroImage">Gambar utama</label
-                  ><input
-                    type="file"
-                    class="form-input"
-                    id="heroImage"
-                    accept="image/png,image/jpeg,image/webp"
-                  />
+                  <label>Gambar utama</label>
+                  <div class="admin-upload">
+                    <input
+                      type="file"
+                      id="heroImage"
+                      accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                      hidden
+                    /><button
+                      type="button"
+                      id="heroUploadButton"
+                      class="admin-upload__button"
+                      onclick="document.getElementById('heroImage').click()"
+                    >
+                      <span class="admin-logo-preview" id="heroImagePreview" style="background-color: transparent;">
+                        <i data-lucide="image" style="width: 24px; height: 24px; color: var(--c-text-light);"></i>
+                      </span><span>
+                        <strong>Pilih gambar utama</strong>
+                        <small>PNG, JPG, atau WebP</small>
+                      </span><i data-lucide="upload-cloud"></i>
+                    </button>
+                    <button type="button" class="btn btn--outline btn--danger btn--sm" id="heroImageDelete" style="width: 100%; margin-top: 8px;" hidden>
+                      <i data-lucide="trash-2"></i> Hapus Gambar
+                    </button>
+                  </div>
                 </div>
                 <div class="admin-field">
                   <label for="heroImageAlt">Teks alternatif gambar</label
@@ -656,7 +673,7 @@ Berikut adalah pemenang ajang talenta nasional tahun ini.</textarea>
                 <div class="admin-field">
                   <label for="winnerBackground">Background</label
                   ><select class="form-input" id="winnerBackground">
-                    <option value="navy">Navy</option>
+                    <option value="navy">Warna Utama (Tema)</option>
                     <option value="soft">Soft / terang</option>
                   </select>
                 </div>
@@ -779,7 +796,7 @@ Berikut adalah pemenang ajang talenta nasional tahun ini.</textarea>
                 <div class="editor-subsection__head">
                   <div>
                     <h3>Daftar Mitra</h3>
-                    <p>Upload PNG, JPG, WebP, atau SVG maksimal 2 MB.</p>
+                    <p>Upload PNG, JPG, WebP, atau SVG maksimal 5 MB.</p>
                   </div>
                   <button
                     class="btn btn--outline btn--sm"
@@ -849,9 +866,7 @@ Berikut adalah pemenang ajang talenta nasional tahun ini.</textarea>
     </div>
     <script src="../../../../packages/shared/js/core/runtime-config.js"></script>
     <script src="../../../../packages/shared/js/core/api-client.js"></script>
-    `n
     <script src="../../../../packages/shared/js/core/media-client.js"></script>
-    <script src="../../../../packages/shared/js/data/mock-archive-database.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/settings-repository.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/archive-repository.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/winner-repository.js"></script>

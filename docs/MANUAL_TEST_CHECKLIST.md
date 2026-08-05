@@ -152,7 +152,7 @@ npm run test:e2e -- --runInBand
 ### 1E. Bahan pengujian
 
 - [ ] PostgreSQL aktif dan database `talenta_prestasi` dapat diakses.
-- [ ] Siapkan gambar PNG/JPG/WebP kurang dari 2 MB.
+- [ ] Siapkan gambar PNG/JPG/WebP/SVG kurang dari 5 MB.
 - [ ] Siapkan PDF kurang dari 10 MB.
 - [ ] Tentukan nama dan slug Event uji yang tidak memakai data penting.
 - [ ] Buka Developer Tools → Console dan Network → Fetch/XHR.
@@ -209,6 +209,7 @@ file upload, maupun record DNS.
 
 - [ ] Siapkan dokumen dan pemenang pada event lama, kemudian buat event baru.
 - [ ] Buka Arsip pada event baru; event lama beserta dokumen dan pemenangnya tetap tampil.
+- [ ] Nama event dan deskripsi singkat event lama tampil sebagai identitas kartu Arsip.
 - [ ] Record dokumen/pemenang lama tidak digandakan dan tetap dimiliki event sumber.
 - [ ] Mengubah data Event baru tidak mengubah identitas Event sumber Arsip.
 - [ ] Menghapus Event baru tidak menghapus dokumen/pemenang pada Event sumber.
@@ -256,13 +257,21 @@ file upload, maupun record DNS.
 ## 6. Pemenang dan foto
 
 - [ ] Kategori dan daftar pemenang dimuat dari backend.
+- [ ] Judul SK default adalah **SK Penetapan Pemenang** dan deskripsi sama dengan Template publik.
+- [ ] Field URL SK tidak ada; tersedia **Upload file SK** dengan PDF maksimal 10 MB.
+- [ ] Upload SK berhasil, status file serta tombol **Lihat file SK** tampil.
+- [ ] Buka Unduh; SK otomatis muncul satu kali sebagai dokumen kategori **SK Pemenang**.
+- [ ] Ganti file SK; record dokumen yang sama diperbarui dan tidak membuat duplikat.
 - [ ] Tambah pemenang uji dengan data lengkap.
-- [ ] Upload foto kurang dari 2 MB; preview tampil.
+- [ ] Form pemenang hanya memakai Kabupaten dan Provinsi; field Kecamatan tidak ada.
+- [ ] Upload foto kurang dari 5 MB; preview tampil.
 - [ ] Simpan dan refresh; data serta foto tetap tampil.
 - [ ] Halaman Pemenang publik menampilkan data dan foto.
 - [ ] URL foto memakai `/api/v1/public/media/<asset-id>`.
 - [ ] Ubah satu field dan simpan; hasil muncul setelah refresh.
 - [ ] Nonaktifkan pemenang; data tidak muncul di publik.
+- [ ] Pada Event pertama tanpa Arsip, bagian **Pemenang Sebelumnya** menampilkan keadaan kosong dan tidak memunculkan data contoh.
+- [ ] Setelah Event baru dibuat, hanya Event sebelumnya yang memiliki kategori dan pemenang aktif yang muncul pada **Pemenang Sebelumnya**.
 - [ ] Aktifkan kembali atau hapus record uji setelah selesai.
 
 ## 7. Arsip, Detail Arsip, dan maskot
@@ -279,11 +288,15 @@ file upload, maupun record DNS.
 
 ## 8. PDF dan halaman Unduh
 
-- [ ] Buka Detail Arsip yang mempunyai record dokumen.
-- [ ] Klik **Upload PDF** atau **Ganti PDF**.
+- [ ] Buka editor **Unduh** pada Event aktif.
+- [ ] Bagian **Dokumen lomba saat ini** otomatis menunjuk Event aktif dan tidak muncul pada pemilih sumber Arsip.
+- [ ] Klik **Unggah dokumen** atau **Ganti PDF** pada dokumen Event aktif.
 - [ ] Pilih PDF kurang dari 10 MB; notifikasi sukses tampil.
 - [ ] Simpan konfigurasi bila diperlukan.
 - [ ] Refresh; dokumen tetap menunjukkan file tersedia.
+- [ ] Pada Event pertama, **Sumber dari event sebelumnya** kosong.
+- [ ] Setelah membuat Event baru, Event lama tersedia sebagai sumber tambahan tanpa menyalin record PDF.
+- [ ] SK Event lama tersedia pada sumber Event sebelumnya dan Detail Arsip dengan judul/deskripsi yang sama.
 - [ ] Halaman Unduh publik menampilkan Competition dan dokumen pada tab benar.
 - [ ] Klik dokumen; PDF nyata dapat dibuka/diunduh.
 - [ ] URL PDF memakai `/api/v1/public/media/<asset-id>`.
@@ -306,7 +319,7 @@ file upload, maupun record DNS.
 
 ## 10. Validasi file dan keamanan dasar
 
-- [ ] Gambar lebih dari 2 MB ditolak.
+- [ ] Gambar lebih dari 5 MB ditolak.
 - [ ] PDF lebih dari 10 MB ditolak.
 - [ ] Tipe file yang tidak didukung ditolak.
 - [ ] File teks yang hanya diganti ekstensi menjadi `.png` tetap ditolak.

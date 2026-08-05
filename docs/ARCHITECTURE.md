@@ -153,9 +153,10 @@ DownloadCompetition.documentLabelOverrides.{documentId}
   -> Competition.documents[].id pada competitionId yang sama
 ```
 
-Sumber Unduh adalah gabungan lomba aktif sekarang dan Arsip publik. State Unduh
-menyimpan subset yang dipilih Admin; karena itu jumlah tab Unduh tidak wajib sama
-dengan jumlah kartu Arsip.
+Sumber Unduh terdiri dari lomba aktif yang selalu ditambahkan otomatis dan subset
+Arsip publik yang dipilih Admin. Pemilih sumber hanya menampilkan Event sebelumnya;
+lomba aktif dikelola pada area **Dokumen lomba saat ini**. Karena itu jumlah tab
+Unduh tidak wajib sama dengan jumlah kartu Arsip.
 
 - `Competition.id` dan `Document.id` harus unik; konfigurasi Unduh juga menolak
   `competitionId` ganda.
@@ -165,9 +166,8 @@ dengan jumlah kartu Arsip.
 - Lomba Arsip nonaktif, tidak published, atau Detail Arsip nonaktif disaring pada
   resolver publik. Konfigurasinya dipertahankan agar dapat pulih ketika sumber
   diterbitkan kembali.
-- Adapter backend kelak harus mempertahankan aturan foreign key dan validasi
-  kepemilikan dokumen yang sama; repository localStorage saat ini adalah adapter
-  dummy untuk kontrak tersebut.
+- Backend memvalidasi bahwa `competitionId` adalah lomba aktif milik portal atau
+  lomba published yang diwariskan melalui `event_site_archive_sources`.
 
 ### Kontrak Relasi Pemenang, Arsip, dan Beranda
 
@@ -198,9 +198,11 @@ Home winner highlight
 - Kartu riwayat hanya mengambil Arsip published/aktif dengan Detail aktif dan
   minimal satu pemenang aktif. Perubahan status Arsip langsung memengaruhi daftar
   publik tanpa menggandakan data.
-- SK lomba aktif adalah subresource satu-ke-satu milik WinnerManager saat ini.
-  Backend dapat memindahkannya ke tabel/file service tersendiri tanpa mengubah
-  relasi kategori dan pemenang.
+- SK lomba aktif adalah satu `competition_documents` dengan role
+  `winner_decree`. `competition_detail_settings.decree_document_id` menjadi
+  referensi tunggalnya; judul/deskripsi berada pada pengaturan Competition. Upload
+  dari Pemenang otomatis menambahkan dokumen yang sama ke Unduh. Tidak ada URL atau
+  salinan file SK kedua.
 
 ### Kontrak Tema Global
 

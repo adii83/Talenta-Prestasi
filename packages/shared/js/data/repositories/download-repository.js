@@ -79,6 +79,10 @@ function buildDownloadMarkup(state, options = {}) {
 }
 
 function getDownloadCompetition(id) {
+  const runtime = window.TalentaDownloadCompetitions?.find(
+    (competition) => competition.id === id,
+  );
+  if (runtime) return downloadClone(runtime);
   const active =
     typeof getActiveCompetition === "function" ? getActiveCompetition() : null;
   if (active?.id === id) return downloadClone(active);
@@ -90,6 +94,10 @@ function getDownloadCompetition(id) {
 }
 
 function getDownloadCompetitions() {
+  if (Array.isArray(window.TalentaDownloadCompetitions))
+    return window.TalentaDownloadCompetitions.filter(
+      (competition) => competition.active !== false,
+    ).map(downloadClone);
   const active =
     typeof getActiveCompetition === "function" ? getActiveCompetition() : null;
   const archived =

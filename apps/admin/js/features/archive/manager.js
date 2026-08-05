@@ -14,7 +14,7 @@ const ARCHIVE_ICONS = [
 const effective = getArchiveAdminState();
 const defaults = {
   ...effective.page,
-  items: getEffectiveArchivedCompetitions(),
+  items: [],
   removedCompetitionIds: effective.removedCompetitionIds || [],
 };
 let archiveState = load();
@@ -124,7 +124,7 @@ function renderItems() {
   root.innerHTML = archiveState.items
     .map(
       (c, i) =>
-        `<article class="archive-manager-item" data-id="${esc(c.id)}"><div class="archive-manager-item__head"><span class="archive-manager-item__drag"><i data-lucide="grip-vertical"></i></span><div class="archive-manager-item__icon">${iconMarkup(c, "archive-manager-item__uploaded-icon")}</div><div><strong>${esc(c.name || "Lomba tanpa nama")}</strong><small>${c.documents?.length || 0} dokumen · ${(c.winnerCategories || []).reduce((n, x) => n + (x.winners?.length || 0), 0)} pemenang</small></div><div class="archive-manager-item__actions"><a class="btn btn--outline btn--sm" href="${archiveDetailAdminUrl(c.id)}" data-detail><i data-lucide="settings-2"></i>Edit Detail</a><button type="button" class="repeat-row__delete" data-delete aria-label="Hapus"><i data-lucide="trash-2"></i></button><label class="admin-switch"><input type="checkbox" data-active ${c.active ? "checked" : ""}><span></span></label></div></div><div class="admin-form-grid"><div class="admin-field"><label>Nama lomba</label><input class="form-input" data-field="name" value="${esc(c.name)}"></div><div class="admin-field"><label>Nama pendek</label><input class="form-input" data-field="shortName" value="${esc(c.shortName || "")}"></div><div class="admin-field"><label>Ikon fallback</label><select class="form-input" data-icon>${ARCHIVE_ICONS.map((icon) => `<option value="${icon}" ${icon === c.icon ? "selected" : ""}>${icon}</option>`).join("")}</select><small class="admin-field__hint">Dipakai jika logo atau maskot belum diunggah.</small></div><div class="admin-field"><label>Logo atau maskot lomba (opsional)</label><input class="form-input" data-icon-alt placeholder="Deskripsi logo atau maskot" value="${esc(c.iconAlt || "")}"><div class="icon-upload-row"><label class="btn btn--outline btn--sm">Upload logo/maskot<input type="file" data-icon-upload accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>${c.uploadedIcon ? '<button type="button" class="icon-remove" data-icon-remove>Hapus upload</button>' : ""}</div><small class="admin-field__hint">PNG transparan/WebP direkomendasikan. JPG dan SVG juga didukung, maksimal 1 MB.</small></div><div class="admin-field admin-field--wide"><label>Deskripsi</label><textarea class="form-input editor-textarea" data-field="description">${esc(c.description)}</textarea></div></div><div class="repeat-row__actions"><button type="button" data-up ${i === 0 ? "disabled" : ""}><i data-lucide="arrow-up"></i>Naik</button><button type="button" data-down ${i === archiveState.items.length - 1 ? "disabled" : ""}><i data-lucide="arrow-down"></i>Turun</button></div></article>`,
+        `<article class="archive-manager-item" data-id="${esc(c.id)}"><div class="archive-manager-item__head"><span class="archive-manager-item__drag"><i data-lucide="grip-vertical"></i></span><div class="archive-manager-item__icon">${iconMarkup(c, "archive-manager-item__uploaded-icon")}</div><div><strong>${esc(c.name || "Lomba tanpa nama")}</strong><small>${c.documents?.length || 0} dokumen · ${(c.winnerCategories || []).reduce((n, x) => n + (x.winners?.length || 0), 0)} pemenang</small></div><div class="archive-manager-item__actions"><a class="btn btn--outline btn--sm" href="${archiveDetailAdminUrl(c.id)}" data-detail><i data-lucide="settings-2"></i>Edit Detail</a><button type="button" class="repeat-row__delete" data-delete aria-label="Hapus"><i data-lucide="trash-2"></i></button><label class="admin-switch"><input type="checkbox" data-active ${c.active ? "checked" : ""}><span></span></label></div></div><div class="admin-form-grid"><div class="admin-field"><label>Nama lomba</label><input class="form-input" data-field="name" value="${esc(c.name)}"></div><div class="admin-field"><label>Nama pendek</label><input class="form-input" data-field="shortName" value="${esc(c.shortName || "")}"></div><div class="admin-field"><label>Ikon fallback</label><select class="form-input" data-icon>${ARCHIVE_ICONS.map((icon) => `<option value="${icon}" ${icon === c.icon ? "selected" : ""}>${icon}</option>`).join("")}</select><small class="admin-field__hint">Dipakai jika logo atau maskot belum diunggah.</small></div><div class="admin-field"><label>Logo atau maskot lomba (opsional)</label><input class="form-input" data-icon-alt placeholder="Deskripsi logo atau maskot" value="${esc(c.iconAlt || "")}"><div class="icon-upload-row"><label class="btn btn--outline btn--sm">Upload logo/maskot<input type="file" data-icon-upload accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>${c.uploadedIcon ? '<button type="button" class="icon-remove" data-icon-remove>Hapus upload</button>' : ""}</div><small class="admin-field__hint">PNG transparan/WebP direkomendasikan. JPG dan SVG juga didukung, maksimal 5 MB.</small></div><div class="admin-field admin-field--wide"><label>Deskripsi</label><textarea class="form-input editor-textarea" data-field="description">${esc(c.description)}</textarea></div></div><div class="repeat-row__actions"><button type="button" data-up ${i === 0 ? "disabled" : ""}><i data-lucide="arrow-up"></i>Naik</button><button type="button" data-down ${i === archiveState.items.length - 1 ? "disabled" : ""}><i data-lucide="arrow-down"></i>Turun</button></div></article>`,
     )
     .join("");
   root.querySelectorAll(".archive-manager-item").forEach((el) => bindItem(el));
@@ -358,6 +358,12 @@ subscribeGlobalSettings(() => {
 bind();
 icons();
 void hydrateArchive();
+
+window.addEventListener("storage", (e) => {
+  if (e.key === "talenta_archive_manager_v2") {
+    toast("Peringatan: Data Arsip baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.", true);
+  }
+});
 
 function setupArchivePreviewSizing() {
   const frame = document.getElementById("archivePreviewFrame");

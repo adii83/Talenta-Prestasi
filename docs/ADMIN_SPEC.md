@@ -76,6 +76,13 @@ selalu terikat ke `Competition.id` yang berstatus aktif. Kategori memiliki ID un
 di dalam lomba, sedangkan ID pemenang unik pada seluruh data pemenang lomba aktif.
 State dengan `competitionId` berbeda tidak boleh diterapkan pada lomba aktif.
 
+SK Pemenang bukan URL bebas. Admin mengunggah satu PDF maksimal 10 MB. Backend
+membuat atau memperbarui satu `competition_documents` dengan kategori
+`SK Pemenang` dan role `winner_decree`, lalu
+`competition_detail_settings.decree_document_id` menunjuk dokumen tersebut. Dokumen
+yang sama otomatis terlihat pada Unduh dan Detail Arsip. Judul serta deskripsi SK
+disimpan per Competition sehingga tetap benar ketika Event menjadi Arsip.
+
 Kategori/pemenang nonaktif tetap tersimpan di Admin tetapi disaring oleh resolver
 publik. Highlight Beranda mengambil kategori, pemenang, dan konfigurasi metadata
 melalui repository Pemenang yang sama agar tidak terjadi parsing localStorage atau
@@ -166,7 +173,7 @@ Komponen berikon menggunakan model bersama:
 - `uploadedIcon`: URL/file ikon unggahan.
 - `iconAlt`: teks alternatif ikon kustom.
 
-Format demo: PNG, JPG, WebP, SVG maksimal 1 MB. SVG wajib disanitasi oleh backend produksi. Gambar memakai `object-fit: contain` agar tidak merusak ukuran komponen.
+Format unggahan: PNG, JPG, WebP, SVG maksimal 5 MB. SVG disanitasi oleh backend. Gambar memakai `object-fit: contain` agar tidak merusak ukuran komponen.
 
 ## Jadwal Penting
 
@@ -194,30 +201,27 @@ responsif tablet/mobile.
 
 ## Mitra & Partner
 
-Section Mitra memiliki status, heading ringkas tanpa deskripsi, background white/soft, alignment, varian simple/card/mono, dan preset ukuran small/medium/large. Item mitra berisi status, nama, logo, alt, URL, target tab, dan urutan. Label serta kategori tidak digunakan; semua logo tampil dalam satu kelompok. Upload mendukung PNG/JPG/WebP/SVG maksimal 2 MB dengan fallback nama dan `object-fit: contain`.
+Section Mitra memiliki status, heading ringkas tanpa deskripsi, background white/soft, alignment, varian simple/card/mono, dan preset ukuran small/medium/large. Item mitra berisi status, nama, logo, alt, URL, target tab, dan urutan. Label serta kategori tidak digunakan; semua logo tampil dalam satu kelompok. Upload mendukung PNG/JPG/WebP/SVG maksimal 5 MB dengan fallback nama dan `object-fit: contain`.
 
 ## Halaman Unduh
 
-Halaman Unduh telah terhubung ke renderer publik dan repository bersama. Editor
-mengelola heading, tab lomba, label dokumen, visibilitas, default, serta urutan tanpa
-menduplikasi file milik Arsip. Jika tab default nonaktif/dihapus, lomba aktif pertama
-menjadi default. Navbar dan footer tetap berasal dari Pengaturan Global.
+Halaman Unduh telah terhubung ke renderer publik, API, dan PostgreSQL. Editor
+menyediakan upload serta CRUD dokumen PDF untuk lomba/Event aktif. Lomba aktif selalu
+menjadi sumber otomatis dan tidak ditampilkan kembali pada pemilih Arsip.
 
-Unduh bukan salinan otomatis daftar Arsip. Sumber yang dapat dipilih terdiri dari
-lomba aktif sekarang dan lomba Arsip publik yang memiliki dokumen. Hanya sumber yang
-ditambahkan serta diaktifkan Admin yang menjadi tab publik. UI wajib membedakan badge
-`Lomba aktif` dan `Dari Arsip`, serta menampilkan jumlah tab terpilih dibanding jumlah
-sumber tersedia.
+Bagian sumber tambahan hanya menampilkan Event sebelumnya yang diwariskan ke portal
+sekarang. Memilih sumber hanya membuat relasi tampilan; file, metadata dokumen, dan
+pemilik record tetap berada pada Competition asal. Event pertama karena itu memiliki
+pemilih Arsip kosong. Ketika Event baru dibuat, dokumen Event lama otomatis tersedia
+sebagai sumber Arsip tanpa disalin.
 
 ## Koreksi Arsitektur Unduh ↔ Arsip
 
-Tab Unduh adalah lomba terpilih dari Arsip, bukan periode bebas atau filter kategori.
-Dokumen otomatis berasal dari `competition.documents` milik Detail Arsip. Editor
-Unduh hanya menyimpan `competitionId`, nama tab custom, status, default, urutan,
-`hiddenDocumentIds`, dan `documentLabelOverrides`. Upload/hapus file dilakukan pada
-modul Arsip. Baseline menggunakan
-`packages/shared/js/data/mock-archive-database.js`; state efektif memakai
-`talenta_download_editor_v2` agar state model lama tidak merusak editor.
+Tab Unduh terdiri dari lomba aktif otomatis dan sumber Event sebelumnya yang dipilih.
+Dokumen berasal dari `competition_documents`; upload/hapus dokumen lomba aktif
+dilakukan langsung pada editor Unduh. Konfigurasi tab hanya menyimpan referensi
+`competitionId`, nama tab custom, status, default, urutan, `hiddenDocumentIds`, dan
+`documentLabelOverrides`.
 
 `competitionId` diperlakukan sebagai foreign key unik: satu lomba tidak boleh
 ditambahkan dua kali. Setiap ID pada `hiddenDocumentIds` dan setiap key pada

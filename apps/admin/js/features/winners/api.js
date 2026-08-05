@@ -6,6 +6,44 @@
   let originalCategoryIds = new Set();
   let originalWinnerIds = new Set();
 
+  const defaultDecree = {
+    title: "SK Penetapan Pemenang",
+    description:
+      "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+  };
+  const formatSize = (bytes) =>
+    `${(Number(bytes || 0) / 1024 / 1024).toFixed(2)} MB`;
+
+  async function loadWinnerData(competition) {
+    const [categories, winners] = await Promise.all([
+      call(`/admin/competitions/${competition.id}/winner-categories`),
+      call(`/admin/competitions/${competition.id}/winners`),
+    ]);
+    return {
+      ...competition,
+      active: true,
+      status: competition.publicationStatus,
+      icon: competition.fallbackIcon || "archive",
+      detail: { active: true },
+      winnerCategories: categories.map((category) => ({
+        ...category,
+        active: category.isActive,
+        winners: winners
+          .filter((winner) => winner.categoryId === category.id)
+          .map((winner) => ({
+            ...winner,
+            name: winner.fullName,
+            rank: winner.rankLabel,
+            exam: winner.examNumber,
+            photo: winner.photoAssetId
+              ? TalentaMedia.url(winner.photoAssetId)
+              : "",
+            active: winner.isActive,
+          })),
+      })),
+    };
+  }
+
   async function load() {
     const site = getSite();
     if (!site?.id)
@@ -13,45 +51,69 @@
     const competitions = await call(`/admin/sites/${site.id}/competitions`);
     const competition =
       competitions.find(
-        (item) => item.lifecycle === "current" && !item.deletedAt,
-      ) || competitions.find((item) => !item.deletedAt);
+        (item) =>
+          !item.inherited && item.lifecycle === "current" && !item.deletedAt,
+      ) || null;
+    const archiveCompetitions = competitions.filter(
+      (item) =>
+        item.inherited &&
+        item.lifecycle === "archived" &&
+        item.publicationStatus === "published" &&
+        !item.deletedAt,
+    );
     if (!competition)
       return {
         competition: null,
         state: { sk: { title: "", description: "", url: "" }, categories: [] },
         page: null,
+        archives: await Promise.all(archiveCompetitions.map(loadWinnerData)),
       };
     competitionId = competition.id;
-    const [categories, winners, page] = await Promise.all([
-      call(`/admin/competitions/${competitionId}/winner-categories`),
-      call(`/admin/competitions/${competitionId}/winners`),
+    const [currentData, page, archives, decree] = await Promise.all([
+      loadWinnerData(competition),
       call(`/admin/sites/${site.id}/pages/winners`),
+      Promise.all(archiveCompetitions.map(loadWinnerData)),
+      call(`/admin/competitions/${competition.id}/decree`),
     ]);
+    const categories = currentData.winnerCategories;
+    const winners = categories.flatMap((category) => category.winners);
     originalCategoryIds = new Set(categories.map((item) => item.id));
     originalWinnerIds = new Set(winners.map((item) => item.id));
     return {
       competition,
       state: {
-        sk: { title: "", description: "", url: "" },
-        categories: categories.map((category) => ({
-          ...category,
-          active: category.isActive,
-          winners: winners
-            .filter((winner) => winner.categoryId === category.id)
-            .map((winner) => ({
-              ...winner,
-              name: winner.fullName,
-              rank: winner.rankLabel,
-              exam: winner.examNumber,
-              photoAssetId: winner.photoAssetId || null,
-              photo: winner.photoAssetId
-                ? TalentaMedia.url(winner.photoAssetId)
-                : "",
-              active: winner.isActive,
-            })),
-        })),
+        competitionId: competition.id,
+        sk: {
+          ...defaultDecree,
+          ...decree,
+          url: decree.assetId ? TalentaMedia.url(decree.assetId) : "",
+        },
+        categories,
       },
       page,
+      archives,
+    };
+  }
+
+  async function saveDecree(sk, file) {
+    let asset;
+    if (file) asset = await TalentaMedia.upload(file, { kind: "document" });
+    const isDelete = !file && (sk.documentId === null || sk.assetId === null);
+    const decree = await call(`/admin/competitions/${competitionId}/decree`, {
+      method: "PUT",
+      body: {
+        title: sk.title || defaultDecree.title,
+        description: sk.description || defaultDecree.description,
+        assetId: isDelete ? null : asset?.assetId,
+        fileType: asset ? "PDF" : isDelete ? null : undefined,
+        displaySize: asset ? formatSize(asset.byteSize) : isDelete ? null : undefined,
+        deleteFile: isDelete,
+      },
+    });
+    return {
+      ...defaultDecree,
+      ...decree,
+      url: decree.assetId ? TalentaMedia.url(decree.assetId) : "",
     };
   }
 
@@ -113,6 +175,8 @@
           rankLabel: winner.rank || "",
           school: winner.school || "",
           examNumber: winner.exam || "",
+          regency: winner.regency || "",
+          province: winner.province || "",
           photoAssetId: winner.photoAssetId || undefined,
           isActive: winner.active !== false,
           sortOrder: winnerIndex,
@@ -140,12 +204,23 @@
         title: page.title,
         description: page.description,
         alignment: page.alignment,
+        showDecree: page.showSk,
+        metadataVisibility: {
+          showPhoto: page.showPhoto,
+          showSchool: page.showSchool,
+          showExam: page.showExam,
+          showRegency: page.showRegency,
+          showProvince: page.showProvince,
+        },
+        archiveActive: page.archiveActive,
+        archiveLimit: page.archiveLimit,
       },
     });
     originalCategoryIds = new Set(state.categories.map((item) => item.id));
     originalWinnerIds = new Set(
       state.categories.flatMap((item) => item.winners).map((item) => item.id),
     );
+    return { sk: await saveDecree(state.sk) };
   }
-  window.TalentaWinnerApi = Object.freeze({ load, save });
+  window.TalentaWinnerApi = Object.freeze({ load, save, saveDecree });
 })();

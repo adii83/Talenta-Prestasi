@@ -107,9 +107,11 @@ let state = loadState();
 async function hydrateHome() {
   try {
     const loaded = await TalentaHomeApi.load();
-    state = loadState();
-    Object.entries(loaded).forEach(([type, section]) => {
-      if (state[type]) state[type] = { ...state[type], ...section };
+    const fresh = loadState();
+    Object.keys(state).forEach(type => {
+      if (typeof state[type] === 'object' && state[type] !== null) {
+        Object.assign(state[type], fresh[type] || {}, loaded[type] || {});
+      }
     });
     sync();
     renderAll();
@@ -166,8 +168,17 @@ function bind() {
   bindToggle("scheduleActive", state.schedule, renderSchedule);
   bindImage("heroImage", 2, (data) => {
     state.hero.image = data;
+    sync();
     renderHero();
   });
+  const delBtn = document.getElementById("heroImageDelete");
+  if (delBtn) {
+    delBtn.onclick = () => {
+      state.hero.image = "";
+      sync();
+      renderHero();
+    };
+  }
   document.getElementById("addBadge").onclick = () => {
     state.hero.badges.push({ label: "Badge baru", active: true });
     renderBadges();
@@ -211,7 +222,12 @@ function bind() {
       icon: "rotate-ccw",
     });
     if (!confirmed) return;
-    resetHomeAdminState();
+    const baseline = resetHomeAdminState();
+    try {
+      if (window.TalentaHomeApi) await window.TalentaHomeApi.save(baseline);
+    } catch (e) {
+      console.warn("Gagal mereset pengaturan di database", e);
+    }
     location.reload();
   };
   bindPreview("[data-preview]", "homePreviewFrame", "home-preview-frame");
@@ -221,6 +237,12 @@ function bind() {
     "schedule-preview-frame",
     "schedulePreview",
   );
+
+  window.addEventListener("storage", (e) => {
+    if (e.key === "talenta_home_editor_v1") {
+      toast("Peringatan: Data Beranda baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.", true);
+    }
+  });
 }
 function bindText(ids, obj, render) {
   ids.forEach(
@@ -228,7 +250,7 @@ function bindText(ids, obj, render) {
       (document.getElementById(id).oninput = (e) => {
         obj[
           id
-            .replace(/^(hero|schedule)/, "")
+            .replace(/^(hero|schedule|winner)/, "")
             .replace(/^./, (c) => c.toLowerCase())
         ] = e.target.value;
         render();
@@ -245,8 +267,25 @@ function bindToggle(id, obj, render) {
   };
 }
 function bindImage(id, maxMb, done) {
-  document.getElementById(id).onchange = (e) =>
-    readImage(e.target.files[0], maxMb, done);
+  document.getElementById(id).onchange = async (e) => {
+    const input = e.target;
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > maxMb * 1024 * 1024) {
+      toast(`Maksimal ukuran gambar adalah ${maxMb}MB`, true);
+      return;
+    }
+    input.disabled = true;
+    try {
+      const asset = await TalentaMedia.upload(file);
+      done(TalentaMedia.url(asset));
+      toast("Gambar berhasil diunggah");
+    } catch (error) {
+      toast(error.message || "Gagal mengunggah gambar", true);
+    } finally {
+      input.disabled = false;
+    }
+  };
 }
 function bindPreview(selector, frameId, prefix, dataName = "preview") {
   document.querySelectorAll(selector).forEach(
@@ -350,9 +389,21 @@ function sync() {
     scheduleDescription: s.description,
   }).forEach(([id, v]) => {
     const el = document.getElementById(id);
-    if (el.type === "checkbox") el.checked = v;
-    else el.value = v;
+    if (el && el.type === "checkbox") el.checked = v;
+    else if (el) el.value = v;
   });
+  
+  const preview = document.getElementById("heroImagePreview");
+  const delBtn = document.getElementById("heroImageDelete");
+  if (preview) {
+    if (h.image) {
+      preview.innerHTML = `<img src="${esc(h.image)}" alt="Pratinjau gambar utama">`;
+    } else {
+      preview.innerHTML = `<i data-lucide="image" style="width: 24px; height: 24px; color: var(--c-text-light);"></i>`;
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+  if (delBtn) delBtn.hidden = !h.image;
 }
 function renderAll() {
   renderBadges();

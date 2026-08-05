@@ -287,7 +287,6 @@ erDiagram
         string full_name
         string school
         string exam_number
-        string district
         string regency
         string province
         boolean is_active
@@ -296,6 +295,8 @@ erDiagram
     COMPETITION_DETAIL_SETTINGS {
         uuid competition_id PK
         uuid decree_document_id FK
+        string decree_title
+        text decree_description
         boolean is_active
         boolean winners_active
         boolean documents_active
@@ -467,8 +468,8 @@ Aturan yang harus dipertahankan:
 
 - **Arsip** menampilkan semua lomba terdahulu yang published, aktif, dan Detail
   Arsipnya aktif.
-- **Unduh** hanya menampilkan lomba yang dipilih Admin. Karena itu jumlah tab
-  Unduh boleh lebih sedikit dari jumlah Arsip.
+- **Unduh** selalu menyertakan lomba aktif dan hanya menambahkan lomba terdahulu
+  yang dipilih Admin. Karena itu pemilih sumber tidak pernah memuat lomba aktif.
 - **Pemenang Sebelumnya** hanya menampilkan Arsip yang mempunyai minimal satu
   kategori aktif dengan minimal satu pemenang aktif. Karena itu jumlahnya boleh
   lebih sedikit dari jumlah Arsip.
@@ -489,13 +490,17 @@ Aturan yang harus dipertahankan:
 4. Hanya satu lomba `current` per portal.
 5. Satu lomba hanya mempunyai satu `competition_detail_settings`.
 6. Satu portal hanya mempunyai satu `winner_page_settings`.
-7. Satu lomba hanya muncul sekali pada konfigurasi Unduh portal yang sama.
+7. Satu lomba hanya muncul sekali pada konfigurasi Unduh portal yang sama; lomba
+   tersebut harus current milik portal atau Arsip published yang diwariskan.
 8. Hanya satu tab Unduh aktif yang menjadi default.
 9. Kategori, pemenang, dan dokumen yang direferensikan harus dimiliki lomba yang
    sama.
 10. `sort_order` tidak negatif dan unik dalam owner jika urutan harus deterministik.
 11. File SK harus menunjuk dokumen milik lomba yang sama.
-12. Data `published` wajib melewati validasi field publik minimum.
+12. Satu Competition hanya memiliki satu dokumen aktif dengan role
+    `winner_decree`; dokumen tersebut menjadi sumber yang sama untuk Pemenang,
+    Unduh, dan Detail Arsip.
+13. Data `published` wajib melewati validasi field publik minimum.
 
 Contoh constraint PostgreSQL:
 

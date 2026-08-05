@@ -16,7 +16,6 @@
         showPhoto: visibility.showPhoto ?? true,
         showSchool: visibility.showSchool ?? true,
         showExam: visibility.showExam ?? true,
-        showDistrict: visibility.showDistrict ?? true,
         showRegency: visibility.showRegency ?? true,
         showProvince: visibility.showProvince ?? true,
       },
@@ -28,7 +27,6 @@
           rank: winner.rankLabel,
           school: winner.school,
           exam: winner.examNumber,
-          district: winner.district,
           regency: winner.regency,
           province: winner.province,
           photo: winner.photoUrl
@@ -37,6 +35,7 @@
         })),
       })),
       documents: data.documents.map((document) => ({
+        id: document.id,
         title: document.title,
         category: document.category,
         type: document.fileType || "PDF",
@@ -45,7 +44,23 @@
           ? new URL(document.url, TalentaConfig.apiBaseUrl).href
           : "",
       })),
-      sk: null,
+      sk: (() => {
+        const document = data.documents.find(
+          (item) => item.id === data.settings?.decreeDocumentId,
+        );
+        if (!document) return null;
+        return {
+          title: data.settings?.decreeTitle || document.title,
+          description:
+            data.settings?.decreeDescription ||
+            "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+          url: document.url
+            ? new URL(document.url, TalentaConfig.apiBaseUrl).href
+            : "",
+          type: document.fileType || "PDF",
+          size: document.displaySize || "-",
+        };
+      })(),
     };
   }
 

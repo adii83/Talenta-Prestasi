@@ -377,20 +377,27 @@ export class AdminService {
 
   async settings(siteId: string, userId: string) {
     const site = await this.authorizedSite(siteId, userId);
-    const rows = await this.dataSource.query<
-      {
-        primaryColor: string;
-        navigation: Record<string, boolean>;
-        contact: Record<string, string>;
-        footer: Record<string, string>;
-      }[]
-    >(
-      `SELECT primary_color AS "primaryColor",navigation,contact,footer FROM site_settings WHERE event_site_id=$1`,
-      [siteId],
-    );
+    const [rows, competitions] = await Promise.all([
+      this.dataSource.query<
+        Array<{
+          primaryColor: string;
+          navigation: Record<string, boolean>;
+          contact: Record<string, string>;
+          footer: Record<string, string>;
+        }>
+      >(
+        `SELECT primary_color AS "primaryColor",navigation,contact,footer FROM site_settings WHERE event_site_id=$1`,
+        [siteId],
+      ),
+      this.dataSource.query<Array<{ description: string }>>(
+        `SELECT description FROM competitions WHERE event_site_id=$1 AND lifecycle='current' AND deleted_at IS NULL LIMIT 1`,
+        [siteId],
+      ),
+    ]);
     return {
       data: {
         eventName: site.name,
+        eventDescription: competitions[0]?.description ?? '',
         eventSlug: site.slug,
         organizerName: site.organizerName,
         logoAssetId: site.logoAssetId,
@@ -411,6 +418,7 @@ export class AdminService {
     userId: string,
     input: {
       eventName: string;
+      eventDescription?: string;
       eventSlug: string;
       organizerName: string;
       primaryColor: string;
@@ -459,13 +467,21 @@ export class AdminService {
         if (!owned[0]) throw new BadRequestException('Invalid logo asset');
       }
       await manager.query(
-        `UPDATE event_sites SET name=$2,organizer_name=$3,logo_asset_id=COALESCE($4,logo_asset_id),slug=$5,updated_at=now() WHERE id=$1`,
+        `UPDATE event_sites SET name=$2,organizer_name=$3,logo_asset_id=$4,slug=$5,updated_at=now() WHERE id=$1`,
         [
           siteId,
           input.eventName.trim(),
           input.organizerName.trim(),
           input.logoAssetId ?? null,
           input.eventSlug,
+        ],
+      );
+      await manager.query(
+        `UPDATE competitions SET name=$2,short_name=$2,description=$3,updated_at=now(),version=version+1 WHERE event_site_id=$1 AND lifecycle='current' AND deleted_at IS NULL`,
+        [
+          siteId,
+          input.eventName.trim(),
+          input.eventDescription?.trim() ?? '',
         ],
       );
       await manager.query(
@@ -622,12 +638,22 @@ export class AdminService {
       );
       for (const [competitionOrder, competition] of competitions.entries()) {
         const owned = await manager.query<{ id: string }[]>(
-          `SELECT id FROM competitions WHERE id=$1 AND event_site_id=$2 AND deleted_at IS NULL`,
+          `SELECT competition.id
+             FROM competitions competition
+             LEFT JOIN event_site_archive_sources source
+               ON source.event_site_id=$2
+              AND source.source_event_site_id=competition.event_site_id
+            WHERE competition.id=$1
+              AND competition.deleted_at IS NULL
+              AND (
+                (competition.event_site_id=$2 AND competition.lifecycle='current')
+                OR (source.source_event_site_id IS NOT NULL AND competition.publication_status='published')
+              )`,
           [competition.competitionId, siteId],
         );
         if (!owned[0])
           throw new BadRequestException(
-            'Download competition does not belong to this site',
+            'Download source must be the current competition or an inherited published archive',
           );
         const rows = await manager.query<{ id: string }[]>(
           `INSERT INTO download_competitions(event_site_id,competition_id,custom_tab_name,is_default,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6) RETURNING id`,

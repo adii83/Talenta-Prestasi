@@ -11,6 +11,8 @@ type Doc = {
   title: string;
   category?: string;
   documentRole?: string;
+  fileType?: string;
+  displaySize?: string;
   assetId?: string;
   isActive?: boolean;
   sortOrder?: number;
@@ -28,6 +30,8 @@ type Win = {
   rankLabel?: string;
   school?: string;
   examNumber?: string;
+  regency?: string;
+  province?: string;
   photoAssetId?: string;
   isActive?: boolean;
   sortOrder?: number;
@@ -38,7 +42,15 @@ type Page = {
   title?: string;
   description?: string;
   alignment?: string;
+  showDecree?: boolean;
+  metadataVisibility?: Record<string, boolean>;
+  archiveActive?: boolean;
+  archiveLimit?: number;
 };
+
+const DEFAULT_DECREE_TITLE = 'SK Penetapan Pemenang';
+const DEFAULT_DECREE_DESCRIPTION =
+  'Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.';
 
 @Injectable()
 export class AdminContentService {
@@ -49,7 +61,7 @@ export class AdminContentService {
     const settings =
       (
         await this.db.query(
-          `SELECT decree_document_id AS "decreeDocumentId",is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM competition_detail_settings WHERE competition_id=$1`,
+          `SELECT decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",decree_description AS "decreeDescription",is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM competition_detail_settings WHERE competition_id=$1`,
           [competitionId],
         )
       )[0] ?? null;
@@ -69,6 +81,8 @@ export class AdminContentService {
     userId: string,
     input: {
       decreeDocumentId?: string;
+      decreeTitle?: string;
+      decreeDescription?: string;
       isActive: boolean;
       winnersActive: boolean;
       documentsActive: boolean;
@@ -94,10 +108,12 @@ export class AdminContentService {
           );
       }
       await manager.query(
-        `INSERT INTO competition_detail_settings(competition_id,decree_document_id,is_active,winners_active,documents_active,metadata_visibility) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(competition_id) DO UPDATE SET decree_document_id=EXCLUDED.decree_document_id,is_active=EXCLUDED.is_active,winners_active=EXCLUDED.winners_active,documents_active=EXCLUDED.documents_active,metadata_visibility=EXCLUDED.metadata_visibility`,
+        `INSERT INTO competition_detail_settings(competition_id,decree_document_id,decree_title,decree_description,is_active,winners_active,documents_active,metadata_visibility) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(competition_id) DO UPDATE SET decree_document_id=EXCLUDED.decree_document_id,decree_title=EXCLUDED.decree_title,decree_description=EXCLUDED.decree_description,is_active=EXCLUDED.is_active,winners_active=EXCLUDED.winners_active,documents_active=EXCLUDED.documents_active,metadata_visibility=EXCLUDED.metadata_visibility`,
         [
           competitionId,
           input.decreeDocumentId ?? null,
+          input.decreeTitle?.trim() || DEFAULT_DECREE_TITLE,
+          input.decreeDescription?.trim() || DEFAULT_DECREE_DESCRIPTION,
           input.isActive,
           input.winnersActive,
           input.documentsActive,
@@ -161,12 +177,141 @@ export class AdminContentService {
     return this.detailSettings(competitionId, userId);
   }
 
+  async decree(competitionId: string, userId: string) {
+    await this.competitionAccess(competitionId, userId, false);
+    const rows = await this.db.query(
+      `SELECT COALESCE(NULLIF(settings.decree_title,''),document.title,$2) AS title,
+              COALESCE(NULLIF(settings.decree_description,''),$3) AS description,
+              document.id AS "documentId",document.asset_id AS "assetId",
+              document.file_type AS "fileType",document.display_size AS "displaySize"
+         FROM competitions competition
+         LEFT JOIN competition_detail_settings settings ON settings.competition_id=competition.id
+         LEFT JOIN competition_documents document
+           ON document.id=settings.decree_document_id
+          AND document.competition_id=competition.id
+        WHERE competition.id=$1`,
+      [competitionId, DEFAULT_DECREE_TITLE, DEFAULT_DECREE_DESCRIPTION],
+    );
+    const row = rows[0] ?? {
+      title: DEFAULT_DECREE_TITLE,
+      description: DEFAULT_DECREE_DESCRIPTION,
+      documentId: null,
+      assetId: null,
+      fileType: 'PDF',
+      displaySize: '',
+    };
+    return { data: row, errors: [] };
+  }
+
+  async putDecree(
+    competitionId: string,
+    userId: string,
+    input: {
+      title: string;
+      description: string;
+      assetId?: string;
+      fileType?: string;
+      displaySize?: string;
+      deleteFile?: boolean;
+    },
+  ) {
+    await this.competitionAccess(competitionId, userId, true);
+    await this.db.transaction(async (manager) => {
+      if (input.assetId)
+        await this.assetOwnership(input.assetId, competitionId, manager);
+      const title = input.title.trim() || DEFAULT_DECREE_TITLE;
+      const description =
+        input.description.trim() || DEFAULT_DECREE_DESCRIPTION;
+      const existing = await manager.query(
+        `SELECT settings.decree_document_id AS "documentId"
+           FROM competition_detail_settings settings
+          WHERE settings.competition_id=$1`,
+        [competitionId],
+      );
+      let documentId = existing[0]?.documentId as string | undefined;
+      if (documentId && input.deleteFile) {
+        await manager.query(`DELETE FROM competition_documents WHERE id=$1`, [
+          documentId,
+        ]);
+        documentId = undefined;
+      } else if (documentId) {
+        await manager.query(
+          `UPDATE competition_documents
+              SET title=$3,category='SK Pemenang',document_role='winner_decree',
+                  file_type=COALESCE($4,file_type),display_size=COALESCE($5,display_size),
+                  asset_id=COALESCE($6,asset_id),is_active=true
+            WHERE id=$1 AND competition_id=$2`,
+          [
+            documentId,
+            competitionId,
+            title,
+            input.fileType ?? null,
+            input.displaySize ?? null,
+            input.assetId ?? null,
+          ],
+        );
+      } else if (input.assetId) {
+        const documents = await manager.query(
+          `INSERT INTO competition_documents(competition_id,title,category,document_role,file_type,display_size,asset_id,is_active,sort_order)
+           VALUES($1,$2,'SK Pemenang','winner_decree',$3,$4,$5,true,
+             COALESCE((SELECT MAX(sort_order)+1 FROM competition_documents WHERE competition_id=$1),0))
+           RETURNING id`,
+          [
+            competitionId,
+            title,
+            input.fileType ?? 'PDF',
+            input.displaySize ?? '',
+            input.assetId,
+          ],
+        );
+        documentId = documents[0].id as string;
+      }
+      await manager.query(
+        `INSERT INTO competition_detail_settings(competition_id,decree_document_id,decree_title,decree_description)
+         VALUES($1,$2,$3,$4)
+         ON CONFLICT(competition_id) DO UPDATE SET
+           decree_document_id=COALESCE(EXCLUDED.decree_document_id,competition_detail_settings.decree_document_id),
+           decree_title=EXCLUDED.decree_title,
+           decree_description=EXCLUDED.decree_description`,
+        [competitionId, documentId ?? null, title, description],
+      );
+      if (documentId) {
+        const downloadRows = await manager.query(
+          `INSERT INTO download_competitions(event_site_id,competition_id,custom_tab_name,is_default,is_active,sort_order)
+           SELECT competition.event_site_id,competition.id,'',
+                  NOT EXISTS (SELECT 1 FROM download_competitions existing WHERE existing.event_site_id=competition.event_site_id AND existing.is_default=true),
+                  true,COALESCE((SELECT MAX(sort_order)+1 FROM download_competitions existing WHERE existing.event_site_id=competition.event_site_id),0)
+             FROM competitions competition WHERE competition.id=$1
+           ON CONFLICT(event_site_id,competition_id) DO UPDATE SET is_active=true
+           RETURNING id`,
+          [competitionId],
+        );
+        await manager.query(
+          `INSERT INTO download_document_settings(download_competition_id,document_id,competition_id,is_visible,label_override,sort_order)
+           VALUES($1,$2,$3,true,'',COALESCE((SELECT MAX(sort_order)+1 FROM download_document_settings WHERE download_competition_id=$1),0))
+           ON CONFLICT(download_competition_id,document_id) DO UPDATE SET is_visible=true`,
+          [downloadRows[0].id, documentId, competitionId],
+        );
+      }
+      await manager.query(
+        `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
+         SELECT event_site_id,$2,'update','winner_decree',$1,$3 FROM competitions WHERE id=$1`,
+        [
+          competitionId,
+          userId,
+          JSON.stringify({ documentId: documentId ?? null, title }),
+        ],
+      );
+    });
+    return this.decree(competitionId, userId);
+  }
+
   async list(table: Table, competitionId: string, userId: string) {
     await this.competitionAccess(competitionId, userId, false);
     const columns = {
-      competition_documents: `id,title,category,document_role AS "documentRole",asset_id AS "assetId",is_active AS "isActive",sort_order AS "sortOrder"`,
+      competition_documents: `id,title,category,document_role AS "documentRole",file_type AS "fileType",display_size AS "displaySize",asset_id AS "assetId",is_active AS "isActive",sort_order AS "sortOrder"`,
       winner_categories: `id,name,rank_prefix AS "rankPrefix",icon,is_active AS "isActive",sort_order AS "sortOrder"`,
-      winners: `id,category_id AS "categoryId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",is_active AS "isActive",sort_order AS "sortOrder"`,
+      winners: `id,category_id AS "categoryId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",regency,province,photo_asset_id AS "photoAssetId",is_active AS "isActive",sort_order AS "sortOrder"`,
     }[table];
     const rows = await this.db.query(
       `SELECT ${columns} FROM ${table} WHERE competition_id=$1 ORDER BY sort_order,id`,
@@ -180,12 +325,14 @@ export class AdminContentService {
       await this.assetOwnership(d.assetId, c, m);
       return (
         await m.query(
-          `INSERT INTO competition_documents(competition_id,title,category,document_role,asset_id,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`,
+          `INSERT INTO competition_documents(competition_id,title,category,document_role,file_type,display_size,asset_id,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
           [
             c,
             d.title.trim(),
             d.category ?? 'Dokumen',
             d.documentRole ?? '',
+            d.fileType ?? 'PDF',
+            d.displaySize ?? '',
             d.assetId ?? null,
             d.isActive ?? true,
             d.sortOrder ?? 0,
@@ -204,13 +351,15 @@ export class AdminContentService {
         await this.assetOwnership(d.assetId, c, m);
         return (
           await m.query(
-            `UPDATE competition_documents SET title=$3,category=$4,document_role=$5,asset_id=$6,is_active=$7,sort_order=$8 WHERE id=$1 AND competition_id=$2 RETURNING *`,
+            `UPDATE competition_documents SET title=$3,category=$4,document_role=$5,file_type=$6,display_size=$7,asset_id=$8,is_active=$9,sort_order=$10 WHERE id=$1 AND competition_id=$2 RETURNING *`,
             [
               id,
               c,
               d.title.trim(),
               d.category ?? 'Dokumen',
               d.documentRole ?? '',
+              d.fileType ?? 'PDF',
+              d.displaySize ?? '',
               d.assetId ?? null,
               d.isActive ?? true,
               d.sortOrder ?? 0,
@@ -276,7 +425,7 @@ export class AdminContentService {
       async (m) =>
         (
           await m.query(
-            `INSERT INTO winners(competition_id,category_id,full_name,rank_label,school,exam_number,photo_asset_id,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+            `INSERT INTO winners(competition_id,category_id,full_name,rank_label,school,exam_number,regency,province,photo_asset_id,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
             [
               c,
               d.categoryId,
@@ -284,6 +433,8 @@ export class AdminContentService {
               d.rankLabel ?? '',
               d.school ?? '',
               d.examNumber ?? '',
+              d.regency ?? '',
+              d.province ?? '',
               d.photoAssetId ?? null,
               d.isActive ?? true,
               d.sortOrder ?? 0,
@@ -301,7 +452,7 @@ export class AdminContentService {
       async (m) =>
         (
           await m.query(
-            `UPDATE winners SET category_id=$3,full_name=$4,rank_label=$5,school=$6,exam_number=$7,photo_asset_id=$8,is_active=$9,sort_order=$10 WHERE id=$1 AND competition_id=$2 RETURNING *`,
+            `UPDATE winners SET category_id=$3,full_name=$4,rank_label=$5,school=$6,exam_number=$7,regency=$8,province=$9,photo_asset_id=$10,is_active=$11,sort_order=$12 WHERE id=$1 AND competition_id=$2 RETURNING *`,
             [
               id,
               c,
@@ -310,6 +461,8 @@ export class AdminContentService {
               d.rankLabel ?? '',
               d.school ?? '',
               d.examNumber ?? '',
+              d.regency ?? '',
+              d.province ?? '',
               d.photoAssetId ?? null,
               d.isActive ?? true,
               d.sortOrder ?? 0,
@@ -339,27 +492,56 @@ export class AdminContentService {
 
   async page(siteId: string, pageType: string, userId: string) {
     await this.siteAccess(siteId, userId, false);
-    const rows = await this.db.query(
-      `SELECT page_type AS "pageType",is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type=$2`,
-      [siteId, pageType],
-    );
-    return { data: rows[0] ?? null, errors: [] };
+    const [rows, winnerSettings] = await Promise.all([
+      this.db.query(
+        `SELECT page_type AS "pageType",is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type=$2`,
+        [siteId, pageType],
+      ),
+      pageType === 'winners'
+        ? this.db.query(
+            `SELECT show_decree AS "showDecree",metadata_visibility AS "metadataVisibility",archive_active AS "archiveActive",archive_limit AS "archiveLimit" FROM winner_page_settings WHERE event_site_id=$1`,
+            [siteId],
+          )
+        : Promise.resolve([]),
+    ]);
+    const page = rows[0] ?? null;
+    return {
+      data:
+        pageType === 'winners'
+          ? { ...(page ?? {}), ...(winnerSettings[0] ?? {}) }
+          : page,
+      errors: [],
+    };
   }
   async putPage(siteId: string, pageType: string, userId: string, d: Page) {
     await this.siteAccess(siteId, userId, true);
-    const rows = await this.db.query(
-      `INSERT INTO page_settings(event_site_id,page_type,is_active,eyebrow,title,description,alignment) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(event_site_id,page_type) DO UPDATE SET is_active=EXCLUDED.is_active,eyebrow=EXCLUDED.eyebrow,title=EXCLUDED.title,description=EXCLUDED.description,alignment=EXCLUDED.alignment RETURNING *`,
-      [
-        siteId,
-        pageType,
-        d.isActive ?? true,
-        d.eyebrow ?? '',
-        d.title ?? '',
-        d.description ?? '',
-        d.alignment ?? 'center',
-      ],
-    );
-    return { data: rows[0], errors: [] };
+    await this.db.transaction(async (manager) => {
+      await manager.query(
+        `INSERT INTO page_settings(event_site_id,page_type,is_active,eyebrow,title,description,alignment) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(event_site_id,page_type) DO UPDATE SET is_active=EXCLUDED.is_active,eyebrow=EXCLUDED.eyebrow,title=EXCLUDED.title,description=EXCLUDED.description,alignment=EXCLUDED.alignment`,
+        [
+          siteId,
+          pageType,
+          d.isActive ?? true,
+          d.eyebrow ?? '',
+          d.title ?? '',
+          d.description ?? '',
+          d.alignment ?? 'center',
+        ],
+      );
+      if (pageType === 'winners')
+        await manager.query(
+          `INSERT INTO winner_page_settings(event_site_id,is_active,show_decree,metadata_visibility,archive_active,archive_limit) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(event_site_id) DO UPDATE SET is_active=EXCLUDED.is_active,show_decree=EXCLUDED.show_decree,metadata_visibility=EXCLUDED.metadata_visibility,archive_active=EXCLUDED.archive_active,archive_limit=EXCLUDED.archive_limit`,
+          [
+            siteId,
+            d.isActive ?? true,
+            d.showDecree ?? true,
+            d.metadataVisibility ?? {},
+            d.archiveActive ?? true,
+            Math.max(0, Math.min(12, d.archiveLimit ?? 3)),
+          ],
+        );
+    });
+    return this.page(siteId, pageType, userId);
   }
 
   private async write(

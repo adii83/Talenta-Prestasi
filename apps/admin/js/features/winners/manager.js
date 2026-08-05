@@ -1,7 +1,18 @@
 /* CRUD kategori juara dan pemenang lomba aktif. */
-let wmState = load();
+let wmState = {
+  competitionId: "",
+  sk: {
+    title: "SK Penetapan Pemenang",
+    description:
+      "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+    url: "",
+  },
+  categories: [],
+};
 let wmDisplay = loadDisplay();
 let winnerPreviewResizeObserver;
+let winnerArchiveSources = [];
+window.TalentaActiveCompetition = null;
 
 function load() {
   return getWinnerManagerState();
@@ -14,7 +25,9 @@ function applyGlobalTheme(root) {
 }
 async function save() {
   try {
-    await TalentaWinnerApi.save(wmState, wmDisplay);
+    const saved = await TalentaWinnerApi.save(wmState, wmDisplay);
+    wmState.sk = saved.sk;
+    syncSk();
     toast("Data pemenang tersimpan ke database.");
   } catch (error) {
     toast(error.message, true);
@@ -24,17 +37,29 @@ async function hydrateWinners() {
   try {
     const loaded = await TalentaWinnerApi.load();
     wmState = loaded.state;
+    winnerArchiveSources = loaded.archives || [];
+    const metadata = loaded.page?.metadataVisibility || {};
     wmDisplay = normalizeWinnerPageState({
       ...wmDisplay,
       ...(loaded.page || {}),
+      showSk: loaded.page?.showDecree ?? wmDisplay.showSk,
+      showPhoto: metadata.showPhoto ?? wmDisplay.showPhoto,
+      showSchool: metadata.showSchool ?? wmDisplay.showSchool,
+      showExam: metadata.showExam ?? wmDisplay.showExam,
+      showRegency: metadata.showRegency ?? wmDisplay.showRegency,
+      showProvince: metadata.showProvince ?? wmDisplay.showProvince,
     });
+    if (Number.isFinite(Number(loaded.page?.archiveLimit)))
+      wmDisplay.archiveLimit = Number(loaded.page.archiveLimit);
     if (loaded.competition)
       loaded.competition.winnerCategories = loaded.state.categories;
     window.TalentaActiveCompetition = loaded.competition;
     renderActiveComp();
     renderCategories();
     syncDisplay();
+    renderArchiveSources();
     renderPreview();
+    syncSk();
   } catch (error) {
     toast(error.message, true);
   }
@@ -66,9 +91,13 @@ function icons() {
   lucide.createIcons();
 }
 function availableWinnerArchives() {
-  return typeof getAvailableWinnerArchiveCompetitions === "function"
-    ? getAvailableWinnerArchiveCompetitions()
-    : [];
+  return winnerArchiveSources.filter((competition) =>
+    (competition.winnerCategories || []).some(
+      (category) =>
+        category.active !== false &&
+        (category.winners || []).some((winner) => winner.active !== false),
+    ),
+  );
 }
 function archiveSourceIcon(competition) {
   if (competition.iconMode === "upload" && competition.uploadedIcon)
@@ -92,8 +121,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   window.addEventListener("talenta:archive", refreshWinnerArchiveSources);
   window.addEventListener("storage", (event) => {
-    if (event.key === ARCHIVE_STATE_KEY || event.key === null)
+    if (event.key === ARCHIVE_STATE_KEY || event.key === null) {
       refreshWinnerArchiveSources();
+    }
+    if (event.key === WINNER_MANAGER_STATE_KEY) {
+      wmToast("Peringatan: Data pemenang baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.", true);
+    }
   });
   bindGlobal();
   icons();
@@ -108,38 +141,79 @@ function refreshWinnerArchiveSources() {
 }
 
 function renderActiveComp() {
-  const comp = window.TalentaActiveCompetition || getActiveCompetition(),
+  const comp = window.TalentaActiveCompetition,
     el = document.getElementById("wmActiveCompetition");
   if (!comp) {
-    el.innerHTML =
-      '<p class="wm-empty">Tidak ada lomba aktif. Tambahkan lomba dengan status "active" di database.</p>';
+    el.innerHTML = '';
     return;
   }
-  el.innerHTML = `<div class="wm-comp-badge"><i data-lucide="${esc(comp.icon || "trophy")}"></i><div><strong>${esc(comp.name)}</strong><small>${esc(comp.shortName)} · ${(comp.winnerCategories || []).length} kategori sumber · ${getAllWinners(comp).length} pemenang sumber</small></div></div>`;
+  const winnersCount = (comp.winnerCategories || []).reduce((acc, cat) => acc + (cat.winners || []).length, 0);
+  el.innerHTML = `<div class="wm-comp-badge"><i data-lucide="${esc(comp.icon || "trophy")}"></i><div><strong>${esc(comp.name)}</strong><small>${esc(comp.shortName)} · ${(comp.winnerCategories || []).length} kategori sumber · ${winnersCount} pemenang sumber</small></div></div>`;
 }
 function syncSk() {
   document.getElementById("wmSkTitle").value = wmState.sk.title;
   document.getElementById("wmSkDescription").value = wmState.sk.description;
-  document.getElementById("wmSkUrl").value = wmState.sk.url;
+  const btnText = document.getElementById("wmSkFileBtnText");
+  const link = document.getElementById("wmSkFileLink");
+  btnText.textContent = wmState.sk.assetId
+    ? `File SK tersimpan${wmState.sk.displaySize ? ` · ${wmState.sk.displaySize}` : ""}`
+    : "Pilih file PDF... (Maks 10MB)";
+  btnText.style.color = wmState.sk.assetId ? "var(--c-text)" : "var(--c-gray)";
+  link.hidden = !wmState.sk.url;
+  link.style.display = wmState.sk.url ? "inline-flex" : "none";
+  if (wmState.sk.url) link.href = wmState.sk.url;
+  const delBtn = document.getElementById("wmSkDeleteBtn");
+  if (delBtn) delBtn.hidden = !wmState.sk.assetId;
 }
 function bindSk() {
-  ["wmSkTitle", "wmSkDescription", "wmSkUrl"].forEach((id) => {
-    const key = id
-      .replace("wmSk", "")
-      .toLowerCase()
-      .replace("title", "title")
-      .replace("description", "description")
-      .replace("url", "url");
+  ["wmSkTitle", "wmSkDescription"].forEach((id) => {
     const map = {
       wmSkTitle: "title",
       wmSkDescription: "description",
-      wmSkUrl: "url",
     };
     document.getElementById(id).oninput = (e) => {
       wmState.sk[map[id]] = e.target.value;
       renderPreview();
     };
   });
+  document.getElementById("wmSkFile").onchange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.disabled = true;
+    try {
+      wmState.sk = await TalentaWinnerApi.saveDecree(wmState.sk, file);
+      syncSk();
+      renderPreview();
+      toast("File SK tersimpan dan otomatis ditambahkan ke dokumen lomba.");
+    } catch (error) {
+      toast(error.message, true);
+    } finally {
+      event.target.value = "";
+      event.target.disabled = false;
+    }
+  };
+  const delBtn = document.getElementById("wmSkDeleteBtn");
+  if (delBtn) delBtn.onclick = async () => {
+    const confirmed = await adminConfirm({
+      title: "Hapus file SK?",
+      message: "File SK akan dihapus dari lomba saat ini.",
+      confirmLabel: "Ya, hapus",
+      variant: "danger",
+      icon: "file-x-2",
+    });
+    if (!confirmed) return;
+    try {
+      wmState.sk = await TalentaWinnerApi.saveDecree({ ...wmState.sk, documentId: null }, null);
+      wmState.sk.assetId = null;
+      wmState.sk.url = "";
+      wmState.sk.displaySize = "";
+      syncSk();
+      renderPreview();
+      toast("File SK berhasil dihapus.");
+    } catch (error) {
+      toast(error.message, true);
+    }
+  };
 }
 function syncDisplay() {
   const availableCount = availableWinnerArchives().length;
@@ -156,7 +230,6 @@ function syncDisplay() {
     wmShowPhoto: wmDisplay.showPhoto,
     wmShowSchool: wmDisplay.showSchool,
     wmShowExam: wmDisplay.showExam,
-    wmShowDistrict: wmDisplay.showDistrict,
     wmShowRegency: wmDisplay.showRegency,
     wmShowProvince: wmDisplay.showProvince,
     wmArchiveActive: wmDisplay.archiveActive,
@@ -201,7 +274,6 @@ function bindDisplay() {
     wmShowPhoto: "showPhoto",
     wmShowSchool: "showSchool",
     wmShowExam: "showExam",
-    wmShowDistrict: "showDistrict",
     wmShowRegency: "showRegency",
     wmShowProvince: "showProvince",
     wmArchiveActive: "archiveActive",
@@ -226,10 +298,7 @@ function bindDisplay() {
 }
 function renderArchiveSources() {
   const root = document.getElementById("wmArchiveSourceList"),
-    allArchives =
-      typeof getPublicArchivedCompetitions === "function"
-        ? getPublicArchivedCompetitions()
-        : [],
+    allArchives = winnerArchiveSources,
     items = availableWinnerArchives(),
     unavailableCount = Math.max(0, allArchives.length - items.length);
   root.innerHTML =
@@ -410,7 +479,6 @@ function renderCategories() {
         name: "",
         school: "",
         exam: "",
-        district: "",
         regency: "",
         province: "",
         photo: "",
@@ -437,7 +505,6 @@ function renderCategories() {
 <div class="admin-field"><label>Nama lengkap</label><input class="form-input" data-w="name" value="${esc(w.name)}" required></div>
 <div class="admin-field"><label>Sekolah</label><input class="form-input" data-w="school" value="${esc(w.school)}"></div>
 <div class="admin-field"><label>No. Ujian</label><input class="form-input" data-w="exam" value="${esc(w.exam)}"></div>
-<div class="admin-field"><label>Kecamatan</label><input class="form-input" data-w="district" value="${esc(w.district)}"></div>
 <div class="admin-field"><label>Kabupaten</label><input class="form-input" data-w="regency" value="${esc(w.regency)}"></div>
 <div class="admin-field"><label>Provinsi</label><input class="form-input" data-w="province" value="${esc(w.province)}"></div>
 <div class="admin-field"><label>Foto</label><input type="file" class="form-input" data-w-photo accept="image/png,image/jpeg,image/webp"></div>
@@ -529,13 +596,8 @@ function initials(name) {
 
 function renderPreview() {
   const root = document.getElementById("wmPreview");
-  const competition = getActiveCompetition();
+  const competition = window.TalentaActiveCompetition;
   applyGlobalTheme(root);
-  if (!competition) {
-    root.className = "winner-public-preview";
-    root.innerHTML = '<div class="wm-empty">Tidak ada lomba aktif.</div>';
-    return;
-  }
   if (!wmDisplay.active) {
     root.className = "winner-public-preview";
     root.innerHTML =
@@ -543,7 +605,11 @@ function renderPreview() {
     icons();
     return;
   }
-  const source = resolvePublicWinnerState(wmState, wmDisplay);
+  const source = resolvePublicWinnerState(
+    wmState,
+    wmDisplay,
+    winnerArchiveSources,
+  );
   const archiveHref = (archiveCompetition) =>
     TalentaPaths.to("template.archiveDetail", {
       query: { id: archiveCompetition.id },

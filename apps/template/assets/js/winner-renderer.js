@@ -23,7 +23,6 @@
             rank: winner.rankLabel,
             school: winner.school,
             exam: winner.examNumber,
-            district: winner.district,
             regency: winner.regency,
             province: winner.province,
             photo: winner.photoUrl
@@ -31,7 +30,14 @@
               : "",
           })),
         })),
-        sk: null,
+        sk: data.decree
+          ? {
+              ...data.decree,
+              url: data.decree.url
+                ? new URL(data.decree.url, TalentaConfig.apiBaseUrl).href
+                : "",
+            }
+          : null,
       },
       page: {
         ...baseline.page,
@@ -44,7 +50,6 @@
         showPhoto: visibility.showPhoto ?? baseline.page.showPhoto,
         showSchool: visibility.showSchool ?? baseline.page.showSchool,
         showExam: visibility.showExam ?? baseline.page.showExam,
-        showDistrict: visibility.showDistrict ?? baseline.page.showDistrict,
         showRegency: visibility.showRegency ?? baseline.page.showRegency,
         showProvince: visibility.showProvince ?? baseline.page.showProvince,
         archiveActive:

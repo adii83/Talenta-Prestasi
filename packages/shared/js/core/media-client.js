@@ -1,6 +1,6 @@
 (() => {
   const LIMITS = Object.freeze({
-    image: 2 * 1024 * 1024,
+    image: 5 * 1024 * 1024,
     document: 10 * 1024 * 1024,
   });
   const IMAGE_TYPES = new Set([

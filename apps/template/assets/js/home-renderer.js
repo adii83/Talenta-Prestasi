@@ -190,7 +190,6 @@
           rank: winner.rankLabel,
           school: winner.school,
           exam: winner.examNumber,
-          district: winner.district,
           regency: winner.regency,
           province: winner.province,
           photo: "",

@@ -2460,9 +2460,20 @@ textarea {
     grid-template-columns: 1fr;
   }
 
-  #benefit .home-grid {
+  #benefit .home-grid,
+  #jadwal .home-grid,
+  #jadwal .grid--4,
+  .schedule-public-preview .home-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--sp-2);
+  }
+
+  .schedule-card {
+    padding: var(--sp-2);
+  }
+
+  .schedule-card__date {
+    font-size: 13px;
   }
 
   #benefit .feature-card {
@@ -3921,7 +3932,8 @@ body.admin-dialog-open {
   padding-inline: 16px;
 }
 .schedule-preview-frame--mobile .schedule-public-preview .home-grid {
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-2);
 }
 .schedule-preview {
   --preview-primary: #1e4b8c;
@@ -5391,6 +5403,51 @@ body.admin-dialog-open {
   border-radius: 11px;
   background: #f4f8fc;
 }
+.download-current-source {
+  margin-bottom: 26px;
+  padding: 20px;
+  border: 1px solid #d9e2ec;
+  border-radius: 12px;
+  background: #f8fafc;
+}
+.download-archive-sources {
+  padding-top: 22px;
+  border-top: 1px solid #e2e7ed;
+}
+.download-document-create {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  align-items: end;
+  gap: 12px;
+  margin-top: 16px;
+}
+.download-current-document-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+.download-current-document {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1.2fr) auto;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dce4ed;
+  border-radius: 10px;
+  background: #fff;
+}
+.download-current-document .admin-switch {
+  align-self: center;
+}
+.download-current-document__actions {
+  grid-column: 1/-1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  border-top: 1px solid #edf1f5;
+  padding-top: 12px;
+  margin-top: 4px;
+}
 .archive-link-card {
   grid-template-columns: 44px minmax(260px, 1fr) auto auto 34px;
 }
@@ -5512,6 +5569,10 @@ body.admin-dialog-open {
   .archive-source-picker {
     grid-template-columns: 1fr;
   }
+  .download-document-create,
+  .download-current-document {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 @media (max-width: 520px) {
   .archive-link-card {
@@ -5530,6 +5591,10 @@ body.admin-dialog-open {
   }
   .archive-linked-docs {
     grid-column: 1/-1;
+  }
+  .download-document-create,
+  .download-current-document {
+    grid-template-columns: 1fr;
   }
 }
 

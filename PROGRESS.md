@@ -838,3 +838,18 @@ Verifikasi final: frontend check lulus, seluruh audit relasi/parity lulus, backe
 - Menutup seluruh resolver publik ketika Event tidak aktif tanpa menghapus konten atau relasi Arsip.
 - Menambahkan gateway lokal port `8080` untuk menyatukan Template dan backend `/api`, serta contoh wildcard Cloudflare Tunnel.
 - Memverifikasi migration, lint/build backend, 16/16 E2E PostgreSQL, frontend check, dan HTTP gateway untuk halaman, aset, serta API.
+
+### 4 Agustus 2026 - Dokumen Event Aktif dan Arsip Pemenang Nyata
+
+- Menambahkan CRUD/upload dokumen Competition aktif langsung pada editor Unduh; PDF tetap maksimal 10 MB.
+- Memisahkan lomba aktif dari pemilih sumber, sehingga pemilih hanya berisi Event sebelumnya yang diwariskan.
+- Menghapus fallback pemenang/Arsip dummy ketika PostgreSQL belum memiliki data dan memastikan Event pertama menampilkan keadaan kosong.
+- Menghapus Kecamatan dari form serta tampilan pemenang, sekaligus menyimpan Kabupaten dan Provinsi melalui API.
+- Menyamakan batas seluruh upload gambar, logo, maskot, ikon, dan foto menjadi 5 MB.
+
+### 4 Agustus 2026 - Relasi File SK Pemenang
+
+- Mengganti input URL SK dengan upload PDF maksimal 10 MB pada Manajemen Pemenang.
+- Menyimpan judul/deskripsi default SK per Competition dan menunjuk satu dokumen melalui `decree_document_id`.
+- Meng-upsert dokumen role `winner_decree` berkategori `SK Pemenang` serta otomatis memasukkannya ke Unduh.
+- Memakai dokumen yang sama pada Pemenang publik dan Detail Arsip sehingga Event berikutnya mewarisi SK tanpa duplikasi file.

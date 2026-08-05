@@ -37,7 +37,6 @@
         showPhoto: metadata.showPhoto ?? true,
         showSchool: metadata.showSchool ?? true,
         showExam: metadata.showExam ?? true,
-        showDistrict: metadata.showDistrict ?? true,
         showRegency: metadata.showRegency ?? true,
         showProvince: metadata.showProvince ?? true,
         hiddenCategoryIds: categories
@@ -78,8 +77,20 @@
             active: winner.isActive,
           })),
       })),
-      skDocument:
-        documents.find((item) => item.id === settings.decreeDocumentId) || null,
+      skDocument: (() => {
+        const document = documents.find(
+          (item) => item.id === settings.decreeDocumentId,
+        );
+        return document
+          ? {
+              ...document,
+              title: settings.decreeTitle || document.title,
+              description:
+                settings.decreeDescription ||
+                "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+            }
+          : null;
+      })(),
     };
   }
   async function save(competition) {
@@ -102,6 +113,8 @@
         method: "PUT",
         body: {
           decreeDocumentId: competition.skDocument?.id,
+          decreeTitle: competition.skDocument?.title,
+          decreeDescription: competition.skDocument?.description,
           isActive: competition.detail.active,
           winnersActive: competition.detail.winnersActive,
           documentsActive: competition.detail.documentsActive,
@@ -109,7 +122,6 @@
             showPhoto: competition.detail.showPhoto,
             showSchool: competition.detail.showSchool,
             showExam: competition.detail.showExam,
-            showDistrict: competition.detail.showDistrict,
             showRegency: competition.detail.showRegency,
             showProvince: competition.detail.showProvince,
           },

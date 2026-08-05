@@ -42,6 +42,8 @@ class DocumentDto {
   @IsString() @MinLength(1) @MaxLength(200) title!: string;
   @IsOptional() @IsString() @MaxLength(80) category?: string;
   @IsOptional() @IsString() @MaxLength(40) documentRole?: string;
+  @IsOptional() @IsString() @MaxLength(20) fileType?: string;
+  @IsOptional() @IsString() @MaxLength(40) displaySize?: string;
   @IsOptional() @IsUUID() assetId?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
@@ -59,6 +61,8 @@ class WinnerDto {
   @IsOptional() @IsString() @MaxLength(80) rankLabel?: string;
   @IsOptional() @IsString() @MaxLength(200) school?: string;
   @IsOptional() @IsString() @MaxLength(80) examNumber?: string;
+  @IsOptional() @IsString() @MaxLength(160) regency?: string;
+  @IsOptional() @IsString() @MaxLength(160) province?: string;
   @IsOptional() @IsUUID() photoAssetId?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
@@ -69,6 +73,18 @@ class PageDto {
   @IsOptional() @IsString() @MaxLength(200) title?: string;
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
   @IsOptional() @IsIn(['left', 'center']) alignment?: string;
+  @IsOptional() @IsBoolean() showDecree?: boolean;
+  @IsOptional() @IsObject() metadataVisibility?: Record<string, boolean>;
+  @IsOptional() @IsBoolean() archiveActive?: boolean;
+  @IsOptional() @IsInt() @Min(0) archiveLimit?: number;
+}
+class DecreeDto {
+  @IsString() @MinLength(1) @MaxLength(200) title!: string;
+  @IsString() @MaxLength(1000) description!: string;
+  @IsOptional() @IsUUID() assetId?: string;
+  @IsOptional() @IsString() @MaxLength(20) fileType?: string;
+  @IsOptional() @IsString() @MaxLength(40) displaySize?: string;
+  @IsOptional() @IsBoolean() deleteFile?: boolean;
 }
 
 class DetailCategoryDto {
@@ -82,6 +98,8 @@ class DetailDocumentDto {
 }
 class DetailSettingsDto {
   @IsOptional() @IsUUID() decreeDocumentId?: string;
+  @IsOptional() @IsString() @MaxLength(200) decreeTitle?: string;
+  @IsOptional() @IsString() @MaxLength(1000) decreeDescription?: string;
   @IsBoolean() isActive!: boolean;
   @IsBoolean() winnersActive!: boolean;
   @IsBoolean() documentsActive!: boolean;
@@ -111,6 +129,21 @@ export class AdminContentController {
     @CurrentUser() u: AuthenticatedUser,
   ) {
     return this.content.putDetailSettings(p.competitionId, u.userId, input);
+  }
+
+  @Get('competitions/:competitionId/decree') decree(
+    @Param() p: CompetitionParams,
+    @CurrentUser() u: AuthenticatedUser,
+  ) {
+    return this.content.decree(p.competitionId, u.userId);
+  }
+
+  @Put('competitions/:competitionId/decree') putDecree(
+    @Param() p: CompetitionParams,
+    @Body() input: DecreeDto,
+    @CurrentUser() u: AuthenticatedUser,
+  ) {
+    return this.content.putDecree(p.competitionId, u.userId, input);
   }
 
   @Get('competitions/:competitionId/documents') documents(

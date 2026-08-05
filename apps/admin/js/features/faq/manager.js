@@ -247,6 +247,12 @@ subscribeGlobalSettings(faqRenderPreview);
 faqIcons();
 void faqHydrate();
 
+window.addEventListener("storage", (e) => {
+  if (e.key === "talenta_faq_manager_v1") {
+    faqToast("Peringatan: Data FAQ baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.", true);
+  }
+});
+
 function setupFaqPreviewSizing() {
   const frame = document.getElementById("faqPreviewFrame");
   const root = document.getElementById("faqPreview");

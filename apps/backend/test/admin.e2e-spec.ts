@@ -144,6 +144,7 @@ describe('Admin tenant and locking (e2e)', () => {
       .set('Authorization', `Bearer ${ownerToken}`)
       .send({
         eventName: 'Event Sumber Arsip',
+        eventDescription: 'Deskripsi singkat sumber arsip',
         eventSlug: `sumber-${suffix}`,
         organizerName: 'Admin Test',
         primaryColor: '#1e4b8c',
@@ -154,6 +155,17 @@ describe('Admin tenant and locking (e2e)', () => {
       .expect(200);
     const body = response.body as { data: { eventSlug: string } };
     expect(body.data.eventSlug).toBe(`sumber-${suffix}`);
+    const currentCompetition = await db.query<{
+      name: string;
+      description: string;
+    }>(
+      `SELECT name,description FROM competitions WHERE event_site_id=$1 AND lifecycle='current'`,
+      [sourceEventId],
+    );
+    expect(currentCompetition.rows[0]).toEqual({
+      name: 'Event Sumber Arsip',
+      description: 'Deskripsi singkat sumber arsip',
+    });
   });
 
   it('publishes and unpublishes an event only after its slug is configured', async () => {
@@ -245,6 +257,38 @@ describe('Admin tenant and locking (e2e)', () => {
         }),
       ]),
     );
+    const currentCompetition = adminBody.data.find(
+      (item) => item.lifecycle === 'current' && !item.inherited,
+    );
+    expect(currentCompetition).toBeDefined();
+    await request(app.getHttpServer())
+      .put(`/api/v1/admin/sites/${inheritedEventId}/downloads`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .send({
+        competitions: [
+          {
+            competitionId: currentCompetition!.id,
+            customTabName: 'Event Sekarang',
+            isDefault: true,
+            isActive: true,
+            documents: [],
+          },
+          {
+            competitionId: previous.rows[0].id,
+            customTabName: 'Event Sebelumnya',
+            isDefault: false,
+            isActive: true,
+            documents: [
+              {
+                documentId: document.rows[0].id,
+                isVisible: true,
+                labelOverride: '',
+              },
+            ],
+          },
+        ],
+      })
+      .expect(200);
     const inheritedSlug = `penerus-${suffix}`;
     await request(app.getHttpServer())
       .put(`/api/v1/admin/sites/${inheritedEventId}/settings`)
@@ -263,6 +307,31 @@ describe('Admin tenant and locking (e2e)', () => {
       .post(`/api/v1/admin/sites/${inheritedEventId}/publish`)
       .set('Authorization', `Bearer ${ownerToken}`)
       .expect(201);
+    const downloads = await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/${inheritedSlug}/downloads`)
+      .expect(200);
+    const downloadsBody = downloads.body as {
+      data: { competitions: Array<{ name: string; documents: unknown[] }> };
+    };
+    expect(downloadsBody.data.competitions).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          name: 'Event Sumber Arsip',
+          documents: expect.arrayContaining([
+            expect.objectContaining({ title: 'Dokumen Edisi Lama' }),
+          ]),
+        }),
+      ]),
+    );
+    const previousWinners = await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/${inheritedSlug}/winners`)
+      .expect(200);
+    const previousWinnersBody = previousWinners.body as {
+      data: { archives: Array<{ name: string }> };
+    };
+    expect(previousWinnersBody.data.archives).toEqual([
+      expect.objectContaining({ name: 'Event Sumber Arsip' }),
+    ]);
     const archives = await request(app.getHttpServer())
       .get(`/api/v1/public/sites/${inheritedSlug}/archives`)
       .expect(200);
@@ -380,6 +449,38 @@ describe('Admin tenant and locking (e2e)', () => {
       .expect(201);
     const documentId = (document.body as { data: { id: string } }).data.id;
 
+    const decree = await request(app.getHttpServer())
+      .put(`/api/v1/admin/competitions/${competitionId}/decree`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .send({
+        title: 'SK Penetapan Pemenang Event',
+        description: 'Unduh dokumen resmi SK Pemenang untuk pengujian.',
+        assetId: asset.rows[0].id,
+        fileType: 'PDF',
+        displaySize: '0.01 MB',
+      })
+      .expect(200);
+    expect(decree.body).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: 'SK Penetapan Pemenang Event',
+          assetId: asset.rows[0].id,
+        }),
+      }),
+    );
+    const decreeDocumentId = (
+      decree.body as { data: { documentId: string } }
+    ).data.documentId;
+    const downloadConfig = await request(app.getHttpServer())
+      .get(`/api/v1/admin/sites/${siteId}/downloads`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .expect(200);
+    expect(downloadConfig.body.data.competitions[0].documents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ documentId: decreeDocumentId }),
+      ]),
+    );
+
     const category = await request(app.getHttpServer())
       .post(`/api/v1/admin/competitions/${competitionId}/winner-categories`)
       .set('Authorization', `Bearer ${editorToken}`)
@@ -395,6 +496,9 @@ describe('Admin tenant and locking (e2e)', () => {
         fullName: 'Pemenang Dummy',
         rankLabel: '1',
         school: 'Sekolah Uji',
+        examNumber: 'UJI-001',
+        regency: 'Kota Uji',
+        province: 'Provinsi Uji',
       })
       .expect(201);
     const winnerId = (winner.body as { data: { id: string } }).data.id;
@@ -402,8 +506,34 @@ describe('Admin tenant and locking (e2e)', () => {
     await request(app.getHttpServer())
       .put(`/api/v1/admin/sites/${siteId}/pages/winners`)
       .set('Authorization', `Bearer ${editorToken}`)
-      .send({ title: 'Pemenang Event', alignment: 'center' })
+      .send({
+        title: 'Pemenang Event',
+        alignment: 'center',
+        showDecree: false,
+        metadataVisibility: {
+          showPhoto: true,
+          showSchool: true,
+          showExam: true,
+          showRegency: true,
+          showProvince: true,
+        },
+        archiveActive: true,
+        archiveLimit: 2,
+      })
       .expect(200);
+
+    const winnerPage = await request(app.getHttpServer())
+      .get(`/api/v1/admin/sites/${siteId}/pages/winners`)
+      .set('Authorization', `Bearer ${editorToken}`)
+      .expect(200);
+    expect(winnerPage.body).toEqual(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          showDecree: false,
+          archiveLimit: 2,
+        }),
+      }),
+    );
 
     await request(app.getHttpServer())
       .post(`/api/v1/admin/competitions/${competitionId}/publish`)
@@ -415,9 +545,41 @@ describe('Admin tenant and locking (e2e)', () => {
       .get(`/api/v1/public/sites/admin-${suffix}/winners`)
       .expect(200);
     const publicBody = publicWinners.body as {
-      data: { categories: Array<{ winners: unknown[] }> };
+      data: {
+        decree: Record<string, unknown>;
+        categories: Array<{
+          winners: Array<Record<string, unknown>>;
+        }>;
+      };
     };
+    expect(publicBody.data.decree).toEqual(
+      expect.objectContaining({
+        title: 'SK Penetapan Pemenang Event',
+        documentId: decreeDocumentId,
+        url: `/api/v1/public/media/${asset.rows[0].id}`,
+      }),
+    );
     expect(publicBody.data.categories[0].winners).toHaveLength(1);
+    expect(publicBody.data.categories[0].winners[0]).toEqual(
+      expect.objectContaining({
+        regency: 'Kota Uji',
+        province: 'Provinsi Uji',
+      }),
+    );
+    expect(publicBody.data.categories[0].winners[0]).not.toHaveProperty(
+      'district',
+    );
+    const publicDownloads = await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/admin-${suffix}/downloads`)
+      .expect(200);
+    expect(publicDownloads.body.data.competitions[0].documents).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          title: 'SK Penetapan Pemenang Event',
+          category: 'SK Pemenang',
+        }),
+      ]),
+    );
 
     await request(app.getHttpServer())
       .patch(

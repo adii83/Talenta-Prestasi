@@ -31,10 +31,7 @@ export class DownloadCompetition {
   @JoinColumn({ name: 'event_site_id' })
   eventSite!: EventSite;
   @ManyToOne(() => Competition, { onDelete: 'CASCADE' })
-  @JoinColumn([
-    { name: 'competition_id', referencedColumnName: 'id' },
-    { name: 'event_site_id', referencedColumnName: 'eventSiteId' },
-  ])
+  @JoinColumn({ name: 'competition_id' })
   competition!: Competition;
   @OneToMany(() => DownloadDocumentSettings, (item) => item.downloadCompetition)
   documentSettings!: DownloadDocumentSettings[];
