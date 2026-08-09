@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
-const origin = "http://127.0.0.1:4173";
+const origin = process.env.TALENTA_TEST_ORIGIN || "http://127.0.0.1:4173";
 const edgePath =
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const debugPort = 9338;
@@ -484,7 +484,7 @@ function compareSection(template, preview, mode, label) {
       );
       assert(
         difference <= 0.5,
-        `${mode}/${name}: ${dimension} ${label} berbeda ${difference}px`,
+        `${mode}/${name}: ${dimension} ${label} berbeda ${difference}px; template=${template[name].rect[dimension]}, preview=${preview[name].rect[dimension]}`,
       );
     }
   }
@@ -499,7 +499,7 @@ const edge = spawn(
     "--no-default-browser-check",
     `--remote-debugging-port=${debugPort}`,
     `--user-data-dir=${profilePath}`,
-    `${origin}/apps/template/`,
+    `${origin}/apps/public-site/`,
   ],
   { stdio: "ignore", windowsHide: true },
 );
@@ -516,7 +516,7 @@ try {
   await client.send("Runtime.enable");
 
   await setViewport(client, 1440);
-  await navigate(client, `${origin}/apps/template/`, "html");
+  await navigate(client, `${origin}/apps/public-site/`, "html");
   await evaluate(
     client,
     `(() => {
@@ -530,7 +530,7 @@ try {
           eyebrow: "PENDAFTARAN DIBUKA",
           title: "Olimpiade Sains Nusantara 2026",
           description: "Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.",
-          image: "../../../template/assets/images/garuda.png",
+          image: "../../../public-site/assets/images/garuda.png",
           imageAlt: "Garuda Logo",
           badges: [
             { label: "SD / MI", active: true },
@@ -562,7 +562,7 @@ try {
 
   for (const [mode, width] of cases) {
     await setViewport(client, width);
-    await navigate(client, `${origin}/apps/template/`, "#hero .hero__badge");
+    await navigate(client, `${origin}/apps/public-site/`, "#hero .hero__badge");
     await evaluate(
       client,
       `(async () => {
@@ -926,7 +926,7 @@ try {
 
   client.close();
   console.log(
-    "PASS: seluruh section Beranda identik dengan Template pada desktop 1440px, tablet 768px, dan mobile 390px.",
+    "PASS: seluruh section Beranda identik dengan Public Site pada desktop 1440px, tablet 768px, dan mobile 390px.",
   );
 } finally {
   edge.kill();

@@ -21,11 +21,11 @@
       title: data.page?.title || baseline.title,
       description: data.page?.description || baseline.description,
       alignment: data.page?.alignment || baseline.alignment,
-      competitions: data.competitions.map((competition) => ({
-        competitionId: competition.slug,
-        customTabName: competition.tabName,
-        isDefault: competition.isDefault,
-        documents: competition.documents.map((document) => ({
+      competitions: data.tabs.map((tab, index) => ({
+        competitionId: tab.id || `tab-${index + 1}`,
+        customTabName: tab.tabName,
+        isDefault: tab.isDefault,
+        documents: tab.documents.map((document) => ({
           title: document.title,
           category: document.category,
           type: document.fileType || "PDF",

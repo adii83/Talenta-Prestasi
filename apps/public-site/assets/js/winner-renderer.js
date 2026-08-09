@@ -3,9 +3,9 @@
   const root = document.getElementById("pemenang");
   if (!root) return;
 
-  const archiveHref = (competition) =>
-    TalentaPaths.to("template.archiveDetail", {
-      query: { id: competition.slug || competition.id },
+  const archiveHref = (event) =>
+    TalentaPaths.to("publicSite.archiveDetail", {
+      query: { event: event.slug || event.id },
       hash: "pemenang",
     });
 
@@ -14,7 +14,7 @@
     const visibility = data.settings?.metadataVisibility || {};
     return {
       manager: {
-        competitionId: data.competition?.slug || "",
+        competitionId: data.event?.slug || "",
         categories: data.categories.map((category) => ({
           name: category.name,
           icon: category.icon,
@@ -55,9 +55,9 @@
         archiveActive:
           data.settings?.archiveActive ?? baseline.page.archiveActive,
       },
-      archives: data.archives.map((competition) => ({
-        ...competition,
-        id: competition.slug,
+      archives: data.archives.map((event) => ({
+        ...event,
+        id: event.slug,
       })),
     };
   }

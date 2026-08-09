@@ -4,7 +4,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
-const origin = "http://127.0.0.1:4173";
+const origin = process.env.TALENTA_TEST_ORIGIN || "http://127.0.0.1:4173";
 const edgePath =
   "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe";
 const debugPort = 9337;
@@ -563,7 +563,7 @@ const edge = spawn(
     "--no-default-browser-check",
     `--remote-debugging-port=${debugPort}`,
     `--user-data-dir=${profilePath}`,
-    `${origin}/apps/template/`,
+    `${origin}/apps/public-site/`,
   ],
   { stdio: "ignore", windowsHide: true },
 );
@@ -579,7 +579,7 @@ try {
   await client.send("Page.enable");
   await client.send("Runtime.enable");
 
-  await navigate(client, `${origin}/apps/template/`, "html");
+  await navigate(client, `${origin}/apps/public-site/`, "html");
   await evaluate(
     client,
     `localStorage.setItem("talenta_event_settings_v1", ${JSON.stringify(
@@ -588,17 +588,17 @@ try {
   );
 
   const auditTargets = [
-    ["Template Beranda", "/apps/template/", "html", false],
-    ["Template Unduh", "/apps/template/unduh/", "html", false],
-    ["Template Pemenang", "/apps/template/pemenang/", "html", false],
-    ["Template Arsip", "/apps/template/arsip/", "html", false],
+    ["Public Site Beranda", "/apps/public-site/", "html", false],
+    ["Public Site Unduh", "/apps/public-site/unduh/", "html", false],
+    ["Public Site Pemenang", "/apps/public-site/pemenang/", "html", false],
+    ["Public Site Arsip", "/apps/public-site/arsip/", "html", false],
     [
-      "Template Detail Arsip",
-      "/apps/template/arsip/detail/?id=osn-2025",
+      "Public Site Detail Arsip",
+      "/apps/public-site/arsip/detail/?event=osn-2025",
       "html",
       false,
     ],
-    ["Template FAQ", "/apps/template/faq/", "html", false],
+    ["Public Site FAQ", "/apps/public-site/faq/", "html", false],
     [
       "Preview Beranda",
       "/apps/admin/editors/beranda/?embedded=1",
@@ -852,7 +852,7 @@ try {
 
   await navigate(
     client,
-    `${origin}/apps/template/arsip/`,
+    `${origin}/apps/public-site/arsip/`,
     "#archivePublicRoot",
   );
   await evaluate(
@@ -876,7 +876,7 @@ try {
     await setViewport(client, width);
     await navigate(
       client,
-      `${origin}/apps/template/unduh/`,
+      `${origin}/apps/public-site/unduh/`,
       "#unduh .doc-card",
     );
     const templateDownload = await readDownloadSection(client, "#unduh");
@@ -943,7 +943,7 @@ try {
     await setViewport(client, width);
     await navigate(
       client,
-      `${origin}/apps/template/pemenang/`,
+      `${origin}/apps/public-site/pemenang/`,
       "#pemenang .champion-card",
     );
     const templateWinner = await readWinnerSection(client, "#pemenang");
@@ -975,7 +975,7 @@ try {
     );
     assert.equal(winnerArchiveControl.max, "3");
     assert.equal(winnerArchiveControl.value, "3");
-    assert.match(winnerArchiveControl.note, /4 Arsip publik/);
+    assert.match(winnerArchiveControl.note, /3 Arsip publik/);
     assert.match(winnerArchiveControl.note, /3 memiliki pemenang aktif/);
     assert(winnerArchiveControl.mascotWidth >= 40);
     assert(winnerArchiveControl.mascotHeight >= 40);
@@ -1034,7 +1034,7 @@ try {
     await setViewport(client, width);
     await navigate(
       client,
-      `${origin}/apps/template/arsip/`,
+      `${origin}/apps/public-site/arsip/`,
       "#arsip .lomba-card",
     );
     const templateArchive = await readArchiveSurface(
@@ -1048,27 +1048,23 @@ try {
       `${origin}/apps/admin/editors/arsip/?embedded=1`,
       "#archivePreview #arsip .lomba-card",
     );
-    const archiveManagerMascot = await evaluate(
+    const archiveManagerSources = await evaluate(
       client,
       `(() => {
-        const image = document.querySelector(
-          ".archive-manager-item__uploaded-icon",
-        );
-        const holder = image?.closest(".archive-manager-item__icon");
-        const imageRect = image?.getBoundingClientRect();
-        const holderRect = holder?.getBoundingClientRect();
+        const items = [...document.querySelectorAll(".archive-manager-item")];
         return {
-          imageWidth: imageRect?.width || 0,
-          imageHeight: imageRect?.height || 0,
-          holderWidth: holderRect?.width || 0,
-          holderHeight: holderRect?.height || 0
+          count: items.length,
+          automaticBadges: items.filter(item =>
+            item.textContent.includes("Arsip otomatis")
+          ).length
         };
       })()`,
     );
-    assert(archiveManagerMascot.imageWidth >= 40);
-    assert(archiveManagerMascot.imageHeight >= 40);
-    assert(archiveManagerMascot.holderWidth >= 56);
-    assert(archiveManagerMascot.holderHeight >= 56);
+    assert(archiveManagerSources.count > 0);
+    assert.equal(
+      archiveManagerSources.automaticBadges,
+      archiveManagerSources.count,
+    );
     await evaluate(
       client,
       `(async () => {
@@ -1088,7 +1084,7 @@ try {
     await setViewport(client, width);
     await navigate(
       client,
-      `${origin}/apps/template/arsip/detail/?id=osn-2025`,
+      `${origin}/apps/public-site/arsip/detail/?event=osn-2025`,
       "#archiveDetailPublicRoot .champion-card",
     );
     const templateArchiveDetail = await readArchiveSurface(
@@ -1137,7 +1133,7 @@ try {
     await setViewport(client, width);
     await navigate(
       client,
-      `${origin}/apps/template/faq/`,
+      `${origin}/apps/public-site/faq/`,
       "#faqPublicRoot .accordion__item",
     );
     const templateFaq = await readFaqSurface(client, "#faqPublicRoot");
@@ -1253,7 +1249,7 @@ try {
       winnerHighlight: { active: true, background: "navy" }
     }))`,
   );
-  await navigate(client, `${origin}/apps/template/`, ".hero");
+  await navigate(client, `${origin}/apps/public-site/`, ".hero");
   const homeThemeColors = await evaluate(
     client,
     `(() => {
@@ -1286,12 +1282,12 @@ try {
   });
 
   const navigationCases = [
-    ["/apps/template/", "Beranda"],
-    ["/apps/template/unduh/", "Unduh"],
-    ["/apps/template/pemenang/", "Pemenang"],
-    ["/apps/template/arsip/", "Arsip"],
-    ["/apps/template/arsip/detail/?id=osn-2025", "Arsip"],
-    ["/apps/template/faq/", "FAQ"],
+    ["/apps/public-site/", "Beranda"],
+    ["/apps/public-site/unduh/", "Unduh"],
+    ["/apps/public-site/pemenang/", "Pemenang"],
+    ["/apps/public-site/arsip/", "Arsip"],
+    ["/apps/public-site/arsip/detail/?event=osn-2025", "Arsip"],
+    ["/apps/public-site/faq/", "FAQ"],
   ];
   for (const [path, label] of navigationCases) {
     await navigate(client, `${origin}${path}`, ".navbar__link");
@@ -1307,7 +1303,7 @@ try {
 
   await navigate(
     client,
-    `${origin}/apps/template/arsip/detail/?id=osn-2025`,
+    `${origin}/apps/public-site/arsip/detail/?event=osn-2025`,
     ".lomba-banner",
   );
   const archiveBanner = await evaluate(
@@ -1358,10 +1354,11 @@ try {
   assert.equal(detailColors.iconColor, "rgb(58, 143, 31)");
   assert.equal(detailColors.rankColor, "rgb(58, 143, 31)");
 
-  await setViewport(client, 1440, 1000);
-  await navigate(
-    client,
-    `${origin}/apps/admin/?page=settings`,
+  if (!process.env.TALENTA_SKIP_AUTH_DIALOGS) {
+    await setViewport(client, 1440, 1000);
+    await navigate(
+      client,
+      `${origin}/apps/admin/?page=settings`,
     "#routeResetButton",
   );
   const shellDialogAudit = await evaluate(
@@ -1474,11 +1471,12 @@ try {
   assert(
     Math.abs(mobileDialogAudit.firstWidth - mobileDialogAudit.secondWidth) <= 1,
   );
-  assert.equal(mobileDialogAudit.resolved, false);
+    assert.equal(mobileDialogAudit.resolved, false);
+  }
 
   client.close();
   console.log(
-    `PASS: ${auditTargets.length} target browser memakai tema global yang sama; batas editor dan preview Pengaturan Global konsisten tanpa scrollbar, seluruh preview halaman identik, serta dialog Admin lulus pada shell, iframe, dan mobile.`,
+    `PASS: ${auditTargets.length} target browser memakai tema global yang sama; batas editor dan seluruh preview konsisten${process.env.TALENTA_SKIP_AUTH_DIALOGS ? "; dialog auth diuji terpisah" : "; dialog shell, iframe, dan mobile lulus"}.`,
   );
 } finally {
   edge.kill();

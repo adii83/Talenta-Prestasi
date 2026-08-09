@@ -1,11 +1,11 @@
 import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { CompetitionDetailSettings } from './competition-detail-settings.entity';
+import { EventDetailSettings } from './event-detail-settings.entity';
 import { WinnerCategory } from './winner-category.entity';
 
 @Entity('archive_category_settings')
 export class ArchiveCategorySettings {
-  @PrimaryColumn({ name: 'competition_id', type: 'uuid' })
-  competitionId!: string;
+  @PrimaryColumn({ name: 'event_site_id', type: 'uuid' })
+  eventSiteId!: string;
 
   @PrimaryColumn({ name: 'category_id', type: 'uuid' })
   categoryId!: string;
@@ -16,16 +16,16 @@ export class ArchiveCategorySettings {
   @Column({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder!: number;
 
-  @ManyToOne(() => CompetitionDetailSettings, (s) => s.categorySettings, {
+  @ManyToOne(() => EventDetailSettings, (s) => s.categorySettings, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'competition_id' })
-  detailSettings!: CompetitionDetailSettings;
+  @JoinColumn({ name: 'event_site_id' })
+  detailSettings!: EventDetailSettings;
 
   @ManyToOne(() => WinnerCategory, { onDelete: 'CASCADE' })
   @JoinColumn([
     { name: 'category_id', referencedColumnName: 'id' },
-    { name: 'competition_id', referencedColumnName: 'competitionId' },
+    { name: 'event_site_id', referencedColumnName: 'eventSiteId' },
   ])
   category!: WinnerCategory;
 }

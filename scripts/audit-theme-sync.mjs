@@ -57,12 +57,12 @@ for (const [htmlPath, featurePath] of editorContracts) {
 }
 
 const templateEntries = [
-  "apps/template/index.html",
-  "apps/template/unduh/index.html",
-  "apps/template/pemenang/index.html",
-  "apps/template/arsip/index.html",
-  "apps/template/arsip/detail/index.html",
-  "apps/template/faq/index.html",
+  "apps/public-site/index.html",
+  "apps/public-site/unduh/index.html",
+  "apps/public-site/pemenang/index.html",
+  "apps/public-site/arsip/index.html",
+  "apps/public-site/arsip/detail/index.html",
+  "apps/public-site/faq/index.html",
 ];
 
 for (const htmlPath of templateEntries) {
@@ -82,7 +82,7 @@ assert(
   "Pengaturan Global tidak boleh lagi menampilkan pemilih Warna Sorotan",
 );
 assert(
-  !read("apps/template/assets/js/archive-detail.js").includes(
+  !read("apps/public-site/assets/js/archive-detail.js").includes(
     "competition.gradient",
   ),
   "banner Detail Arsip publik harus mengikuti gradient tema global",
@@ -94,17 +94,17 @@ assert(
   "editor Detail Arsip tidak boleh lagi menyediakan gradient per lomba",
 );
 assert(
-  read("apps/template/assets/js/ui.js").includes('aria-current", "page"'),
+  read("apps/public-site/assets/js/ui.js").includes('aria-current", "page"'),
   "navigasi publik harus menandai halaman aktif secara aksesibel",
 );
 assert(
-  read("apps/template/assets/js/home-renderer.js").includes(
+  read("apps/public-site/assets/js/home-renderer.js").includes(
     "buildHomeHeroMarkup",
   ) &&
     read("apps/admin/js/features/home/editor.js").includes(
       "buildHomeHeroMarkup",
     ),
-  "Hero Template dan preview Admin harus memakai builder markup bersama",
+  "Hero Public Site dan preview Admin harus memakai builder markup bersama",
 );
 
 const storage = new Map();
@@ -233,5 +233,5 @@ assert.deepEqual(
 );
 
 console.log(
-  `PASS: tema global tersinkron pada ${editorContracts.length} editor Admin dan ${templateEntries.length} halaman Template.`,
+  `PASS: tema global tersinkron pada ${editorContracts.length} editor Admin dan ${templateEntries.length} halaman Public Site.`,
 );

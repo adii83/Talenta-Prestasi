@@ -12,7 +12,6 @@ let wmState = {
 let wmDisplay = loadDisplay();
 let winnerPreviewResizeObserver;
 let winnerArchiveSources = [];
-window.TalentaActiveCompetition = null;
 
 function load() {
   return getWinnerManagerState();
@@ -611,8 +610,8 @@ function renderPreview() {
     winnerArchiveSources,
   );
   const archiveHref = (archiveCompetition) =>
-    TalentaPaths.to("template.archiveDetail", {
-      query: { id: archiveCompetition.id },
+    TalentaPaths.to("publicSite.archiveDetail", {
+      query: { event: archiveCompetition.slug || archiveCompetition.id },
       hash: "pemenang",
     });
   root.className = "section winner-public-preview scaled-public-preview";

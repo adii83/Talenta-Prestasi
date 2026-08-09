@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { OrganizationMembership } from './organization-membership.entity';
 import { EventSite } from './event-site.entity';
+import { CompetitionCategory } from './competition-category.entity';
 import { MediaAsset } from './media-asset.entity';
 
 @Entity('organizations')
@@ -37,6 +38,9 @@ export class Organization {
 
   @OneToMany(() => OrganizationMembership, (m) => m.organization)
   memberships!: OrganizationMembership[];
+
+  @OneToMany(() => CompetitionCategory, (c) => c.organization)
+  categories!: CompetitionCategory[];
 
   @OneToMany(() => EventSite, (s) => s.organization)
   eventSites!: EventSite[];

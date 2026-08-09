@@ -7,15 +7,15 @@ import {
   JoinColumn,
   OneToMany,
 } from 'typeorm';
-import { Competition } from './competition.entity';
-import { CompetitionDocument } from './competition-document.entity';
+import { EventSite } from './event-site.entity';
+import { EventDocument } from './event-document.entity';
 import { ArchiveCategorySettings } from './archive-category-settings.entity';
 import { ArchiveDocumentSettings } from './archive-document-settings.entity';
 
-@Entity('competition_detail_settings')
-export class CompetitionDetailSettings {
-  @PrimaryColumn({ name: 'competition_id', type: 'uuid' })
-  competitionId!: string;
+@Entity('event_detail_settings')
+export class EventDetailSettings {
+  @PrimaryColumn({ name: 'event_site_id', type: 'uuid' })
+  eventSiteId!: string;
 
   @Column({ name: 'decree_document_id', type: 'uuid', nullable: true })
   decreeDocumentId!: string | null;
@@ -43,13 +43,13 @@ export class CompetitionDetailSettings {
   @Column({ name: 'metadata_visibility', type: 'jsonb', default: {} })
   metadataVisibility!: Record<string, boolean>;
 
-  @OneToOne(() => Competition, (c) => c.detailSettings, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'competition_id' })
-  competition!: Competition;
+  @OneToOne(() => EventSite, (e) => e.detailSettings, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'event_site_id' })
+  eventSite!: EventSite;
 
-  @ManyToOne(() => CompetitionDocument, { nullable: true, onDelete: 'SET NULL' })
+  @ManyToOne(() => EventDocument, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'decree_document_id' })
-  decreeDocument!: CompetitionDocument | null;
+  decreeDocument!: EventDocument | null;
 
   @OneToMany(() => ArchiveCategorySettings, (s) => s.detailSettings)
   categorySettings!: ArchiveCategorySettings[];

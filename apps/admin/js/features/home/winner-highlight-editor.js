@@ -17,34 +17,32 @@ console.info("[Highlight audit] editor dimuat", {
   active: winnerState.active,
   storedActive: getHomeAdminState().winnerHighlight.active,
 });
-let winnerCategoriesData = [];
+let winnerCategoriesData =
+  typeof getPublicWinnerState === "function"
+    ? getPublicWinnerState().manager.categories
+    : [];
 let winnerDisplayData = { showPhoto: true, showSchool: true, showExam: true, showRegency: true, showProvince: true };
 
 async function fetchRealWinnerData() {
   const site = window.parent?.TalentaAdminAuth?.currentSite?.();
   if (!site?.id) return;
   try {
-    const pagesReq = await TalentaApi.request(`/admin/sites/${site.id}/pages/winners`);
+    const [pagesReq, catReq, winReq] = await Promise.all([
+      TalentaApi.request(`/admin/events/${site.id}/pages/winners`),
+      TalentaApi.request(`/admin/events/${site.id}/winner-categories`),
+      TalentaApi.request(`/admin/events/${site.id}/winners`),
+    ]);
     winnerDisplayData = pagesReq.data.metadataVisibility || winnerDisplayData;
-
-    const compsReq = await TalentaApi.request(`/admin/sites/${site.id}/competitions`);
-    const activeComp = compsReq.data.find(c => c.lifecycle === "current" && !c.deletedAt);
-    if (activeComp) {
-      const [catReq, winReq] = await Promise.all([
-        TalentaApi.request(`/admin/competitions/${activeComp.id}/winner-categories`),
-        TalentaApi.request(`/admin/competitions/${activeComp.id}/winners`)
-      ]);
-      winnerCategoriesData = catReq.data.filter(c => c.isActive).map(c => ({
-        ...c,
-        winners: winReq.data.filter(w => w.categoryId === c.id && w.isActive).map(w => ({
-          ...w,
-          name: w.fullName,
-          rank: w.rankLabel,
-          exam: w.examNumber,
-          photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : ""
-        }))
-      })).filter(c => c.winners.length > 0);
-    }
+    winnerCategoriesData = catReq.data.filter(c => c.isActive).map(c => ({
+      ...c,
+      winners: winReq.data.filter(w => w.categoryId === c.id && w.isActive).map(w => ({
+        ...w,
+        name: w.fullName,
+        rank: w.rankLabel,
+        exam: w.examNumber,
+        photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : ""
+      }))
+    })).filter(c => c.winners.length > 0);
   } catch (e) {
     console.warn("Gagal memuat data pemenang untuk pratinjau", e);
   }

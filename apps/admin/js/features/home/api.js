@@ -5,7 +5,7 @@
     if (!current?.id)
       throw new TalentaApi.ApiError("Portal Admin belum dipilih", 400);
     const response = await TalentaApi.request(
-      `/admin/sites/${current.id}/home`,
+      `/admin/events/${current.id}/home`,
     );
     return Object.fromEntries(
       response.data.sections.map((section) => [
@@ -32,7 +32,7 @@
         delete settings.active;
         return { sectionType: type, isActive, settings };
       });
-    return TalentaApi.request(`/admin/sites/${current.id}/home`, {
+    return TalentaApi.request(`/admin/events/${current.id}/home`, {
       method: "PUT",
       body: { sections },
     });

@@ -5,19 +5,19 @@
     if (!current?.id)
       throw new TalentaApi.ApiError("Portal Admin belum dipilih", 400);
     const [faq, page] = await Promise.all([
-      TalentaApi.request(`/admin/sites/${current.id}/faq`),
-      TalentaApi.request(`/admin/sites/${current.id}/pages/faq`),
+      TalentaApi.request(`/admin/events/${current.id}/faq`),
+      TalentaApi.request(`/admin/events/${current.id}/pages/faq`),
     ]);
     return { categories: faq.data.categories, page: page.data };
   }
   async function save(state) {
     const current = site();
     const [faq] = await Promise.all([
-      TalentaApi.request(`/admin/sites/${current.id}/faq`, {
+      TalentaApi.request(`/admin/events/${current.id}/faq`, {
         method: "PUT",
         body: { categories: state.categories },
       }),
-      TalentaApi.request(`/admin/sites/${current.id}/pages/faq`, {
+      TalentaApi.request(`/admin/events/${current.id}/pages/faq`, {
         method: "PUT",
         body: {
           isActive: state.page.active,

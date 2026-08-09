@@ -1,11 +1,11 @@
 import { Entity, PrimaryColumn, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { CompetitionDetailSettings } from './competition-detail-settings.entity';
-import { CompetitionDocument } from './competition-document.entity';
+import { EventDetailSettings } from './event-detail-settings.entity';
+import { EventDocument } from './event-document.entity';
 
 @Entity('archive_document_settings')
 export class ArchiveDocumentSettings {
-  @PrimaryColumn({ name: 'competition_id', type: 'uuid' })
-  competitionId!: string;
+  @PrimaryColumn({ name: 'event_site_id', type: 'uuid' })
+  eventSiteId!: string;
 
   @PrimaryColumn({ name: 'document_id', type: 'uuid' })
   documentId!: string;
@@ -19,16 +19,16 @@ export class ArchiveDocumentSettings {
   @Column({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder!: number;
 
-  @ManyToOne(() => CompetitionDetailSettings, (s) => s.documentSettings, {
+  @ManyToOne(() => EventDetailSettings, (s) => s.documentSettings, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'competition_id' })
-  detailSettings!: CompetitionDetailSettings;
+  @JoinColumn({ name: 'event_site_id' })
+  detailSettings!: EventDetailSettings;
 
-  @ManyToOne(() => CompetitionDocument, { onDelete: 'CASCADE' })
+  @ManyToOne(() => EventDocument, { onDelete: 'CASCADE' })
   @JoinColumn([
     { name: 'document_id', referencedColumnName: 'id' },
-    { name: 'competition_id', referencedColumnName: 'competitionId' },
+    { name: 'event_site_id', referencedColumnName: 'eventSiteId' },
   ])
-  document!: CompetitionDocument;
+  document!: EventDocument;
 }

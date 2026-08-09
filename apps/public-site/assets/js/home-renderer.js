@@ -23,11 +23,11 @@
     const source = String(value).trim();
     if (!source) return "#";
     const routeAliases = {
-      "index.html": "template.home",
-      "unduh.html": "template.download",
-      "pemenang.html": "template.winners",
-      "arsip.html": "template.archive",
-      "faq.html": "template.faq",
+      "index.html": "publicSite.home",
+      "unduh.html": "publicSite.download",
+      "pemenang.html": "publicSite.winners",
+      "arsip.html": "publicSite.archive",
+      "faq.html": "publicSite.faq",
     };
     if (routeAliases[source] && typeof TalentaPaths !== "undefined")
       return TalentaPaths.to(routeAliases[source]);
@@ -40,13 +40,15 @@
     if (/^(?:data:|blob:|https?:\/\/)/i.test(source)) return source;
     if (source.startsWith("/api/"))
       return new URL(source, TalentaConfig.apiBaseUrl).href;
-    const match = source.match(/template\/assets\/images\/([^/?#]+)$/i);
+    const match = source.match(
+      /(?:template|public-site)\/assets\/images\/([^/?#]+)$/i,
+    );
     const relative = match ? `assets/images/${match[1]}` : source;
     try {
       return new URL(
         relative,
         typeof TalentaPaths !== "undefined"
-          ? TalentaPaths.to("template.home")
+          ? TalentaPaths.to("publicSite.home")
           : location.href,
       ).href;
     } catch {
@@ -178,7 +180,7 @@
   void TalentaPublic.load("home").catch((error) =>
     console.error("Home API tidak tersedia; baseline ditampilkan.", error),
   );
-  void TalentaApi.request(`/public/sites/${TalentaConfig.siteSlug}/winners`, {
+  void TalentaApi.request(`/public/sites/${TalentaConfig.categorySlug}/winners`, {
     auth: false,
   })
     .then((response) => {

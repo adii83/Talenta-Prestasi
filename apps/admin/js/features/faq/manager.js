@@ -154,7 +154,7 @@ function faqRenderPreview() {
   root.className = "faq-public-preview scaled-public-preview";
   root.innerHTML = buildFaqPageMarkup(publicState, {
     idPrefix: "preview-faq",
-    homeHref: "../../../template/",
+    homeHref: "../../../public-site/",
   });
   bindFaqAccordion(root);
   requestAnimationFrame(fitFaqPreview);

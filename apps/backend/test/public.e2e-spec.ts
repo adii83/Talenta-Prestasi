@@ -5,14 +5,16 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 
-describe('Public API visibility (e2e)', () => {
+describe('Public Category → active Event visibility (e2e)', () => {
   let app: INestApplication<App>;
   let db: Client;
   let organizationId: string;
-  let siteId: string;
+  let categoryId: string;
+  let activeEventId: string;
+  let archivedEventId: string;
   const suffix = Date.now().toString();
-  const slug = `public-${suffix}`;
-  const hostname = `${slug}.localhost`;
+  const categorySlug = `public-${suffix}`;
+  const hostname = `${categorySlug}.localhost`;
 
   beforeAll(async () => {
     db = new Client({
@@ -24,31 +26,48 @@ describe('Public API visibility (e2e)', () => {
     });
     await db.connect();
     const organization = await db.query<{ id: string }>(
-      `INSERT INTO organizations (name, slug) VALUES ('Public Test', $1) RETURNING id`,
-      [slug],
+      `INSERT INTO organizations(name,slug) VALUES('Public Test',$1) RETURNING id`,
+      [categorySlug],
     );
     organizationId = organization.rows[0].id;
-    const site = await db.query<{ id: string }>(
-      `INSERT INTO event_sites (organization_id, name, slug, publication_status, published_at) VALUES ($1, 'Public Site', $2, 'published', now()) RETURNING id`,
-      [organizationId, slug],
+    const category = await db.query<{ id: string }>(
+      `INSERT INTO competition_categories(
+         organization_id,name,slug,organizer_name,publication_status,published_at
+       ) VALUES($1,'Public Category',$2,'Public Organizer','published',now()) RETURNING id`,
+      [organizationId, categorySlug],
     );
-    siteId = site.rows[0].id;
+    categoryId = category.rows[0].id;
+    const activeEvent = await db.query<{ id: string }>(
+      `INSERT INTO event_sites(category_id,organization_id,name,slug,is_active,description)
+       VALUES($1,$2,'Public Active Event','2026',true,'Active description') RETURNING id`,
+      [categoryId, organizationId],
+    );
+    activeEventId = activeEvent.rows[0].id;
+    const archivedEvent = await db.query<{ id: string }>(
+      `INSERT INTO event_sites(category_id,organization_id,name,slug,is_active,description)
+       VALUES($1,$2,'Public Archived Event','2025',false,'Archive description') RETURNING id`,
+      [categoryId, organizationId],
+    );
+    archivedEventId = archivedEvent.rows[0].id;
     await db.query(
-      `INSERT INTO site_domains (event_site_id, hostname, is_primary) VALUES ($1, $2, true)`,
-      [siteId, hostname],
+      `INSERT INTO site_domains(category_id,hostname,is_primary) VALUES($1,$2,true)`,
+      [categoryId, hostname],
     );
     await db.query(
-      `INSERT INTO site_settings (event_site_id, primary_color, navigation) VALUES ($1, '#123456', '{"home":true}')`,
-      [siteId],
+      `INSERT INTO site_settings(event_site_id,primary_color,navigation)
+       VALUES($1,'#123456','{"home":true}'),($2,'#654321','{}')`,
+      [activeEventId, archivedEventId],
     );
     await db.query(
-      `INSERT INTO competitions (event_site_id, name, slug, publication_status) VALUES ($1, 'Draft Competition', 'draft', 'draft')`,
-      [siteId],
+      `INSERT INTO home_sections(event_site_id,section_type,is_active,sort_order,settings)
+       VALUES($1,'hero',true,1,'{"title":"Visible"}'),($1,'pricing',false,2,'{}')`,
+      [activeEventId],
     );
     await db.query(
-      `INSERT INTO home_sections (event_site_id, section_type, is_active, sort_order, settings) VALUES ($1, 'hero', true, 1, '{"title":"Visible"}'), ($1, 'pricing', false, 2, '{}')`,
-      [siteId],
+      `INSERT INTO event_documents(event_site_id,title) VALUES($1,'Archive Document')`,
+      [archivedEventId],
     );
+
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -69,54 +88,63 @@ describe('Public API visibility (e2e)', () => {
       .get(`/api/v1/public/sites/by-host/${hostname}/bootstrap`)
       .expect(404));
 
-  it('returns only published bootstrap data for a verified hostname', async () => {
+  it('returns category and active event for a verified hostname', async () => {
     await db.query(
-      `UPDATE site_domains SET verified_at = now() WHERE event_site_id = $1`,
-      [siteId],
+      `UPDATE site_domains SET verified_at=now() WHERE category_id=$1`,
+      [categoryId],
     );
     const response = await request(app.getHttpServer())
       .get(`/api/v1/public/sites/by-host/${hostname}/bootstrap`)
       .expect(200);
-    const body = response.body as {
-      data: {
-        site: { slug: string; organizationId?: string };
-        settings: { primaryColor: string };
-        currentCompetition: unknown;
-      };
-    };
-    expect(body.data.site).toEqual(expect.objectContaining({ slug }));
-    expect(body.data.settings.primaryColor).toBe('#123456');
-    expect(body.data.currentCompetition).toBeNull();
-    expect(body.data.site.organizationId).toBeUndefined();
-  });
-
-  it('returns active Home sections only', async () => {
-    const response = await request(app.getHttpServer())
-      .get(`/api/v1/public/sites/${slug}/home`)
-      .expect(200);
-    const body = response.body as {
-      data: { sections: Array<{ type: string }> };
-    };
-    expect(body.data.sections).toHaveLength(1);
-    expect(body.data.sections[0].type).toBe('hero');
-  });
-
-  it('hides a suspended portal', async () => {
-    await db.query(
-      `UPDATE event_sites SET status = 'suspended' WHERE id = $1`,
-      [siteId],
+    expect(response.body.data.site).toEqual(
+      expect.objectContaining({ slug: categorySlug, name: 'Public Category' }),
     );
+    expect(response.body.data.settings.primaryColor).toBe('#123456');
+    expect(response.body.data.currentEvent).toEqual(
+      expect.objectContaining({ slug: '2026', name: 'Public Active Event' }),
+    );
+  });
+
+  it('returns active home sections and automatic archives only', async () => {
+    const home = await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/${categorySlug}/home`)
+      .expect(200);
+    expect(home.body.data.sections).toEqual([
+      expect.objectContaining({ type: 'hero' }),
+    ]);
+
+    const archives = await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/${categorySlug}/archives`)
+      .expect(200);
+    expect(archives.body.data.events).toEqual([
+      expect.objectContaining({ slug: '2025', name: 'Public Archived Event' }),
+    ]);
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/public/sites/${categorySlug}/archives/2025`)
+      .expect(200);
+    expect(detail.body.data.documents).toEqual([
+      expect.objectContaining({ title: 'Archive Document' }),
+    ]);
+  });
+
+  it('hides a suspended active event', async () => {
+    await db.query(`UPDATE event_sites SET status='suspended' WHERE id=$1`, [
+      activeEventId,
+    ]);
     await request(app.getHttpServer())
-      .get(`/api/v1/public/sites/${slug}/home`)
+      .get(`/api/v1/public/sites/${categorySlug}/home`)
       .expect(404);
   });
 
   afterAll(async () => {
-    if (organizationId)
-      await db.query(`DELETE FROM organizations WHERE id = $1`, [
-        organizationId,
-      ]);
-    await app?.close();
-    await db?.end();
+    try {
+      if (organizationId)
+        await db.query(`DELETE FROM organizations WHERE id=$1`, [
+          organizationId,
+        ]);
+    } finally {
+      await app?.close();
+      await db?.end();
+    }
   });
 });

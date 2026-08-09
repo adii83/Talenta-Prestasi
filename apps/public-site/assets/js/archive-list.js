@@ -3,9 +3,9 @@
   const root = document.getElementById("archivePublicRoot");
   if (!root) return;
 
-  const archiveHref = (competition) =>
-    TalentaPaths.to("template.archiveDetail", {
-      query: { id: competition.slug },
+  const archiveHref = (event) =>
+    TalentaPaths.to("publicSite.archiveDetail", {
+      query: { event: event.slug },
     });
 
   function render(data) {
@@ -21,13 +21,13 @@
         }
       : baseline;
     const competitions = data
-      ? data.competitions.map((competition) => ({
-          ...competition,
-          icon: competition.fallbackIcon || "archive",
+      ? data.events.map((event) => ({
+          ...event,
+          icon: event.icon || event.fallbackIcon || "archive",
         }))
       : getPublicArchivedCompetitions();
     if (!page.active) {
-      root.innerHTML = `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="eye-off"></i><h1 class="t-h2">Arsip tidak tersedia</h1><p>Halaman Arsip sedang dinonaktifkan.</p><a class="btn btn--outline" href="${TalentaPaths.to("template.home")}">Kembali ke Beranda</a></div></div></section>`;
+      root.innerHTML = `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="eye-off"></i><h1 class="t-h2">Arsip tidak tersedia</h1><p>Halaman Arsip sedang dinonaktifkan.</p><a class="btn btn--outline" href="${TalentaPaths.to("publicSite.home")}">Kembali ke Beranda</a></div></div></section>`;
       lucide.createIcons();
       return;
     }

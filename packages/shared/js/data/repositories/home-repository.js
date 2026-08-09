@@ -168,7 +168,7 @@ const HOME_STATE_BASELINE = {
     title: "Olimpiade Sains Nusantara 2026",
     description:
       "Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.",
-    image: "../../../template/assets/images/garuda.png",
+    image: "../../../public-site/assets/images/garuda.png",
     imageAlt: "Garuda Logo",
     badges: [
       { label: "SD / MI", active: true },
@@ -284,12 +284,12 @@ const HOME_STATE_BASELINE = {
     items: [
       homePartnerItem(
         "Mitra OAIN",
-        "../../../../template/assets/images/mitra-oain.jpg",
+        "../../../../public-site/assets/images/mitra-oain.jpg",
         "Mitra OAIN",
       ),
       homePartnerItem(
         "Talenta Prestasi Indonesia",
-        "../../../../template/assets/images/mitra-talenta.png",
+        "../../../../public-site/assets/images/mitra-talenta.png",
         "Talenta Prestasi Indonesia",
       ),
     ],

@@ -1,50 +1,41 @@
 (() => {
-  function site() {
-    const value =
-      window.parent?.TalentaAdminAuth?.currentSite?.() ||
-      window.TalentaAdminAuth?.currentSite?.();
-    if (!value?.id)
-      throw new TalentaApi.ApiError("Portal Admin belum dipilih", 400);
+  function currentEvent() {
+    const value = window.parent?.TalentaAdminAuth?.currentEvent?.();
+    if (!value?.id) throw new TalentaApi.ApiError("Event belum dipilih", 400);
     return value;
   }
-  const list = async () =>
-    (await TalentaApi.request(`/admin/sites/${site().id}/competitions`)).data;
-  const create = async (item) =>
-    (
-      await TalentaApi.request(`/admin/sites/${site().id}/competitions`, {
-        method: "POST",
-        body: { name: item.name, slug: item.slug, lifecycle: "archived" },
-      })
+  const list = async () => {
+    let event;
+    try {
+      event = currentEvent();
+    } catch {
+      return typeof getPublicArchivedCompetitions === "function"
+        ? getPublicArchivedCompetitions()
+        : [];
+    }
+    if (!event.categoryId) return [];
+    const rows = (
+      await TalentaApi.request(`/admin/categories/${event.categoryId}/events`)
     ).data;
-  const update = async (item) =>
-    (
-      await TalentaApi.request(`/admin/competitions/${item.id}`, {
-        method: "PATCH",
-        headers: { "If-Match": String(item.version) },
-        body: {
-          name: item.name,
-          description: item.description || "",
-          mascotAssetId: item.mascotAssetId || undefined,
-        },
-      })
-    ).data;
-  const publish = async (item) =>
-    (
-      await TalentaApi.request(`/admin/competitions/${item.id}/publish`, {
-        method: "POST",
-        headers: { "If-Match": String(item.version) },
-      })
-    ).data;
-  const remove = async (item) =>
-    TalentaApi.request(`/admin/competitions/${item.id}`, {
-      method: "DELETE",
-      headers: { "If-Match": String(item.version) },
+    return rows.filter((item) => !item.isActive && item.id !== event.id);
+  };
+  const savePage = (page) => {
+    const event = currentEvent();
+    return TalentaApi.request(`/admin/events/${event.id}/pages/archive`, {
+      method: "PUT",
+      body: page,
     });
-  window.TalentaArchiveApi = Object.freeze({
-    list,
-    create,
-    update,
-    publish,
-    remove,
-  });
+  };
+  const loadPage = async () => {
+    try {
+      const event = currentEvent();
+      return (
+        await TalentaApi.request(`/admin/events/${event.id}/pages/archive`)
+      ).data;
+    } catch {
+      const page = getEffectiveArchivePage();
+      return { ...page, isActive: page.active };
+    }
+  };
+  window.TalentaArchiveApi = Object.freeze({ list, loadPage, savePage });
 })();

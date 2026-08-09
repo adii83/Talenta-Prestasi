@@ -6,17 +6,17 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
-import { Competition } from './competition.entity';
+import { EventSite } from './event-site.entity';
 import { MediaAsset } from './media-asset.entity';
 
-@Entity('competition_documents')
-@Unique('uq_document_owner', ['id', 'competitionId'])
-export class CompetitionDocument {
+@Entity('event_documents')
+@Unique('uq_document_owner', ['id', 'eventSiteId'])
+export class EventDocument {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ name: 'competition_id', type: 'uuid' })
-  competitionId!: string;
+  @Column({ name: 'event_site_id', type: 'uuid' })
+  eventSiteId!: string;
 
   @Column({ name: 'asset_id', type: 'uuid', nullable: true })
   assetId!: string | null;
@@ -45,9 +45,9 @@ export class CompetitionDocument {
   @Column({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder!: number;
 
-  @ManyToOne(() => Competition, (c) => c.documents, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'competition_id' })
-  competition!: Competition;
+  @ManyToOne(() => EventSite, (e) => e.documents, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'event_site_id' })
+  eventSite!: EventSite;
 
   @ManyToOne(() => MediaAsset, { nullable: true })
   @JoinColumn({ name: 'asset_id' })

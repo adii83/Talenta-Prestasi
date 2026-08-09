@@ -16,7 +16,7 @@
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;600&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../template/assets/css/main.css" />
+    <link rel="stylesheet" href="../public-site/assets/css/main.css" />
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="../../packages/shared/js/core/paths.js"></script>
   </head>
@@ -79,7 +79,7 @@
           ><a
             class="btn btn--outline btn--sm"
             id="routePublicLink"
-            href="../template/"
+            href="../public-site/"
             target="_blank"
             ><i data-lucide="external-link"></i> Lihat halaman</a
           >
@@ -134,29 +134,8 @@
                         placeholder="Ringkasan yang akan ditampilkan ketika event ini menjadi Arsip."
                       ></textarea>
                     </div>
-                    <div class="admin-field">
-                      <label for="eventSlug">Slug / subdomain</label>
-                      <div class="admin-input-suffix">
-                        <input
-                          id="eventSlug"
-                          name="eventSlug"
-                          value="osn2026"
-                          pattern="[a-z0-9-]+"
-                          required
-                        /><span id="eventDomainSuffix"
-                          >.nexaplaymetadata.online</span
-                        >
-                      </div>
-                      <small>Huruf kecil, angka, dan tanda hubung.</small>
-                    </div>
-                    <div class="admin-field">
-                      <label for="organizerName">Penyelenggara</label
-                      ><input
-                        class="form-input"
-                        id="organizerName"
-                        name="organizerName"
-                        value="Talenta Prestasi Indonesia"
-                      />
+                    <div class="admin-field admin-field--wide">
+                      <small>Slug, subdomain, dan penyelenggara dikelola pada level Kategori Lomba.</small>
                     </div>
                   </div>
                 </section>
@@ -547,6 +526,10 @@
     <script src="../../packages/shared/js/core/api-client.js"></script>
     <script src="../../packages/shared/js/core/media-client.js"></script>
     <script src="../../packages/shared/js/data/repositories/settings-repository.js"></script>
+    <script src="../../packages/shared/js/data/mock-archive-database.js"></script>
+    <script src="../../packages/shared/js/data/repositories/archive-repository.js"></script>
+    <script src="../../packages/shared/js/data/repositories/winner-repository.js"></script>
+    <script src="../../packages/shared/js/data/repositories/home-repository.js"></script>
     <script src="js/config/routes.js"></script>
     <script src="js/shared/dialog.js"></script>
     <script src="js/shell/auth.js"></script>

@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { CompetitionCategory } from '../entities/competition-category.entity';
 import { EventSite } from '../entities/event-site.entity';
-import { Competition } from '../entities/competition.entity';
 import { AuthModule } from '../auth/auth.module';
 import {
-  AdminCompetitionController,
+  AdminCategoryController,
   AdminController,
   AdminSessionController,
 } from './admin.controller';
@@ -13,11 +13,14 @@ import { AdminContentController } from './admin-content.controller';
 import { AdminContentService } from './admin-content.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([EventSite, Competition]), AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([CompetitionCategory, EventSite]),
+    AuthModule,
+  ],
   controllers: [
     AdminSessionController,
+    AdminCategoryController,
     AdminController,
-    AdminCompetitionController,
     AdminContentController,
   ],
   providers: [AdminService, AdminContentService],

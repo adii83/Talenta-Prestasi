@@ -7,17 +7,17 @@ import {
   JoinColumn,
   Unique,
 } from 'typeorm';
-import { Competition } from './competition.entity';
+import { EventSite } from './event-site.entity';
 import { Winner } from './winner.entity';
 
 @Entity('winner_categories')
-@Unique('uq_category_owner', ['id', 'competitionId'])
+@Unique('uq_category_owner', ['id', 'eventSiteId'])
 export class WinnerCategory {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ name: 'competition_id', type: 'uuid' })
-  competitionId!: string;
+  @Column({ name: 'event_site_id', type: 'uuid' })
+  eventSiteId!: string;
 
   @Column({ name: 'legacy_key', type: 'varchar', nullable: true })
   legacyKey!: string | null;
@@ -37,11 +37,11 @@ export class WinnerCategory {
   @Column({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder!: number;
 
-  @ManyToOne(() => Competition, (c) => c.winnerCategories, {
+  @ManyToOne(() => EventSite, (e) => e.winnerCategories, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'competition_id' })
-  competition!: Competition;
+  @JoinColumn({ name: 'event_site_id' })
+  eventSite!: EventSite;
 
   @OneToMany(() => Winner, (w) => w.category)
   winners!: Winner[];

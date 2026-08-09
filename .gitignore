@@ -6,3 +6,26 @@ Thumbs.db
 .idea/
 .env
 dist/
+
+# Ruflo local secrets and runtime data
+.env.local
+.env.*.local
+.claude-flow/data/
+.claude-flow/logs/
+.claude-flow/sessions/
+
+# Local AI/tooling
+.claude/
+.claude-flow/
+.swarm/
+.mcp.json
+
+# Local environment
+.env.*
+!.env.example
+!**/.env.example
+
+# Local database/cache
+*.db
+*.db-shm
+*.db-wal

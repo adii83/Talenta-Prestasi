@@ -3,36 +3,36 @@
     settings: {
       title: "Pengaturan Event",
       crumb: "Event / Pengaturan",
-      public: TalentaPaths.to("template.home"),
+      public: TalentaPaths.to("publicSite.home"),
     },
     home: {
       title: "Editor Beranda",
       crumb: "Kelola Halaman / Beranda",
-      public: TalentaPaths.to("template.home"),
+      public: TalentaPaths.to("publicSite.home"),
       src: TalentaPaths.to("admin.homeEditor", { query: { embedded: 1 } }),
     },
     download: {
       title: "Editor Halaman Unduh",
       crumb: "Kelola Halaman / Unduh",
-      public: TalentaPaths.to("template.download"),
+      public: TalentaPaths.to("publicSite.download"),
       src: TalentaPaths.to("admin.downloadEditor", { query: { embedded: 1 } }),
     },
     winners: {
       title: "Manajemen Pemenang",
       crumb: "Kelola Halaman / Pemenang",
-      public: TalentaPaths.to("template.winners"),
+      public: TalentaPaths.to("publicSite.winners"),
       src: TalentaPaths.to("admin.winnersEditor", { query: { embedded: 1 } }),
     },
     archive: {
       title: "Manajemen Arsip",
       crumb: "Kelola Halaman / Arsip",
-      public: TalentaPaths.to("template.archive"),
+      public: TalentaPaths.to("publicSite.archive"),
       src: TalentaPaths.to("admin.archiveEditor", { query: { embedded: 1 } }),
     },
     faq: {
       title: "Manajemen FAQ",
       crumb: "Kelola Halaman / FAQ",
-      public: TalentaPaths.to("template.faq"),
+      public: TalentaPaths.to("publicSite.faq"),
       src: TalentaPaths.to("admin.faqEditor", { query: { embedded: 1 } }),
     },
   };
@@ -76,8 +76,8 @@
     document.getElementById("routeBreadcrumb").textContent = r.crumb;
     const publicUrl = new URL(r.public, location.href);
     const selectedSite = TalentaAdminAuth.currentSite();
-    if (selectedSite?.slug)
-      publicUrl.searchParams.set("site", selectedSite.slug);
+    if (selectedSite?.categorySlug)
+      publicUrl.searchParams.set("site", selectedSite.categorySlug);
     document.getElementById("routePublicLink").href = publicUrl.href;
     document
       .querySelectorAll("[data-route]")

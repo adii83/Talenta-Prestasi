@@ -31,7 +31,7 @@
     body.append("file", file);
     body.append("altText", altText);
     const response = await TalentaApi.request(
-      `/admin/sites/${currentSite}/media`,
+      `/admin/events/${currentSite}/media`,
       { method: "POST", body },
     );
     return response.data;

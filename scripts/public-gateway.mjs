@@ -13,10 +13,10 @@ function isAllowedFrontendPath(pathname) {
 }
 
 function frontendPath(pathname) {
-  if (pathname === "/") return "/apps/template/";
-  if (pathname.startsWith("/assets/")) return `/apps/template${pathname}`;
+  if (pathname === "/") return "/apps/public-site/";
+  if (pathname.startsWith("/assets/")) return `/apps/public-site${pathname}`;
   const firstSegment = pathname.split("/")[1];
-  if (publicPages.has(firstSegment)) return `/apps/template${pathname}`;
+  if (publicPages.has(firstSegment)) return `/apps/public-site${pathname}`;
   return pathname;
 }
 

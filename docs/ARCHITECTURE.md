@@ -1,292 +1,131 @@
-# Arsitektur Frontend Talenta Prestasi
+# Arsitektur Talenta Prestasi
 
-## Tujuan Arsitektur
+## Status dan Tujuan
 
-Proyek merupakan workspace Vanilla HTML/CSS/JavaScript untuk **master template website lomba**. Batas aplikasi dibuat eksplisit agar Template dapat dijadikan acuan desain dan Admin dapat berkembang sebagai CMS tanpa mencampurkan tanggung jawab. Pendaftaran peserta berada pada website eksternal.
+Talenta Prestasi adalah platform website kategori lomba multi-periode. Satu kategori memakai satu slug/subdomain tetap, sedangkan data lomba setiap tahun atau periode disimpan sebagai Event di dalam kategori tersebut. Pendaftaran dan dashboard peserta berada pada website eksternal di luar repository ini.
+
+## Gambaran Sistem
+
+```mermaid
+flowchart LR
+  Visitor[Pengunjung] --> PublicSite[apps/public-site]
+  AdminUser[Pengelola] --> Admin[apps/admin]
+  PublicSite --> PublicAPI[REST API publik]
+  Admin --> AdminAPI[REST API Admin]
+  PublicAPI --> Backend[apps/backend]
+  AdminAPI --> Backend
+  Backend --> PostgreSQL[(PostgreSQL)]
+  Backend --> Files[Filesystem media lokal]
+  PublicSite --> Shared[packages/shared]
+  Admin --> Shared
+```
+
+Backend NestJS memakai TypeORM untuk koneksi dan entity PostgreSQL. PostgreSQL merupakan sumber data otoritatif; filesystem backend menyimpan file media dan PostgreSQL menyimpan metadata/referensinya.
+
+## Hierarki Domain
+
+```text
+Organization
+└── CompetitionCategory
+    ├── slug/subdomain dan status publikasi
+    ├── EventSite aktif
+    └── EventSite nonaktif → arsip otomatis
+```
+
+- **Organization** adalah tenant tertinggi.
+- **CompetitionCategory** adalah kategori lomba tetap, misalnya `octal`; kategori memiliki slug/subdomain, identitas penyelenggara, logo/favicon, dan status publikasi.
+- **EventSite** adalah event/periode di dalam kategori, misalnya `Octal 2026`; Event memiliki konten dan pengaturan visual per periode.
+- Hanya satu Event dapat aktif dalam satu kategori. Event lain yang belum dihapus menjadi arsip otomatis.
+- Tidak ada entity `Competition` dan tidak ada relasi sumber arsip manual.
 
 ## Batas Aplikasi
 
-```text
-apps/admin ──────┐
-                 ├──> packages/shared (route, storage, data contracts)
-apps/template ───┘
+- `apps/public-site/`: website production pengunjung dan visual baseline preview.
+- `apps/admin/`: CMS untuk login, memilih kategori/Event, mengelola konten/media, dan preview responsif.
+- `apps/backend/`: REST API NestJS untuk autentikasi, tenant/RBAC, validasi, PostgreSQL, dan media.
+- `packages/shared/`: kontrak browser yang benar-benar dipakai Public Site dan Admin.
 
-apps/admin ─────────> apps/template/assets (design system untuk preview)
-```
+Browser tidak mengakses PostgreSQL atau path filesystem secara langsung. Admin menulis melalui Admin API; Public Site hanya membaca DTO publik.
 
-- `apps/template/` adalah source of truth tampilan pengunjung.
-- `apps/admin/` adalah CMS dan editor, bukan bagian Template publik.
-- `packages/shared/` hanya berisi kontrak teknis lintas aplikasi.
+## Resolusi Public Site
 
-## Ownership
+1. Hostname diverifikasi melalui `site_domains` dan mengarah ke CompetitionCategory.
+2. Resolver memilih satu Event `is_active=true`, `status='active'`, dan belum soft delete dari kategori tersebut.
+3. Kategori harus aktif, published, belum soft delete, dan Organization harus aktif.
+4. Bootstrap mengembalikan identitas kategori, settings Event, route publik, dan `currentEvent`.
+5. Arsip mengambil semua Event nonaktif yang belum soft delete dalam kategori yang sama.
+6. Detail arsip memakai `eventSlug`; URL browser menggunakan query `?event=...`.
 
-### Template
+Endpoint publik menyediakan bootstrap, Beranda, Unduh, FAQ, Pemenang, Arsip, dan Detail Arsip. Media tersedia melalui `/api/v1/public/media/<asset-id>`.
 
-`apps/template/` memiliki:
+## Alur CMS Admin
 
-- seluruh halaman publik;
-- `assets/css/main.css` sebagai design system;
-- `assets/images/` sebagai aset visual;
-- `assets/js/` sebagai runtime dan renderer publik.
+1. Pengguna login melalui `/api/v1/auth/login`; JWT disimpan pada `sessionStorage`.
+2. `/api/v1/admin/session` mengembalikan Organization dan kategori yang dapat diakses.
+3. Admin memilih kategori, lalu memuat Event melalui `/api/v1/admin/categories/:categoryId/events`.
+4. Admin memilih Event sebagai konteks editor.
+5. Editor membaca/menulis melalui `/api/v1/admin/events/:eventId/...`.
+6. Owner/admin dapat membuat, mengubah, menghapus, memublikasikan kategori, dan mengaktifkan Event sesuai aturan service.
+7. Owner/admin/editor dapat mengubah konten Event; viewer hanya membaca.
 
-Kode Admin tidak boleh ditempatkan di Template. Admin boleh menggunakan design system Template untuk menjaga preview/paritas visual, tetapi tidak boleh mengimpor runtime bisnis Template tanpa alasan eksplisit.
+`sessionStorage` hanya menyimpan autentikasi dan konteks pilihan. Konten tetap berasal dari API/PostgreSQL.
 
-### Admin
+## Kepemilikan Pengaturan
 
-`apps/admin/` memiliki shell, router, navigasi bagian, editor iframe, serta feature manager. Admin boleh membaca/menulis repository shared dan membuka canonical route Template.
+**Level kategori:**
 
-Setelah autentikasi manual, `portal-dashboard.js` menampilkan **Daftar Event** sebelum editor. Pembuatan event hanya meminta nama; slug/subdomain dikelola kemudian dari Identitas Utama editor. Kartu menampilkan status Draft/Aktif/Nonaktif dan mengelola publikasi melalui API. Publish ditolak selama slug masih sementara, membuat hostname primer `slug.PUBLIC_BASE_DOMAIN`, dan membuka resolver publik; Unpublish menutup resolver tanpa menghapus data. Event baru memperoleh relasi `event_site_archive_sources` ke event-event sebelumnya dalam organisasi yang sama. Arsip, dokumen, dan pemenang dibaca melalui relasi tersebut tanpa menyalin record, sedangkan penghapusan kartu Event menggunakan soft delete.
+- nama kategori dan slug/subdomain tetap;
+- penyelenggara, logo, favicon;
+- status operasional dan publikasi;
+- domain publik.
 
-Untuk uji domain dari komputer lokal, `scripts/public-gateway.mjs` menyatukan frontend port `4173` dan backend `/api` port `3000` pada `127.0.0.1:8080`. Cloudflare Tunnel meneruskan wildcard hostname ke gateway tersebut. Gateway hanya mengekspos route Template, aset shared yang dibutuhkan, dan API; Admin serta file repository lain tidak diekspos.
+**Level Event:**
 
-Domain uji memakai first-level wildcard `*.nexaplaymetadata.online` agar tercakup Universal SSL Cloudflare Free. Record eksplisit yang sudah ada, termasuk `meta.nexaplaymetadata.online` untuk R2, tetap memiliki prioritas dan tidak diarahkan ke Tunnel.
-
-### Shared
+- nama, slug periode internal, deskripsi, maskot/fallback icon, dan status aktif;
+- warna, navigasi, kontak, footer, SEO;
+- Beranda, dokumen, tab Unduh, FAQ, kategori pemenang, pemenang, SK, dan page/detail settings.
 
-`packages/shared/` memiliki:
+Slug kategori ditentukan saat kategori dibuat dan tidak diedit melalui Pengaturan Event.
 
-- `js/core/paths.js` — canonical route resolver;
-- `js/core/storage.js` — helper storage;
-- `js/data/` — baseline database dummy;
-- `js/data/repositories/` — kontrak baca/tulis state efektif.
+## Tenant, Auth, dan RBAC
 
-Shared tidak boleh mengimpor aplikasi mana pun.
-
-## Dependency Direction
+Membership menghubungkan User ke Organization dengan role `owner`, `admin`, `editor`, atau `viewer`.
 
-```text
-HTML entry
-  → route/storage core
-  → mock data
-  → repositories
-  → Template renderer atau Admin feature
-```
-
-Feature bukan sumber data permanen. Persistensi otoritatif berada pada PostgreSQL melalui Admin/Public API; repository/browser state hanya dipakai sebagai baseline preview dan cache sesi.
-
-## Storage Contracts
-
-| Domain            | Key localStorage             |
-| ----------------- | ---------------------------- |
-| Pengaturan Global | `talenta_event_settings_v1`  |
-| Arsip             | `talenta_archive_manager_v2` |
-| FAQ               | `talenta_faq_manager_v1`     |
-| Unduh             | `talenta_download_editor_v2` |
-| Pemenang          | `talenta_winner_manager_v1`  |
-| Tampilan Pemenang | `talenta_winner_page_v1`     |
-
-Key tidak boleh diganti tanpa migrasi schema eksplisit.
-
-### Kontrak Aggregate FAQ
-
-FAQ disimpan sebagai aggregate mandiri tanpa relasi lomba:
-
-```text
-FaqPage
-└── Category (owner)
-    └── Question (categoryId -> Category.id)
-```
-
-ID kategori dan pertanyaan unik pada satu halaman. Urutan array adalah urutan tampil.
-Status nonaktif tidak menghapus record; resolver publik menyaring kategori,
-pertanyaan nonaktif, serta pertanyaan dengan teks/jawaban kosong. Backend nantinya
-wajib mempertahankan owner kategori, unique ID per halaman, posisi terurut, dan
-validasi status tanpa menjadikan FAQ bergantung pada Arsip.
-
-Template dan preview Admin tidak menyusun HTML FAQ sendiri-sendiri. Keduanya memakai
-builder markup dan binder accordion dari `faq-repository.js`; preview hanya
-mensimulasikan viewport publik dengan kanvas berskala.
-
-### Shared Admin Dialog
-
-`apps/admin/js/shared/dialog.js` adalah satu-satunya jalur konfirmasi action Admin.
-Feature memanggil Promise `adminConfirm(options)` dan baru melakukan mutasi ketika
-hasilnya `true`. Editor iframe meneruskan pemanggilan ke `window.parent.adminConfirm`
-pada shell satu-origin; mode standalone membuat `<dialog>` lokal.
-
-Kontrak ini memisahkan keputusan pengguna dari mutasi repository, menghapus
-ketergantungan pada dialog native browser, dan membuat Reset/Hapus/Unlink dapat diuji
-secara deterministik.
-
-### Kontrak Owner Arsip dan Detail Arsip
-
-```text
-Competition
-  ├─ WinnerCategory[]
-  │    └─ Winner[]
-  ├─ Document[]
-  ├─ SkDocument.documentId -> Competition.documents[].id
-  └─ DetailConfig
-       ├─ hiddenCategoryIds[] -> Competition.winnerCategories[].id
-       ├─ hiddenDocumentIds[] -> Competition.documents[].id
-       └─ documentLabelOverrides.{documentId}
-            -> Competition.documents[].id
-```
-
-- Arsip adalah owner data historis. Unduh dan halaman Pemenang hanya menjadi
-  consumer; keduanya tidak menggandakan lomba, dokumen, kategori, atau pemenang
-  historis.
-- `Competition.id` dan `Document.id` unik secara global. `WinnerCategory.id` unik
-  dalam satu lomba dan `Winner.id` unik pada seluruh kategori lomba yang sama.
-- Semua referensi Detail divalidasi terhadap owner lombanya. Referensi asing,
-  kosong, dan duplikat dibuang oleh `normalizeArchiveCompetition()`.
-- Penghapusan baseline direpresentasikan oleh tombstone
-  `removedCompetitionIds`. Resolver efektif harus menerapkan tombstone sebelum
-  override dan sebelum data diteruskan ke Unduh/Pemenang.
-- Resolver publik hanya menerima status `published`, `active !== false`, dan
-  `detail.active !== false`. Draft/disabled tetap dapat disimpan di Admin.
-- Identitas visual Arsip menggunakan ikon library sebagai fallback. Jika
-  `iconMode=upload`, `uploadedIcon` menjadi logo/maskot utama pada editor, daftar
-  Arsip, dan kartu riwayat Pemenang.
-- Backend harus menerapkan foreign key, unique constraint, transaksi penghapusan,
-  dan kebijakan `ON DELETE` yang setara. Untuk soft delete, tombstone frontend dapat
-  dipetakan menjadi `deleted_at`.
-
-### Kontrak Relasi Unduh dan Arsip
-
-```text
-DownloadCompetition.competitionId
-  -> Competition.id
-
-DownloadCompetition.hiddenDocumentIds[]
-DownloadCompetition.documentLabelOverrides.{documentId}
-  -> Competition.documents[].id pada competitionId yang sama
-```
-
-Sumber Unduh terdiri dari lomba aktif yang selalu ditambahkan otomatis dan subset
-Arsip publik yang dipilih Admin. Pemilih sumber hanya menampilkan Event sebelumnya;
-lomba aktif dikelola pada area **Dokumen lomba saat ini**. Karena itu jumlah tab
-Unduh tidak wajib sama dengan jumlah kartu Arsip.
-
-- `Competition.id` dan `Document.id` harus unik; konfigurasi Unduh juga menolak
-  `competitionId` ganda.
-- Unduh tidak memiliki atau menggandakan metadata file. Arsip tetap menjadi owner
-  nama asli, kategori, tipe, ukuran, URL, ikon, dan status dokumen.
-- Melepas relasi Unduh tidak menghapus lomba/dokumen Arsip.
-- Lomba Arsip nonaktif, tidak published, atau Detail Arsip nonaktif disaring pada
-  resolver publik. Konfigurasinya dipertahankan agar dapat pulih ketika sumber
-  diterbitkan kembali.
-- Backend memvalidasi bahwa `competitionId` adalah lomba aktif milik portal atau
-  lomba published yang diwariskan melalui `event_site_archive_sources`.
-
-### Kontrak Relasi Pemenang, Arsip, dan Beranda
-
-```text
-WinnerManager.competitionId
-  -> Competition.id berstatus active
-
-WinnerCategory
-  -> dimiliki WinnerManager
-
-Winner
-  -> dimiliki WinnerCategory
-
-WinnerPage archive cards
-  -> Competition.id berstatus published dan publik
-
-Home winner highlight
-  -> resolvePublicWinnerState().manager
-```
-
-- `WinnerCategory.id` unik dalam satu lomba. `Winner.id` unik dalam seluruh
-  WinnerManager lomba aktif agar update, reorder, toggle, dan delete tidak ambigu.
-- State dengan `competitionId` berbeda dianggap milik lomba lain dan tidak
-  digabungkan ke lomba aktif.
-- `normalizeWinnerManagerState()` dan `normalizeWinnerPageState()` menjadi batas
-  sanitasi sebelum read/save. `resolvePublicWinnerState()` adalah batas publikasi
-  bersama untuk halaman Pemenang dan Highlight Beranda.
-- Kartu riwayat hanya mengambil Arsip published/aktif dengan Detail aktif dan
-  minimal satu pemenang aktif. Perubahan status Arsip langsung memengaruhi daftar
-  publik tanpa menggandakan data.
-- SK lomba aktif adalah satu `competition_documents` dengan role
-  `winner_decree`. `competition_detail_settings.decree_document_id` menjadi
-  referensi tunggalnya; judul/deskripsi berada pada pengaturan Competition. Upload
-  dari Pemenang otomatis menambahkan dokumen yang sama ke Unduh. Tidak ada URL atau
-  salinan file SK kedua.
-
-### Kontrak Tema Global
-
-- Key Pengaturan Global tetap `talenta_event_settings_v1`; versi schema aktif adalah
-  versi 3.
-- Default Warna Utama adalah `#1e4b8c`; putih (`#ffffff`) menjadi pasangan kontras
-  tetap dan bukan input Admin. Navy bukan input terpisah; nilainya diturunkan dari
-  Warna Utama dengan mencampurkan 55% hitam, sehingga hue tema tetap konsisten.
-- Data schema lama dinormalisasi oleh `settings-repository.js`; seluruh nilai
-  `accentColor` lama menjadi putih agar kontrak hanya memadukan Warna Utama dan putih.
-- `applyGlobalThemeTokens(target, settings)` adalah satu-satunya jalur penerapan
-  `--c-primary`, `--c-primary-dark`, `--c-primary-light`, `--c-navy`, token RGB
-  transparan, `--c-accent`, `--c-gold`, serta padanan token preview.
-- `--c-rank` mengikuti Warna Utama. Badge jumlah memakai putih transparan di latar
-  gelap dan tint Warna Utama di latar putih.
-- Template dan preview Admin berlangganan `talenta:settings` serta event `storage`.
-  Karena itu, HTML editor wajib memuat `settings-repository.js` sebelum feature
-  editornya.
-- Hero Beranda menggunakan `buildHomeHeroMarkup()` dari `home-repository.js` pada
-  Template dan preview Admin. Class, urutan elemen, badge, serta tombol tidak boleh
-  dibuat ulang di editor; frame preview hanya boleh mensimulasikan breakpoint.
-- Halaman Unduh menggunakan `buildDownloadMarkup()` dan
-  `resolveDownloadPublicState()` dari `download-repository.js` pada Template dan
-  preview Admin. Editor tidak boleh membangun ulang kartu dokumen dengan class
-  preview khusus.
-- Halaman Pemenang menggunakan `buildWinnerPageMarkup()` dan
-  `resolvePublicWinnerState()` dari `winner-repository.js`. Highlight Beranda wajib
-  membaca resolver yang sama; renderer/editor tidak boleh mem-parsing key Pemenang
-  secara mandiri ketika repository tersedia.
-- Daftar Arsip menggunakan `buildArchiveListMarkup()`. Detail Arsip menggunakan
-  `resolveArchiveDetailState()` dan `buildArchiveDetailMarkup()`. Template dan
-  Preview Admin tidak boleh membangun ulang banner, breadcrumb, SK, kartu pemenang,
-  atau kartu dokumen secara terpisah.
-
-## Routing Contract
-
-Root workspace memiliki nol file HTML. Semua halaman memakai directory-index routing. Internal navigation tidak boleh merujuk filename `.html`.
-
-Canonical route didefinisikan di `packages/shared/js/core/paths.js`. Resolver mendeteksi base path sehingga aplikasi dapat berjalan pada domain root atau subpath repository.
-
-Entry utama:
-
-| Area     | Canonical entry   |
-| -------- | ----------------- |
-| Template | `/apps/template/` |
-| Admin    | `/apps/admin/`    |
-
-### Menambah Route
-
-1. Buat `<app>/<route>/index.html`.
-2. Daftarkan route ID pada `TalentaPaths`.
-3. Untuk Admin, tambahkan metadata pada `apps/admin/js/config/routes.js`.
-4. Gunakan `TalentaPaths.to()` untuk URL dinamis, query, dan hash.
-5. Tambahkan route ke validator.
-6. Jalankan `npm run check`.
-
-## Menambah Fitur
-
-1. Tentukan pemilik fitur: Template, Admin, atau shared contract.
-2. Tempatkan renderer publik di `apps/template/assets/js/`.
-3. Tempatkan editor di `apps/admin/js/features/<domain>/`.
-4. Tambahkan repository shared hanya jika data dipakai lintas halaman/aplikasi.
-5. Pertahankan semantic HTML, ID unik, dan preview responsif.
-6. Jangan menduplikasi database state ke dalam aplikasi.
-7. Catat perubahan di `PROGRESS.md`.
-
-## Migrasi ke Backend
-
-Backend mendatang mempertahankan bentuk data repository dan menyediakan operasi list/find/save/remove. Repository localStorage diganti HTTP adapter. Autentikasi, otorisasi, upload file, validasi final, dan tenant resolution dilakukan server.
-
-Template tetap menjadi acuan markup/visual. Setiap event menyediakan data identitas, tema, konten, dan slug/subdomain yang berbeda, sedangkan struktur Template digunakan kembali.
-
-Model relasional produksi, ERD, constraint lintas owner, alur publikasi, kontrak
-API, serta urutan implementasi dijabarkan pada
-[`DATABASE_DESIGN.md`](DATABASE_DESIGN.md).
-
-## Menjalankan dan Memvalidasi
-
-Gunakan static HTTP server dari root:
-
-```bash
-npm run dev
-npm run check
-npm run test:theme-browser
-```
-
-Jangan menjalankan melalui `file://`. Static host harus mendukung directory index dan menayangkan seluruh workspace pada satu origin agar iframe Admin dan localStorage bekerja konsisten.
+- Semua endpoint Admin memerlukan JWT.
+- Query memverifikasi membership Organization pada kategori/Event target.
+- Operasi administratif kategori/Event dibatasi ke owner/admin.
+- Mutasi konten/media menerima owner/admin/editor.
+- Viewer hanya memperoleh akses baca.
+- Foreign key gabungan dan pemeriksaan ownership mencegah dokumen, kategori pemenang, pemenang, tab Unduh, atau media menyeberangi Event/tenant.
+
+Global `ValidationPipe` memakai whitelist, menolak field asing, dan mentransformasi input. `JWT_SECRET` wajib minimal 32 karakter.
+
+## Media
+
+Upload media Admin memakai `/api/v1/admin/events/:eventId/media`. Backend menerima PNG/JPEG/WebP/SVG maksimal 5 MB dan PDF maksimal 10 MB, memeriksa MIME/signature, menolak pola SVG berbahaya dasar, membuat storage key UUID serta checksum, dan menghapus file jika penyimpanan metadata gagal.
+
+Root storage default adalah `apps/backend/storage/uploads/` relatif working directory backend dan dapat dioverride dengan `LOCAL_STORAGE_PATH`.
+
+## Routing dan Gateway
+
+Canonical route browser berada di `packages/shared/js/core/paths.js`. Workspace development:
+
+- Public Site: `/apps/public-site/`
+- Admin: `/apps/admin/`
+
+Gateway production-like memetakan `/`, `/unduh/`, `/pemenang/`, `/arsip/`, `/arsip/detail/`, dan `/faq/`, meneruskan `/api/`, serta tidak mengekspos Admin atau file repository.
+
+## Public Site sebagai Visual Baseline
+
+Markup, class, token tema, dan responsive behavior Public Site menjadi acuan preview Admin. Preview menggunakan viewport desktop, tablet, dan mobile tanpa membuat implementasi visual alternatif.
+
+## Sumber Kebenaran
+
+Urutan sumber kebenaran:
+
+1. implementasi dan executable test;
+2. keputusan produk terbaru;
+3. dokumentasi aktif;
+4. dokumentasi historis di `docs/archive/`.
+
+Hasil validasi aktual dicatat di `PROGRESS.md`; aktivitas yang mengubah file dicatat di `docs/WORK_LOG.md`.

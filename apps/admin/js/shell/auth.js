@@ -1,5 +1,15 @@
-﻿(() => {
-  const SITE_KEY = "talenta_admin_site";
+(() => {
+  const CATEGORY_KEY = "talenta_admin_category";
+  const EVENT_KEY = "talenta_admin_event";
+
+  function stored(key) {
+    try {
+      return JSON.parse(sessionStorage.getItem(key) || "null");
+    } catch {
+      sessionStorage.removeItem(key);
+      return null;
+    }
+  }
 
   function createGate() {
     const gate = document.createElement("div");
@@ -23,11 +33,11 @@
   }
 
   async function loadSession() {
-    const response = await TalentaApi.request("/admin/session");
-    const session = response.data;
-    const selected = JSON.parse(sessionStorage.getItem(SITE_KEY) || "null");
-    if (selected && !session.sites.some((site) => site.id === selected.id)) {
-      sessionStorage.removeItem(SITE_KEY);
+    const session = (await TalentaApi.request("/admin/session")).data;
+    const category = stored(CATEGORY_KEY);
+    if (category && !session.categories.some((item) => item.id === category.id)) {
+      sessionStorage.removeItem(CATEGORY_KEY);
+      sessionStorage.removeItem(EVENT_KEY);
     }
     window.TalentaAdminSession = Object.freeze(session);
     return session;
@@ -38,7 +48,6 @@
     const form = document.getElementById("adminLoginForm");
     const error = document.getElementById("adminLoginError");
     const button = document.getElementById("adminLoginButton");
-
     async function authenticate(email, password) {
       button.disabled = true;
       button.textContent = "Memeriksa...";
@@ -50,63 +59,80 @@
             body: { email, password },
           });
           TalentaApi.setToken(login.access_token);
+          sessionStorage.removeItem(CATEGORY_KEY);
+          sessionStorage.removeItem(EVENT_KEY);
         }
-        const interactive = email !== undefined;
-        if (interactive) sessionStorage.removeItem(SITE_KEY);
         const session = await loadSession();
         gate.remove();
         document.dispatchEvent(
           new CustomEvent("talenta:admin-ready", {
-            detail: { session, interactive },
+            detail: { session, interactive: email !== undefined },
           }),
         );
       } catch (reason) {
         TalentaApi.setToken("");
-        sessionStorage.removeItem(SITE_KEY);
+        sessionStorage.removeItem(CATEGORY_KEY);
+        sessionStorage.removeItem(EVENT_KEY);
         error.textContent = reason.message;
       } finally {
         button.disabled = false;
         button.textContent = "Masuk";
       }
     }
-
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const data = new FormData(form);
-      authenticate(
-        String(data.get("email") || ""),
-        String(data.get("password") || ""),
-      );
+      authenticate(String(data.get("email") || ""), String(data.get("password") || ""));
     });
-
     if (TalentaApi.token()) await authenticate();
   }
 
+  function selectCategory(category) {
+    sessionStorage.setItem(CATEGORY_KEY, JSON.stringify(category));
+    sessionStorage.removeItem(EVENT_KEY);
+  }
+
+  function selectEvent(event, category = stored(CATEGORY_KEY)) {
+    if (category) selectCategory(category);
+    const selected = {
+      ...event,
+      categoryId: event.categoryId || category?.id,
+      categorySlug: event.categorySlug || category?.slug,
+    };
+    sessionStorage.setItem(EVENT_KEY, JSON.stringify(selected));
+    if (selected.categorySlug)
+      sessionStorage.setItem("talenta_public_site_slug", selected.categorySlug);
+    location.assign(`${location.pathname}?page=settings`);
+  }
+
   window.TalentaAdminAuth = Object.freeze({
-    currentSite: () => JSON.parse(sessionStorage.getItem(SITE_KEY) || "null"),
-    selectSite: (site) => {
-      sessionStorage.setItem(SITE_KEY, JSON.stringify(site));
-      sessionStorage.setItem("talenta_public_site_slug", site.slug);
-      location.assign(`${location.pathname}?page=settings`);
+    currentCategory: () => stored(CATEGORY_KEY),
+    currentEvent: () => stored(EVENT_KEY),
+    currentSite: () => stored(EVENT_KEY),
+    selectCategory,
+    selectEvent,
+    selectSite: selectEvent,
+    updateCurrentEvent: (patch) => {
+      const current = stored(EVENT_KEY);
+      if (current)
+        sessionStorage.setItem(EVENT_KEY, JSON.stringify({ ...current, ...patch }));
     },
-    updateCurrentSite: (patch) => {
-      const current = JSON.parse(sessionStorage.getItem(SITE_KEY) || "null");
-      if (!current) return;
-      const updated = { ...current, ...patch };
-      sessionStorage.setItem(SITE_KEY, JSON.stringify(updated));
-      if (updated.slug)
-        sessionStorage.setItem("talenta_public_site_slug", updated.slug);
+    updateCurrentSite(patch) {
+      this.updateCurrentEvent(patch);
     },
-    clearCurrentSite: (siteId) => {
-      const current = JSON.parse(sessionStorage.getItem(SITE_KEY) || "null");
-      if (!siteId || current?.id === siteId)
-        sessionStorage.removeItem(SITE_KEY);
+    clearCurrentEvent: (eventId) => {
+      if (!eventId || stored(EVENT_KEY)?.id === eventId)
+        sessionStorage.removeItem(EVENT_KEY);
+    },
+    clearCurrentSite(eventId) {
+      this.clearCurrentEvent(eventId);
     },
     showPortals: () =>
       document.dispatchEvent(new CustomEvent("talenta:show-portals")),
     logout: () => {
       TalentaApi.setToken("");
-      sessionStorage.removeItem(SITE_KEY);
+      sessionStorage.removeItem(CATEGORY_KEY);
+      sessionStorage.removeItem(EVENT_KEY);
       location.reload();
     },
   });

@@ -1,276 +1,130 @@
-﻿# Spesifikasi Panel Admin
+# Spesifikasi CMS Admin Talenta Prestasi
 
-Dokumen ini wajib dibaca bersama `README.md` dan `PROGRESS.md` sebelum mengubah CMS.
+## Tujuan dan Scope
 
-## Konsep Utama
+CMS Admin mengelola kategori lomba, Event/periode, konten Public Site, dokumen, pemenang, arsip otomatis, FAQ, dan media melalui REST API. Public Site tetap menjadi visual baseline; Admin bukan page builder bebas.
 
-Panel admin adalah **page builder terstruktur**. Admin dapat mengubah isi, gambar, ikon, tombol, dan visibilitas komponen tanpa coding. Posisi elemen tetap mengikuti template agar responsif pada desktop, tablet, dan mobile.
+## Login dan Sesi
 
-## Struktur Menu
+- Pengguna login dengan email/kata sandi; JWT disimpan pada `sessionStorage` dan dihapus saat logout atau respons `401`.
+- `/api/v1/admin/session` mengembalikan Organization dan kategori yang dapat diakses.
+- Kategori dan Event terpilih disimpan sebagai konteks sesi browser; konten tetap berasal dari API/PostgreSQL.
+- Editor tidak dapat digunakan tanpa sesi autentikasi valid dan Event terpilih.
 
-### Pengaturan Global
+## Flow Navigasi
 
-Berlaku di seluruh halaman:
+```text
+Login → Daftar Kategori → Daftar Event/Periode → Editor Event
+```
 
-- **Identitas & Tema:** nama singkat, nama lengkap, logo, favicon, slug/subdomain, warna utama dan aksen.
-- **Navigasi:** teks, URL, ikon mobile, urutan, dan status setiap menu.
-- **Kontak & WhatsApp:** email, nomor, alamat, template pesan, dan tombol WhatsApp.
-- **Footer:** identitas, deskripsi, kontak, copyright, dan visibilitas bagian.
-- **SEO Global:** pola title, deskripsi default, dan gambar berbagi.
+### Daftar Kategori
 
-### Kelola Halaman
+Kartu kategori menampilkan nama, slug/subdomain, status publikasi, dan Event aktif. Tindakan:
 
-- Beranda
-- Unduh
-- Pemenang
-- Arsip
-- FAQ
+- buat kategori dengan nama dan slug valid;
+- kelola daftar Event;
+- publikasikan/nonaktifkan kategori;
+- hapus kategori melalui konfirmasi.
 
-Setiap halaman memiliki status, SEO halaman, section terurut, dan preview.
+Slug kategori ditentukan saat pembuatan, unik per Organization, dan tidak diedit melalui Pengaturan Event.
 
-## Editor Beranda (Atas ke Bawah)
+### Daftar Event
 
-1. **Hero:** label, judul, deskripsi, gambar, badge, dan dua tombol.
-2. **Highlight Pemenang:** heading dan seluruh kategori/kartu aktif dari Manajemen Pemenang.
-3. **Jadwal Penting:** subjudul, judul, deskripsi, serta kartu jadwal.
-4. **Biaya Pendaftaran:** subjudul, harga, keterangan, dan catatan.
-5. **Benefit:** subjudul, judul, deskripsi, serta kartu benefit.
-6. **Mitra & Partner:** heading dan daftar logo mitra.
+Event dibuat di dalam kategori dengan nama; backend menghasilkan slug periode yang unik. Kartu menampilkan status Aktif atau Arsip. Tindakan:
 
-Navbar dan footer tidak termasuk editor Beranda karena merupakan komponen Global.
+- buat Event baru;
+- jadikan Event aktif;
+- kelola editor Event;
+- hapus Event melalui konfirmasi.
 
-## Kontrak Data Komponen
+Aktivasi satu Event otomatis menonaktifkan Event aktif sebelumnya dalam kategori. Event nonaktif menjadi arsip otomatis.
 
-### Section
+## Role dan Tenant
 
-- `is_active`, `eyebrow`, `title`, `description`, `display_order`.
+Membership mengikat pengguna ke Organization dengan role `owner`, `admin`, `editor`, atau `viewer`.
 
-### Card atau Item
+- `owner`/`admin`: tindakan administratif kategori dan Event.
+- `owner`/`admin`/`editor`: mutasi konten dan media Event.
+- `viewer`: baca saja.
+- Backend memverifikasi membership/ownership pada setiap operasi; UI bukan lapisan keamanan.
 
-- `is_active`, `icon`/`image`, `title`, `description`/`value`, `display_order`.
+## Pengaturan Event
 
-### Tombol
+Pengaturan Event mencakup:
 
-- `is_active`, `label`, `url`, `icon`, `style`, `open_in_new_tab`.
+- nama/deskripsi Event, maskot/logo Event, fallback icon, dan warna;
+- navigasi, kontak, footer, dan SEO;
+- settings visual yang berlaku khusus pada periode tersebut.
 
-Nonaktif menyembunyikan data tanpa menghapus. Hapus permanen adalah tindakan terpisah dengan konfirmasi.
+Slug/subdomain dan identitas penyelenggara berada pada kategori, bukan form Pengaturan Event.
 
-## Hero Beranda
+## Beranda
 
-- Section dapat dinonaktifkan.
-- Label, judul, deskripsi, gambar, dan alt text dapat diedit.
-- Badge dapat ditambah, diedit, diurutkan, dan dinonaktifkan.
-- Tombol utama dan sekunder memiliki teks, URL, ikon, gaya, target tab, dan status.
-- Preview wajib memakai builder dan class Hero Template yang sama. Mode desktop,
-  tablet, dan mobile hanya mengubah viewport simulasi sesuai breakpoint publik;
-  warna, tipografi, padding, badge, tombol, gambar, dan susunan tidak memiliki CSS
-  alternatif.
-- Kanvas yang melebihi ruang editor harus diperkecil sebagai satu kesatuan dengan
-  skala proporsional. Dilarang menampilkan scrollbar horizontal atau mengecilkan
-  elemen Hero satu per satu.
+Editor Beranda mengelola section terstruktur:
 
-## Pemenang
+1. Hero;
+2. Highlight Pemenang;
+3. Jadwal Penting;
+4. Biaya Pendaftaran;
+5. Benefit;
+6. Mitra/Partner.
 
-Data hanya melalui form dengan unggah foto, tanpa impor Excel. Manajemen Pemenang
-selalu terikat ke `Competition.id` yang berstatus aktif. Kategori memiliki ID unik
-di dalam lomba, sedangkan ID pemenang unik pada seluruh data pemenang lomba aktif.
-State dengan `competitionId` berbeda tidak boleh diterapkan pada lomba aktif.
+Section memiliki status aktif dan urutan. Preview Admin memakai markup/tema Public Site yang sama pada desktop, tablet, dan mobile.
 
-SK Pemenang bukan URL bebas. Admin mengunggah satu PDF maksimal 10 MB. Backend
-membuat atau memperbarui satu `competition_documents` dengan kategori
-`SK Pemenang` dan role `winner_decree`, lalu
-`competition_detail_settings.decree_document_id` menunjuk dokumen tersebut. Dokumen
-yang sama otomatis terlihat pada Unduh dan Detail Arsip. Judul serta deskripsi SK
-disimpan per Competition sehingga tetap benar ketika Event menjadi Arsip.
+## Unduh dan Dokumen
 
-Kategori/pemenang nonaktif tetap tersimpan di Admin tetapi disaring oleh resolver
-publik. Highlight Beranda mengambil kategori, pemenang, dan konfigurasi metadata
-melalui repository Pemenang yang sama agar tidak terjadi parsing localStorage atau
-duplikasi data.
+Dokumen dimiliki Event (`event_documents`). Editor Unduh mengatur tab Event (`download_tabs`) serta visibilitas, label, dan urutan referensi dokumen.
 
-Bagian riwayat hanya mengambil Arsip berstatus published, aktif, Detail Arsip aktif,
-dan memiliki minimal satu kategori serta pemenang aktif. Batas kartu dinormalisasi
-menjadi bilangan bulat yang tidak dapat melebihi jumlah Arsip valid tersebut. Jika
-empat Arsip publik hanya tiga yang memiliki pemenang aktif, nilai maksimum input dan
-jumlah kartu adalah tiga. Menonaktifkan Arsip tidak menghapus relasi atau data
-pemenang.
+- Satu tab dapat menjadi default.
+- Menyembunyikan referensi tidak menghapus dokumen sumber.
+- Dokumen dari Event lain ditolak backend.
+- PDF disajikan melalui endpoint public media.
 
-Template dan Preview Admin memakai `buildWinnerPageMarkup()` yang sama untuk
-heading, banner SK, kelompok kategori, kartu pemenang, metadata, dan kartu Arsip.
-Preview merender kanvas publik 1425 px, 753 px, atau 375 px kemudian melakukan
-scaling proporsional tanpa scrollbar horizontal.
+## Pemenang dan SK
+
+Kategori pemenang dan pemenang dimiliki Event. Data pemenang mencakup peringkat, nama, sekolah, nomor ujian, kabupaten, provinsi, foto, status, dan urutan. Tidak ada impor Excel.
+
+SK Pemenang adalah Event Document yang direferensikan oleh `event_detail_settings`; upload PDF maksimal 10 MB. Dokumen yang sama dapat ditampilkan pada Unduh tanpa menggandakan file.
+
+Bagian **Pemenang Sebelumnya** membaca Event nonaktif dalam kategori yang sama sesuai pengaturan halaman.
 
 ## Arsip dan Detail Arsip
 
-Arsip adalah owner utama untuk lomba terdahulu, dokumen, konfigurasi SK, kategori,
-dan pemenang historis. `Competition.id` unik secara global. Di dalam satu lomba,
-`WinnerCategory.id`, `Winner.id`, dan `Document.id` wajib unik; ID pemenang tidak
-boleh berulang lintas kategori pada lomba yang sama.
+Arsip dibentuk otomatis dari semua Event nonaktif yang belum dihapus dalam kategori terpilih. Tidak ada tombol atau tabel sumber arsip manual.
 
-Detail Arsip hanya menyimpan pengaturan tampilan sebagai referensi:
-`hiddenCategoryIds`, `hiddenDocumentIds`, dan `documentLabelOverrides`. Seluruh ID
-tersebut wajib dimiliki lomba yang sama. SK dengan `documentId` juga harus menunjuk
-`competition.documents` milik lomba tersebut. Referensi asing, kosong, atau duplikat
-dibersihkan saat normalisasi.
-
-Penghapusan lomba baseline memakai `removedCompetitionIds` sebagai tombstone agar
-data tidak muncul kembali setelah reload. Tombstone langsung menghilangkan sumber
-dari daftar Arsip, Detail Arsip, tab Unduh, dan riwayat halaman Pemenang. Status
-`draft`, `disabled`, lomba nonaktif, atau Detail nonaktif tidak lolos resolver publik.
-
-Template dan Preview Admin daftar Arsip sama-sama memakai
-`buildArchiveListMarkup()`. Detail Arsip memakai `resolveArchiveDetailState()` dan
-`buildArchiveDetailMarkup()` untuk banner, breadcrumb, SK, kategori, pemenang, dan
-dokumen. Preview hanya mensimulasikan kanvas 1425 px, 753 px, dan 375 px lalu
-melakukan scaling proporsional tanpa scrollbar.
-
-Field visual lomba mendukung ikon library sebagai fallback dan unggahan logo/maskot
-sebagai identitas utama. Logo/maskot memakai `object-fit: contain`, ditampilkan lebih
-besar pada thumbnail publik, dan digunakan konsisten pada daftar editor Arsip serta
-kartu riwayat Pemenang. PNG/WebP transparan direkomendasikan.
+- List arsip menggunakan slug Event.
+- URL detail browser memakai `?event=<event-slug>`.
+- Detail dapat mengatur heading, metadata, visibilitas kategori/pemenang/dokumen, maskot, dan SK.
+- Data tidak disalin; setiap record tetap dimiliki Event arsipnya.
+- Event dari kategori/tenant lain tidak dapat direferensikan.
 
 ## FAQ
 
-FAQ merupakan aggregate mandiri: halaman memiliki banyak kategori terurut dan setiap
-kategori menjadi owner pertanyaan terurut. `Category.id` dan `Question.id` wajib unik
-dalam satu halaman; setiap pertanyaan dinormalisasi dengan `categoryId` milik kategori
-induknya. FAQ tidak memiliki foreign key ke lomba, Unduh, Pemenang, atau Arsip.
+Editor FAQ mengelola aggregate kategori dan pertanyaan per Event: tambah, ubah, urutkan, aktif/nonaktifkan, dan hapus. Item nonaktif tidak tampil pada Public Site.
 
-Kategori dan pertanyaan nonaktif tetap tersimpan di Admin, tetapi resolver publik
-hanya mengirim kategori aktif yang memiliki minimal satu pertanyaan aktif dengan
-teks pertanyaan serta jawaban tidak kosong. Alignment dibatasi ke `center` atau
-`left`, ID disanitasi untuk HTML/backend, dan teks selalu di-escape sebelum menjadi
-markup.
+## Media
 
-Template dan Preview Admin memakai `buildFaqPageMarkup()`,
-`buildFaqAccordionMarkup()`, dan `bindFaqAccordion()` yang sama. Trigger accordion
-memiliki pasangan `aria-controls`/`aria-labelledby`, `aria-expanded`, serta region
-jawaban. Preview mensimulasikan kanvas 1425 px, 753 px, dan 375 px lalu melakukan
-scaling proporsional tanpa scrollbar.
+Upload Admin menggunakan `/api/v1/admin/events/:eventId/media` dan menerima:
 
-## Responsivitas
+- PNG, JPEG, WebP, SVG maksimal 5 MB;
+- PDF maksimal 10 MB.
 
-Admin tidak memasukkan CSS bebas. Sistem mengontrol grid, wrapping teks, rasio gambar, tumpukan tombol pada mobile, dan ukuran ikon. Navigasi desktop serta mobile memakai satu sumber data.
+Backend memeriksa MIME, ukuran, signature file, pola SVG berbahaya dasar, dan ownership Organization. URL publik berbentuk `/api/v1/public/media/<asset-id>`.
 
-## Status Publikasi
+## Dialog dan Aksesibilitas
 
-- `draft`: belum siap.
-- `published`: siap tampil bila komponen aktif.
-- `disabled`: disembunyikan tanpa menghapus data.
+- Tindakan destruktif/publikasi memakai dialog UI bersama, bukan `window.confirm/alert/prompt`.
+- Dialog memiliki label, tombol batal, fokus keyboard, dan tindakan jelas.
+- Form menampilkan error API tanpa membocorkan JWT, password, stack trace, atau path filesystem.
 
-## Implementasi Saat Ini
+## Error
 
-Shell `apps/admin/`, seluruh editor directory-index, dan JavaScript terkait
-merupakan CMS frontend dengan database dummy, repository bersama, serta override
-`localStorage`. Penyimpanan ini akan diganti API/database saat backend diterapkan.
+- `400`: input tidak valid/field asing.
+- `401`: sesi tidak valid; autentikasi lokal diakhiri.
+- `403`: role/tenant tidak mengizinkan akses.
+- `404`: resource tidak tersedia, tidak aktif, terhapus, atau di luar kontrak publik.
+- Konflik slug/constraint ditampilkan tanpa menimpa data diam-diam.
 
-## Sistem Ikon Kustom
+## Kontrak Validasi
 
-Komponen berikon menggunakan model bersama:
-
-- `iconMode`: `library` atau `upload`.
-- `libraryIcon`: nama ikon Lucide sebagai pilihan dan fallback.
-- `uploadedIcon`: URL/file ikon unggahan.
-- `iconAlt`: teks alternatif ikon kustom.
-
-Format unggahan: PNG, JPG, WebP, SVG maksimal 5 MB. SVG disanitasi oleh backend. Gambar memakai `object-fit: contain` agar tidak merusak ukuran komponen.
-
-## Jadwal Penting
-
-Section memiliki status, subjudul, judul, deskripsi, dan kartu terurut. Setiap kartu memiliki status, nama tahapan, tanggal/waktu, deskripsi opsional, serta ikon library/upload. Grid publik otomatis menyesuaikan jumlah kartu dan perangkat.
-
-## Biaya Pendaftaran
-
-Section mendukung varian `single` (Fokus Tunggal) dan `packages` (Paket Harga), serta mengambil warna navy dan primary dari tema global. Heading ringkas hanya memakai subjudul kecil; judul dan deskripsi tambahan tidak digunakan. Data paket difokuskan pada nama, harga utama, keterangan harga, status unggulan, serta daftar fasilitas aktif. Fasilitas dirender sebagai daftar centang pada Template dan preview Admin; ikon paket, harga lama, promo, catatan paket, dan tombol aksi tidak digunakan.
-
-Default mempertahankan satu kartu navy seperti template publik. Paket Harga menggunakan maksimal tiga kolom desktop, dua tablet, dan satu mobile.
-
-## Benefit
-
-Section Benefit mencakup status, heading, background `white`/`soft`, alignment `center`/`left`, dan varian kartu `standard`/`accent`/`minimal`. Kartu berisi status, judul, deskripsi, URL opsional, target tab, serta ikon library/upload. Label kecil dan status kartu unggulan tidak digunakan. Default mempertahankan empat kartu dan visual template publik.
-
-## Highlight Pemenang
-
-Editor Highlight hanya menyimpan status serta heading section. Identitas, kategori,
-urutan, kartu, dan visibilitas metadata berasal dari Manajemen Pemenang dan
-konfigurasi Tampilan Pemenang agar tidak ada duplikasi. Seluruh kategori aktif dan
-pemenang aktif ditampilkan; tidak ada tombol “Lihat Semua Pemenang”. Section berada
-tepat setelah Hero. Background mengikuti gradient tema global, memakai pembatas tipis
-dengan Hero, dan kelompok tiga kartu dipusatkan pada desktop tanpa mengubah grid
-responsif tablet/mobile.
-
-## Mitra & Partner
-
-Section Mitra memiliki status, heading ringkas tanpa deskripsi, background white/soft, alignment, varian simple/card/mono, dan preset ukuran small/medium/large. Item mitra berisi status, nama, logo, alt, URL, target tab, dan urutan. Label serta kategori tidak digunakan; semua logo tampil dalam satu kelompok. Upload mendukung PNG/JPG/WebP/SVG maksimal 5 MB dengan fallback nama dan `object-fit: contain`.
-
-## Halaman Unduh
-
-Halaman Unduh telah terhubung ke renderer publik, API, dan PostgreSQL. Editor
-menyediakan upload serta CRUD dokumen PDF untuk lomba/Event aktif. Lomba aktif selalu
-menjadi sumber otomatis dan tidak ditampilkan kembali pada pemilih Arsip.
-
-Bagian sumber tambahan hanya menampilkan Event sebelumnya yang diwariskan ke portal
-sekarang. Memilih sumber hanya membuat relasi tampilan; file, metadata dokumen, dan
-pemilik record tetap berada pada Competition asal. Event pertama karena itu memiliki
-pemilih Arsip kosong. Ketika Event baru dibuat, dokumen Event lama otomatis tersedia
-sebagai sumber Arsip tanpa disalin.
-
-## Koreksi Arsitektur Unduh ↔ Arsip
-
-Tab Unduh terdiri dari lomba aktif otomatis dan sumber Event sebelumnya yang dipilih.
-Dokumen berasal dari `competition_documents`; upload/hapus dokumen lomba aktif
-dilakukan langsung pada editor Unduh. Konfigurasi tab hanya menyimpan referensi
-`competitionId`, nama tab custom, status, default, urutan, `hiddenDocumentIds`, dan
-`documentLabelOverrides`.
-
-`competitionId` diperlakukan sebagai foreign key unik: satu lomba tidak boleh
-ditambahkan dua kali. Setiap ID pada `hiddenDocumentIds` dan setiap key pada
-`documentLabelOverrides` wajib menunjuk `competition.documents` milik lomba yang
-sama. Relasi yang sumbernya benar-benar hilang dibuang saat normalisasi, sedangkan
-sumber yang hanya nonaktif/tidak published tetap disimpan di Admin tetapi tidak
-ditampilkan publik. Jika tab default tidak lolos ke publik, tab publik pertama
-otomatis menjadi default tanpa mengubah data Arsip.
-
-Template dan Preview Admin sama-sama memakai `buildDownloadMarkup()`. Preview
-merender kanvas publik pada lebar acuan 1425 px, 753 px, dan 375 px lalu
-memperkecil keseluruhan kanvas secara proporsional agar tidak menghasilkan
-scrollbar horizontal.
-
-## Tema pada Preview Admin
-
-Semua preview Admin wajib menggunakan design system Template dan helper
-`applyGlobalThemeTokens()`. Preview tidak boleh membaca key Pengaturan Global secara
-langsung atau mendefinisikan fallback warna sendiri. Setelah Pengaturan Global
-disimpan, preview Beranda, Unduh, Pemenang, Arsip, Detail Arsip, dan FAQ harus
-merender ulang melalui `subscribeGlobalSettings()`.
-
-Warna gelap/Navy dan seluruh stop gradient global diturunkan otomatis dari Warna
-Utama. Editor tidak menyimpan Navy terpisah agar footer, Hero, Biaya, SK, Highlight
-Pemenang, thumbnail Arsip, avatar, serta preview tetap berada dalam satu hue ketika
-Warna Utama diganti.
-
-Pada halaman Pemenang dan Detail Arsip yang berlatar putih, ikon kategori, badge
-jumlah, garis kartu, avatar, dan teks peringkat mengikuti Warna Utama. Pada Highlight
-Beranda yang berlatar gelap, badge jumlah memakai putih transparan seperti badge
-jenjang Hero. Thumbnail daftar Arsip dan banner Detail Arsip sama-sama mengikuti
-gradient tema global; editor tidak lagi menyediakan gradient khusus per lomba.
-
-Navigasi publik menentukan item aktif dari route canonical. Detail Arsip menandai
-Arsip sebagai aktif, dan setiap halaman desktop/mobile memberikan `aria-current`
-pada satu item yang sesuai.
-
-## Dialog Konfirmasi Admin
-
-Seluruh action destruktif atau reset wajib memakai `adminConfirm()` dari
-`apps/admin/js/shared/dialog.js`. `window.confirm()`, `window.alert()`, dan
-`window.prompt()` tidak boleh digunakan karena menghasilkan dialog browser yang
-tidak mengikuti design system.
-
-Dialog menyediakan judul, penjelasan dampak, label tombol spesifik, ikon, dan varian
-`primary`/`danger`. Tombol Batal menerima fokus awal, Escape dan klik backdrop
-membatalkan action, fokus dikembalikan ke pemicu setelah dialog ditutup, serta layout
-tombol berubah menjadi vertikal pada mobile.
-
-Jika action berasal dari editor iframe, `adminConfirm()` mendelegasikan permintaan ke
-shell Admin agar backdrop dan dialog menutup seluruh workspace. Editor yang dibuka
-secara standalone tetap memakai dialog lokal dengan kontrak yang sama.
+Perubahan CMS diverifikasi melalui build/unit/E2E backend, audit Category→Event dan relasi modul, audit dialog, browser parity, serta checklist `docs/TESTING.md`. Receipt hasil terakhir berada di `PROGRESS.md`.

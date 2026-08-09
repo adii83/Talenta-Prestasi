@@ -1,11 +1,10 @@
 (() => {
-  const getSite = () => window.parent?.TalentaAdminAuth?.currentSite?.();
+  const getEvent = () => window.parent?.TalentaAdminAuth?.currentEvent?.();
   const call = async (path, options) =>
     (await TalentaApi.request(path, options)).data;
-  let competitionId = "";
+  let eventId = "";
   let originalCategoryIds = new Set();
   let originalWinnerIds = new Set();
-
   const defaultDecree = {
     title: "SK Penetapan Pemenang",
     description:
@@ -14,16 +13,16 @@
   const formatSize = (bytes) =>
     `${(Number(bytes || 0) / 1024 / 1024).toFixed(2)} MB`;
 
-  async function loadWinnerData(competition) {
+  async function loadWinnerData(event) {
     const [categories, winners] = await Promise.all([
-      call(`/admin/competitions/${competition.id}/winner-categories`),
-      call(`/admin/competitions/${competition.id}/winners`),
+      call(`/admin/events/${event.id}/winner-categories`),
+      call(`/admin/events/${event.id}/winners`),
     ]);
     return {
-      ...competition,
+      ...event,
       active: true,
-      status: competition.publicationStatus,
-      icon: competition.fallbackIcon || "archive",
+      status: event.isActive ? "active" : "archive",
+      icon: event.fallbackIcon || "archive",
       detail: { active: true },
       winnerCategories: categories.map((category) => ({
         ...category,
@@ -35,9 +34,7 @@
             name: winner.fullName,
             rank: winner.rankLabel,
             exam: winner.examNumber,
-            photo: winner.photoAssetId
-              ? TalentaMedia.url(winner.photoAssetId)
-              : "",
+            photo: winner.photoAssetId ? TalentaMedia.url(winner.photoAssetId) : "",
             active: winner.isActive,
           })),
       })),
@@ -45,44 +42,40 @@
   }
 
   async function load() {
-    const site = getSite();
-    if (!site?.id)
-      throw new TalentaApi.ApiError("Portal Admin belum dipilih", 400);
-    const competitions = await call(`/admin/sites/${site.id}/competitions`);
-    const competition =
-      competitions.find(
-        (item) =>
-          !item.inherited && item.lifecycle === "current" && !item.deletedAt,
-      ) || null;
-    const archiveCompetitions = competitions.filter(
-      (item) =>
-        item.inherited &&
-        item.lifecycle === "archived" &&
-        item.publicationStatus === "published" &&
-        !item.deletedAt,
-    );
-    if (!competition)
+    const event = getEvent();
+    if (!event?.id) {
+      const fallback = getPublicWinnerState();
+      const current =
+        typeof getActiveCompetition === "function"
+          ? getActiveCompetition()
+          : null;
       return {
-        competition: null,
-        state: { sk: { title: "", description: "", url: "" }, categories: [] },
-        page: null,
-        archives: await Promise.all(archiveCompetitions.map(loadWinnerData)),
+        competition: current,
+        state: fallback.manager,
+        page: fallback.page,
+        archives: fallback.archives,
       };
-    competitionId = competition.id;
+    }
+    eventId = event.id;
+    const categoryEvents = event.categoryId
+      ? await call(`/admin/categories/${event.categoryId}/events`)
+      : [];
+    const archivedEvents = categoryEvents.filter((item) => !item.isActive);
     const [currentData, page, archives, decree] = await Promise.all([
-      loadWinnerData(competition),
-      call(`/admin/sites/${site.id}/pages/winners`),
-      Promise.all(archiveCompetitions.map(loadWinnerData)),
-      call(`/admin/competitions/${competition.id}/decree`),
+      loadWinnerData(event),
+      call(`/admin/events/${event.id}/pages/winners`),
+      Promise.all(archivedEvents.map(loadWinnerData)),
+      call(`/admin/events/${event.id}/decree`),
     ]);
     const categories = currentData.winnerCategories;
-    const winners = categories.flatMap((category) => category.winners);
     originalCategoryIds = new Set(categories.map((item) => item.id));
-    originalWinnerIds = new Set(winners.map((item) => item.id));
+    originalWinnerIds = new Set(
+      categories.flatMap((category) => category.winners).map((item) => item.id),
+    );
     return {
-      competition,
+      competition: event,
       state: {
-        competitionId: competition.id,
+        competitionId: event.id,
         sk: {
           ...defaultDecree,
           ...decree,
@@ -99,14 +92,14 @@
     let asset;
     if (file) asset = await TalentaMedia.upload(file, { kind: "document" });
     const isDelete = !file && (sk.documentId === null || sk.assetId === null);
-    const decree = await call(`/admin/competitions/${competitionId}/decree`, {
+    const decree = await call(`/admin/events/${eventId}/decree`, {
       method: "PUT",
       body: {
         title: sk.title || defaultDecree.title,
         description: sk.description || defaultDecree.description,
-        assetId: isDelete ? null : asset?.assetId,
-        fileType: asset ? "PDF" : isDelete ? null : undefined,
-        displaySize: asset ? formatSize(asset.byteSize) : isDelete ? null : undefined,
+        assetId: isDelete ? undefined : asset?.assetId,
+        fileType: asset ? "PDF" : undefined,
+        displaySize: asset ? formatSize(asset.byteSize) : undefined,
         deleteFile: isDelete,
       },
     });
@@ -118,11 +111,7 @@
   }
 
   async function save(state, page) {
-    if (!competitionId)
-      throw new TalentaApi.ApiError(
-        "Belum ada lomba untuk menyimpan pemenang",
-        400,
-      );
+    if (!eventId) throw new TalentaApi.ApiError("Event belum dipilih", 400);
     const currentCategories = new Set(
       state.categories
         .filter((item) => originalCategoryIds.has(item.id))
@@ -134,20 +123,14 @@
         .filter((item) => originalWinnerIds.has(item.id))
         .map((item) => item.id),
     );
-    for (const id of [...originalWinnerIds].filter(
-      (id) => !currentWinners.has(id),
-    ))
-      await TalentaApi.request(
-        `/admin/competitions/${competitionId}/winners/${id}`,
-        { method: "DELETE" },
-      );
-    for (const id of [...originalCategoryIds].filter(
-      (id) => !currentCategories.has(id),
-    ))
-      await TalentaApi.request(
-        `/admin/competitions/${competitionId}/winner-categories/${id}`,
-        { method: "DELETE" },
-      );
+    for (const id of [...originalWinnerIds].filter((id) => !currentWinners.has(id)))
+      await TalentaApi.request(`/admin/events/${eventId}/winners/${id}`, {
+        method: "DELETE",
+      });
+    for (const id of [...originalCategoryIds].filter((id) => !currentCategories.has(id)))
+      await TalentaApi.request(`/admin/events/${eventId}/winner-categories/${id}`, {
+        method: "DELETE",
+      });
     for (const [categoryIndex, category] of state.categories.entries()) {
       const categoryBody = {
         name: category.name,
@@ -157,15 +140,15 @@
         sortOrder: categoryIndex,
       };
       if (originalCategoryIds.has(category.id))
-        await call(
-          `/admin/competitions/${competitionId}/winner-categories/${category.id}`,
-          { method: "PATCH", body: categoryBody },
-        );
+        await call(`/admin/events/${eventId}/winner-categories/${category.id}`, {
+          method: "PATCH",
+          body: categoryBody,
+        });
       else {
-        const created = await call(
-          `/admin/competitions/${competitionId}/winner-categories`,
-          { method: "POST", body: categoryBody },
-        );
+        const created = await call(`/admin/events/${eventId}/winner-categories`, {
+          method: "POST",
+          body: categoryBody,
+        });
         category.id = created.id;
       }
       for (const [winnerIndex, winner] of category.winners.entries()) {
@@ -182,21 +165,20 @@
           sortOrder: winnerIndex,
         };
         if (originalWinnerIds.has(winner.id))
-          await call(
-            `/admin/competitions/${competitionId}/winners/${winner.id}`,
-            { method: "PATCH", body: winnerBody },
-          );
+          await call(`/admin/events/${eventId}/winners/${winner.id}`, {
+            method: "PATCH",
+            body: winnerBody,
+          });
         else {
-          const created = await call(
-            `/admin/competitions/${competitionId}/winners`,
-            { method: "POST", body: winnerBody },
-          );
+          const created = await call(`/admin/events/${eventId}/winners`, {
+            method: "POST",
+            body: winnerBody,
+          });
           winner.id = created.id;
         }
       }
     }
-    const site = getSite();
-    await call(`/admin/sites/${site.id}/pages/winners`, {
+    await call(`/admin/events/${eventId}/pages/winners`, {
       method: "PUT",
       body: {
         isActive: page.active,

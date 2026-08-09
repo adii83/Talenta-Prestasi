@@ -28,18 +28,18 @@ type UploadedMedia = {
 @Controller()
 export class MediaController {
   constructor(private readonly media: MediaService) {}
-  @Post('admin/sites/:siteId/media')
+  @Post('admin/events/:eventId/media')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(
     FileInterceptor('file', { limits: { fileSize: 10_485_760, files: 1 } }),
   )
   upload(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() user: AuthenticatedUser,
     @UploadedFile() file: UploadedMedia,
     @Body('altText') altText = '',
   ) {
-    return this.media.upload(siteId, user.userId, file, altText);
+    return this.media.upload(eventId, user.userId, file, altText);
   }
 
   @Get('public/media/:assetId')

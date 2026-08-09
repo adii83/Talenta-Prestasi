@@ -1,12 +1,16 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { EventSite } from '../entities/event-site.entity';
+import { DataSource } from 'typeorm';
 
-interface PublicSiteRow {
-  id: string;
-  name: string;
-  slug: string;
+/* ponytail: raw SQL queries — replace with typed repo when public API
+   shape stabilises. Upgrade path: typed DTOs + QueryBuilder. */
+
+interface SiteRow {
+  eventId: string;
+  categoryId: string;
+  categoryName: string;
+  categorySlug: string;
+  eventName: string;
+  eventSlug: string;
   organizerName: string;
   logoAssetId: string | null;
   primaryColor: string;
@@ -14,228 +18,151 @@ interface PublicSiteRow {
   contact: Record<string, unknown>;
   footer: Record<string, unknown>;
   seo: Record<string, unknown>;
+  description: string | null;
+  mascotAssetId: string | null;
+  fallbackIcon: string | null;
 }
 
 @Injectable()
 export class PublicService {
-  constructor(
-    @InjectRepository(EventSite)
-    private readonly sites: Repository<EventSite>,
-  ) {}
+  constructor(private readonly db: DataSource) {}
 
   async bootstrap(hostname: string) {
     const normalized = hostname.trim().toLowerCase().replace(/\.$/, '');
-    const site = await this.publicSiteQuery()
-      .innerJoin('site_domains', 'domain', 'domain.event_site_id = site.id')
-      .andWhere('LOWER(domain.hostname) = :hostname', { hostname: normalized })
-      .andWhere('domain.verified_at IS NOT NULL')
-      .getRawOne<PublicSiteRow>();
-    if (!site) throw new NotFoundException('Published site not found');
+    const site = await this.db.query<SiteRow[]>(
+      `${SITE_SELECT}
+       INNER JOIN site_domains domain ON domain.category_id = category.id
+       WHERE LOWER(domain.hostname) = $1 AND domain.verified_at IS NOT NULL
+         ${SITE_WHERE}
+       LIMIT 1`,
+      [normalized],
+    );
+    if (!site[0]) throw new NotFoundException('Published site not found');
+    return this.bootstrapData(site[0]);
+  }
+
+  async bootstrapBySlug(categorySlug: string) {
+    const site = await this.requireSite(categorySlug);
     return this.bootstrapData(site);
   }
 
-  async bootstrapBySlug(siteSlug: string) {
-    const site = await this.requirePublicSite(siteSlug);
-    return this.bootstrapData(site);
-  }
-
-  private async bootstrapData(site: PublicSiteRow) {
-    const competition = await this.sites.manager
-      .createQueryBuilder()
-      .select([
-        'competition.slug AS "slug"',
-        'competition.name AS "name"',
-        'competition.short_name AS "shortName"',
-        'competition.description AS "description"',
-        'competition.fallback_icon AS "fallbackIcon"',
-        'competition.mascot_asset_id AS "mascotAssetId"',
-      ])
-      .from('competitions', 'competition')
-      .where('competition.event_site_id = :siteId', { siteId: site.id })
-      .andWhere("competition.lifecycle = 'current'")
-      .andWhere("competition.publication_status = 'published'")
-      .andWhere('competition.deleted_at IS NULL')
-      .getRawOne<Record<string, unknown>>();
-
+  private bootstrapData(s: SiteRow) {
     return {
       data: {
-        site: this.siteDto(site),
-        settings: this.settingsDto(site),
+        site: this.siteDto(s),
+        settings: this.settingsDto(s),
         routes: ['home', 'downloads', 'winners', 'archives', 'faq'],
-        currentCompetition: competition ?? null,
+        currentEvent: {
+          slug: s.eventSlug,
+          name: s.eventName,
+          description: s.description,
+          mascotAssetId: s.mascotAssetId,
+          fallbackIcon: s.fallbackIcon,
+        },
       },
       errors: [],
     };
   }
 
-  async home(siteSlug: string) {
-    const site = await this.publicSiteQuery()
-      .andWhere('site.slug = :siteSlug', { siteSlug })
-      .getRawOne<PublicSiteRow>();
-    if (!site) throw new NotFoundException('Published site not found');
-
-    const sections = await this.sites.manager
-      .createQueryBuilder()
-      .select([
-        'section.id AS "id"',
-        'section.section_type AS "type"',
-        'section.sort_order AS "sortOrder"',
-        'section.settings AS "settings"',
-      ])
-      .from('home_sections', 'section')
-      .where('section.event_site_id = :siteId', { siteId: site.id })
-      .andWhere('section.is_active = true')
-      .orderBy('section.sort_order', 'ASC')
-      .addOrderBy('section.id', 'ASC')
-      .getRawMany<Record<string, unknown>>();
-
-    return { data: { site: this.siteDto(site), sections }, errors: [] };
+  async home(categorySlug: string) {
+    const s = await this.requireSite(categorySlug);
+    const sections = await this.db.query(
+      `SELECT id,section_type AS "type",sort_order AS "sortOrder",settings
+       FROM home_sections WHERE event_site_id=$1 AND is_active=true
+       ORDER BY sort_order,id`,
+      [s.eventId],
+    );
+    return { data: { site: this.siteDto(s), sections }, errors: [] };
   }
 
-  async downloads(siteSlug: string) {
-    const site = await this.requirePublicSite(siteSlug);
-    const [competitions, pages] = await Promise.all([
-      this.sites.manager.query<
-        Array<{
-          slug: string;
-          name: string;
-          tabName: string;
-          isDefault: boolean;
-          documents: unknown;
-        }>
-      >(
-        `SELECT dc.id, c.slug, c.name,
-              COALESCE(NULLIF(dc.custom_tab_name, ''), c.short_name, c.name) AS "tabName",
-              dc.is_default AS "isDefault",
-              COALESCE(jsonb_agg(jsonb_build_object(
-                'title', d.title,
-                'category', d.category,
-                'fileType', d.file_type,
-                'displaySize', d.display_size,
-                'assetId', d.asset_id,
-                'url', CASE WHEN d.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/' || d.asset_id::text END
-              ) ORDER BY dds.sort_order, d.sort_order) FILTER (WHERE d.id IS NOT NULL), '[]') AS documents
-       FROM download_competitions dc
-       JOIN competitions c ON c.id = dc.competition_id
-       LEFT JOIN download_document_settings dds ON dds.download_competition_id = dc.id AND dds.is_visible = true
-       LEFT JOIN competition_documents d ON d.id = dds.document_id AND d.competition_id = dc.competition_id AND d.is_active = true
-       WHERE dc.event_site_id = $1 AND dc.is_active = true
-         AND c.publication_status = 'published' AND c.deleted_at IS NULL
-       GROUP BY dc.id, c.slug, c.name, c.short_name
-       ORDER BY dc.is_default DESC, dc.sort_order, dc.id`,
-        [site.id],
+  async downloads(categorySlug: string) {
+    const s = await this.requireSite(categorySlug);
+    const [tabs, pages] = await Promise.all([
+      this.db.query(
+        `SELECT tab.id,
+                COALESCE(NULLIF(tab.custom_tab_name,''),category.name) AS "tabName",
+                tab.is_default AS "isDefault",
+                COALESCE(jsonb_agg(jsonb_build_object(
+                  'title',d.title,'category',d.category,'fileType',d.file_type,
+                  'displaySize',d.display_size,'assetId',d.asset_id,
+                  'url',CASE WHEN d.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||d.asset_id::text END
+                ) ORDER BY dds.sort_order,d.sort_order) FILTER (WHERE d.id IS NOT NULL),'[]') AS documents
+         FROM download_tabs tab
+         JOIN event_sites event ON event.id=tab.event_site_id
+         JOIN competition_categories category ON category.id=event.category_id
+         LEFT JOIN download_document_settings dds ON dds.download_tab_id=tab.id AND dds.is_visible=true
+         LEFT JOIN event_documents d ON d.id=dds.document_id AND d.event_site_id=tab.event_site_id AND d.is_active=true
+         WHERE tab.event_site_id=$1 AND tab.is_active=true
+         GROUP BY tab.id,category.name
+         ORDER BY tab.is_default DESC,tab.sort_order,tab.id`,
+        [s.eventId],
       ),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
+      this.db.query(
         `SELECT is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type='download'`,
-        [site.id],
+        [s.eventId],
       ),
     ]);
     return {
-      data: {
-        site: this.siteDto(site),
-        page: pages[0] ?? null,
-        competitions,
-      },
+      data: { site: this.siteDto(s), page: pages[0] ?? null, tabs },
       errors: [],
     };
   }
 
-  async faq(siteSlug: string) {
-    const site = await this.requirePublicSite(siteSlug);
+  async faq(categorySlug: string) {
+    const s = await this.requireSite(categorySlug);
     const [categories, pages] = await Promise.all([
-      this.sites.manager.query<Array<{ title: string; questions: unknown }>>(
+      this.db.query(
         `SELECT category.title,
-              COALESCE(jsonb_agg(jsonb_build_object(
-                'question', question.question,
-                'answer', question.answer
-              ) ORDER BY question.sort_order, question.id) FILTER (WHERE question.id IS NOT NULL), '[]') AS questions
-       FROM faq_categories category
-       LEFT JOIN faq_questions question ON question.category_id = category.id AND question.is_active = true
-       WHERE category.event_site_id = $1 AND category.is_active = true
-       GROUP BY category.id
-       ORDER BY category.sort_order, category.id`,
-        [site.id],
+                COALESCE(jsonb_agg(jsonb_build_object(
+                  'question',question.question,'answer',question.answer
+                ) ORDER BY question.sort_order,question.id) FILTER (WHERE question.id IS NOT NULL),'[]') AS questions
+         FROM faq_categories category
+         LEFT JOIN faq_questions question ON question.category_id=category.id AND question.is_active=true
+         WHERE category.event_site_id=$1 AND category.is_active=true
+         GROUP BY category.id ORDER BY category.sort_order,category.id`,
+        [s.eventId],
       ),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
+      this.db.query(
         `SELECT is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type='faq'`,
-        [site.id],
+        [s.eventId],
       ),
     ]);
     return {
-      data: { site: this.siteDto(site), page: pages[0] ?? null, categories },
+      data: { site: this.siteDto(s), page: pages[0] ?? null, categories },
       errors: [],
     };
   }
 
-  async winners(siteSlug: string) {
-    const site = await this.requirePublicSite(siteSlug);
-    const [competition, pageRows, settingRows, archives] = await Promise.all([
-      this.publicCompetition(site.id, 'current'),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
+  async winners(categorySlug: string) {
+    const s = await this.requireSite(categorySlug);
+    const [categories, pageRows, settingRows, archives] = await Promise.all([
+      this.winnerCategories(s.eventId),
+      this.db.query(
         `SELECT is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type='winners'`,
-        [site.id],
+        [s.eventId],
       ),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
+      this.db.query(
         `SELECT is_active AS "isActive",show_decree AS "showDecree",metadata_visibility AS "metadataVisibility",archive_active AS "archiveActive",archive_limit AS "archiveLimit" FROM winner_page_settings WHERE event_site_id=$1`,
-        [site.id],
+        [s.eventId],
       ),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
-        `SELECT CASE WHEN competition.event_site_id=$1 THEN competition.slug ELSE owner_site.slug || '-' || competition.slug END AS slug,
-                competition.name,competition.description,competition.fallback_icon AS icon
-         FROM competitions competition
-         JOIN event_sites owner_site ON owner_site.id=competition.event_site_id
-         LEFT JOIN event_site_archive_sources source
-           ON source.event_site_id=$1 AND source.source_event_site_id=competition.event_site_id
-         WHERE ((competition.event_site_id=$1 AND competition.lifecycle='archived') OR source.source_event_site_id IS NOT NULL)
-           AND competition.publication_status='published' AND competition.deleted_at IS NULL
-           AND EXISTS (
-             SELECT 1
-               FROM winner_categories category
-               JOIN winners winner
-                 ON winner.category_id=category.id
-                AND winner.competition_id=category.competition_id
-              WHERE category.competition_id=competition.id
-                AND category.is_active=true
-                AND winner.is_active=true
-           )
-         ORDER BY competition.published_at DESC NULLS LAST,competition.sort_order,competition.id`,
-        [site.id],
-      ),
+      this.archiveEvents(s.categoryId, s.eventId),
     ]);
     const settings = settingRows[0] ?? {};
     const limit = Number(settings.archiveLimit ?? 3);
-    if (!competition)
-      return {
-        data: {
-          site: this.siteDto(site),
-          competition: null,
-          categories: [],
-          page: pageRows[0] ?? null,
-          settings,
-          decree: null,
-          archives: archives.slice(0, limit),
-        },
-        errors: [],
-      };
-    const [categories, decreeRows] = await Promise.all([
-      this.winnerCategories(competition.id),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
-        `SELECT COALESCE(NULLIF(settings.decree_title,''),document.title,'SK Penetapan Pemenang') AS title,
-                COALESCE(NULLIF(settings.decree_description,''),'Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.') AS description,
-                document.id AS "documentId",document.file_type AS "fileType",document.display_size AS "displaySize",
-                CASE WHEN document.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/' || document.asset_id::text END AS url
-           FROM competition_detail_settings settings
-           LEFT JOIN competition_documents document
-             ON document.id=settings.decree_document_id
-            AND document.competition_id=settings.competition_id
-          WHERE settings.competition_id=$1`,
-        [competition.id],
-      ),
-    ]);
+    const decreeRows = await this.db.query(
+      `SELECT COALESCE(NULLIF(st.decree_title,''),doc.title,'SK Penetapan Pemenang') AS title,
+              COALESCE(NULLIF(st.decree_description,''),'Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.') AS description,
+              doc.id AS "documentId",doc.file_type AS "fileType",doc.display_size AS "displaySize",
+              CASE WHEN doc.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||doc.asset_id::text END AS url
+         FROM event_detail_settings st
+         LEFT JOIN event_documents doc ON doc.id=st.decree_document_id AND doc.event_site_id=st.event_site_id
+         WHERE st.event_site_id=$1`,
+      [s.eventId],
+    );
     return {
       data: {
-        site: this.siteDto(site),
-        competition,
+        site: this.siteDto(s),
+        event: { slug: s.eventSlug, name: s.eventName },
         categories,
         page: pageRows[0] ?? null,
         settings,
@@ -246,69 +173,58 @@ export class PublicService {
     };
   }
 
-  async archives(siteSlug: string) {
-    const site = await this.requirePublicSite(siteSlug);
-    const [competitions, pages] = await Promise.all([
-      this.sites.manager.query<Array<Record<string, unknown>>>(
-        `SELECT CASE WHEN competition.event_site_id=$1 THEN competition.slug ELSE owner_site.slug || '-' || competition.slug END AS slug,
-                competition.name,competition.short_name AS "shortName",competition.description,
-                competition.fallback_icon AS "fallbackIcon",competition.mascot_asset_id AS "mascotAssetId"
-         FROM competitions competition
-         JOIN event_sites owner_site ON owner_site.id=competition.event_site_id
-         LEFT JOIN event_site_archive_sources source
-           ON source.event_site_id=$1 AND source.source_event_site_id=competition.event_site_id
-         WHERE ((competition.event_site_id=$1 AND competition.lifecycle='archived') OR source.source_event_site_id IS NOT NULL)
-           AND competition.publication_status='published' AND competition.deleted_at IS NULL
-         ORDER BY competition.published_at DESC NULLS LAST,competition.sort_order,competition.id`,
-        [site.id],
-      ),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
+  async archives(categorySlug: string) {
+    const s = await this.requireSite(categorySlug);
+    const [events, pages] = await Promise.all([
+      this.archiveEvents(s.categoryId, s.eventId),
+      this.db.query(
         `SELECT is_active AS "isActive",eyebrow,title,description,alignment FROM page_settings WHERE event_site_id=$1 AND page_type='archive'`,
-        [site.id],
+        [s.eventId],
       ),
     ]);
     return {
-      data: { site: this.siteDto(site), page: pages[0] ?? null, competitions },
+      data: { site: this.siteDto(s), page: pages[0] ?? null, events },
       errors: [],
     };
   }
 
-  async archiveDetail(siteSlug: string, competitionSlug: string) {
-    const site = await this.requirePublicSite(siteSlug);
-    const competition = await this.publicCompetition(
-      site.id,
-      'archived',
-      competitionSlug,
+  async archiveDetail(categorySlug: string, eventSlug: string) {
+    const s = await this.requireSite(categorySlug);
+    const archivedRows = await this.db.query(
+      `SELECT id,name,slug,description,fallback_icon AS "fallbackIcon",mascot_asset_id AS "mascotAssetId"
+       FROM event_sites WHERE category_id=$1 AND slug=$2 AND is_active=false AND deleted_at IS NULL`,
+      [s.categoryId, eventSlug],
     );
-    if (!competition)
+    const archived = archivedRows[0];
+    if (!archived)
       throw new NotFoundException('Published archive not found');
     const [categories, documents, settingRows] = await Promise.all([
-      this.winnerCategories(competition.id),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
-        `SELECT d.id,d.title, d.category, d.document_role AS "documentRole", d.file_type AS "fileType", d.display_size AS "displaySize", d.asset_id AS "assetId", CASE WHEN d.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/' || d.asset_id::text END AS url
-         FROM competition_documents d
-         LEFT JOIN archive_document_settings setting ON setting.document_id = d.id AND setting.competition_id = d.competition_id
-         WHERE d.competition_id = $1 AND d.is_active = true AND COALESCE(setting.is_visible, true) = true
-         ORDER BY COALESCE(setting.sort_order, d.sort_order), d.id`,
-        [competition.id],
+      this.winnerCategories(archived.id),
+      this.db.query(
+        `SELECT d.id,d.title,d.category,d.document_role AS "documentRole",d.file_type AS "fileType",
+                d.display_size AS "displaySize",d.asset_id AS "assetId",
+                CASE WHEN d.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||d.asset_id::text END AS url
+         FROM event_documents d
+         LEFT JOIN archive_document_settings setting ON setting.document_id=d.id AND setting.event_site_id=d.event_site_id
+         WHERE d.event_site_id=$1 AND d.is_active=true AND COALESCE(setting.is_visible,true)=true
+         ORDER BY COALESCE(setting.sort_order,d.sort_order),d.id`,
+        [archived.id],
       ),
-      this.sites.manager.query<Array<Record<string, unknown>>>(
-        `SELECT decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",decree_description AS "decreeDescription",is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM competition_detail_settings WHERE competition_id=$1`,
-        [competition.id],
+      this.db.query(
+        `SELECT decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",decree_description AS "decreeDescription",is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM event_detail_settings WHERE event_site_id=$1`,
+        [archived.id],
       ),
     ]);
-    const publicCompetition = {
-      slug: competition.slug,
-      name: competition.name,
-      shortName: competition.shortName,
-      description: competition.description,
-      fallbackIcon: competition.fallbackIcon,
-      mascotAssetId: competition.mascotAssetId,
-    };
     return {
       data: {
-        site: this.siteDto(site),
-        competition: publicCompetition,
+        site: this.siteDto(s),
+        event: {
+          slug: archived.slug,
+          name: archived.name,
+          description: archived.description,
+          fallbackIcon: archived.fallbackIcon,
+          mascotAssetId: archived.mascotAssetId,
+        },
         settings: settingRows[0] ?? null,
         categories,
         documents,
@@ -317,127 +233,93 @@ export class PublicService {
     };
   }
 
-  private async publicCompetition(
-    siteId: string,
-    lifecycle: 'current' | 'archived',
-    slug?: string,
-  ) {
-    const rows = await this.sites.manager.query<
-      Array<{
-        id: string;
-        slug: string;
-        name: string;
-        shortName: string;
-        description: string;
-        fallbackIcon: string;
-        mascotAssetId: string | null;
-      }>
-    >(
-      lifecycle === 'current'
-        ? `SELECT id,slug,name,short_name AS "shortName",description,fallback_icon AS "fallbackIcon",mascot_asset_id AS "mascotAssetId"
-           FROM competitions
-           WHERE event_site_id=$1 AND lifecycle='current'
-             AND publication_status='published' AND deleted_at IS NULL
-             AND ($2::varchar IS NULL OR slug=$2)
-           ORDER BY sort_order,id LIMIT 1`
-        : `SELECT competition.id,
-                  CASE WHEN competition.event_site_id=$1 THEN competition.slug ELSE owner_site.slug || '-' || competition.slug END AS slug,
-                  competition.name,competition.short_name AS "shortName",competition.description,
-                  competition.fallback_icon AS "fallbackIcon",competition.mascot_asset_id AS "mascotAssetId"
-           FROM competitions competition
-           JOIN event_sites owner_site ON owner_site.id=competition.event_site_id
-           LEFT JOIN event_site_archive_sources source
-             ON source.event_site_id=$1 AND source.source_event_site_id=competition.event_site_id
-           WHERE ((competition.event_site_id=$1 AND competition.lifecycle='archived') OR source.source_event_site_id IS NOT NULL)
-             AND competition.publication_status='published' AND competition.deleted_at IS NULL
-             AND ($2::varchar IS NULL OR CASE WHEN competition.event_site_id=$1 THEN competition.slug ELSE owner_site.slug || '-' || competition.slug END=$2)
-           ORDER BY competition.published_at DESC NULLS LAST,competition.sort_order,competition.id LIMIT 1`,
-      [siteId, slug ?? null],
+  private archiveEvents(categoryId: string, activeEventId: string) {
+    return this.db.query(
+      `SELECT event.slug,event.name,event.description,event.fallback_icon AS icon
+       FROM event_sites event
+       WHERE event.category_id=$1 AND event.id<>$2 AND event.is_active=false AND event.deleted_at IS NULL
+       ORDER BY event.created_at DESC,event.id`,
+      [categoryId, activeEventId],
     );
-    return rows[0] ?? null;
   }
 
-  private winnerCategories(competitionId: string) {
-    return this.sites.manager.query<Array<{ name: string; winners: unknown }>>(
-      `SELECT category.name, category.rank_prefix AS "rankPrefix", category.icon,
+  private winnerCategories(eventId: string) {
+    return this.db.query(
+      `SELECT category.name,category.rank_prefix AS "rankPrefix",category.icon,
               COALESCE(jsonb_agg(jsonb_build_object(
-                'rankLabel', winner.rank_label,
-                'fullName', winner.full_name,
-                'school', winner.school,
-                'examNumber', winner.exam_number,
-                'regency', winner.regency,
-                'province', winner.province,
-                'photoAssetId', winner.photo_asset_id,
-                'photoUrl', CASE WHEN winner.photo_asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/' || winner.photo_asset_id::text END
-              ) ORDER BY winner.sort_order, winner.id) FILTER (WHERE winner.id IS NOT NULL), '[]') AS winners
+                'rankLabel',winner.rank_label,'fullName',winner.full_name,
+                'school',winner.school,'examNumber',winner.exam_number,
+                'regency',winner.regency,'province',winner.province,
+                'photoAssetId',winner.photo_asset_id,
+                'photoUrl',CASE WHEN winner.photo_asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||winner.photo_asset_id::text END
+              ) ORDER BY winner.sort_order,winner.id) FILTER (WHERE winner.id IS NOT NULL),'[]') AS winners
        FROM winner_categories category
-       LEFT JOIN winners winner ON winner.category_id = category.id
-         AND winner.competition_id = category.competition_id AND winner.is_active = true
-       LEFT JOIN archive_category_settings setting ON setting.category_id = category.id
-         AND setting.competition_id = category.competition_id
-       WHERE category.competition_id = $1 AND category.is_active = true
-         AND COALESCE(setting.is_visible, true) = true
-       GROUP BY category.id, setting.sort_order
-       ORDER BY COALESCE(setting.sort_order, category.sort_order), category.id`,
-      [competitionId],
+       LEFT JOIN winners winner ON winner.category_id=category.id AND winner.event_site_id=category.event_site_id AND winner.is_active=true
+       LEFT JOIN archive_category_settings setting ON setting.category_id=category.id AND setting.event_site_id=category.event_site_id
+       WHERE category.event_site_id=$1 AND category.is_active=true AND COALESCE(setting.is_visible,true)=true
+       GROUP BY category.id,setting.sort_order
+       ORDER BY COALESCE(setting.sort_order,category.sort_order),category.id`,
+      [eventId],
     );
   }
 
-  private async requirePublicSite(siteSlug: string) {
-    const site = await this.publicSiteQuery()
-      .andWhere('site.slug = :siteSlug', { siteSlug })
-      .getRawOne<PublicSiteRow>();
-    if (!site) throw new NotFoundException('Published site not found');
-    return site;
+  private async requireSite(categorySlug: string): Promise<SiteRow> {
+    const rows = await this.db.query<SiteRow[]>(
+      `${SITE_SELECT} WHERE category.slug=$1 ${SITE_WHERE} LIMIT 1`,
+      [categorySlug],
+    );
+    if (!rows[0]) throw new NotFoundException('Published site not found');
+    return rows[0];
   }
 
-  private publicSiteQuery() {
-    return this.sites
-      .createQueryBuilder('site')
-      .select([
-        'site.id AS "id"',
-        'site.name AS "name"',
-        'site.slug AS "slug"',
-        'site.organizer_name AS "organizerName"',
-        'site.logo_asset_id AS "logoAssetId"',
-        'settings.primary_color AS "primaryColor"',
-        'settings.navigation AS "navigation"',
-        'settings.contact AS "contact"',
-        'settings.footer AS "footer"',
-        'settings.seo AS "seo"',
-      ])
-      .innerJoin(
-        'organizations',
-        'organization',
-        'organization.id = site.organization_id',
-      )
-      .leftJoin('site_settings', 'settings', 'settings.event_site_id = site.id')
-      .where("site.status = 'active'")
-      .andWhere("site.publication_status = 'published'")
-      .andWhere('site.deleted_at IS NULL')
-      .andWhere("organization.status = 'active'")
-      .andWhere('organization.deleted_at IS NULL');
-  }
-
-  private siteDto(site: PublicSiteRow) {
+  private siteDto(s: SiteRow) {
     return {
-      name: site.name,
-      slug: site.slug,
-      organizerName: site.organizerName,
-      logoAssetId: site.logoAssetId,
-      logoUrl: site.logoAssetId
-        ? `/api/v1/public/media/${site.logoAssetId}`
+      name: s.categoryName,
+      slug: s.categorySlug,
+      organizerName: s.organizerName,
+      logoAssetId: s.logoAssetId,
+      logoUrl: s.logoAssetId
+        ? `/api/v1/public/media/${s.logoAssetId}`
         : null,
     };
   }
 
-  private settingsDto(site: PublicSiteRow) {
+  private settingsDto(s: SiteRow) {
     return {
-      primaryColor: site.primaryColor ?? '#1e4b8c',
-      navigation: site.navigation ?? {},
-      contact: site.contact ?? {},
-      footer: site.footer ?? {},
-      seo: site.seo ?? {},
+      primaryColor: s.primaryColor ?? '#1e4b8c',
+      navigation: s.navigation ?? {},
+      contact: s.contact ?? {},
+      footer: s.footer ?? {},
+      seo: s.seo ?? {},
     };
   }
 }
+
+const SITE_SELECT = `SELECT
+  event.id AS "eventId",
+  category.id AS "categoryId",
+  category.name AS "categoryName",
+  category.slug AS "categorySlug",
+  event.name AS "eventName",
+  event.slug AS "eventSlug",
+  category.organizer_name AS "organizerName",
+  category.logo_asset_id AS "logoAssetId",
+  settings.primary_color AS "primaryColor",
+  settings.navigation AS "navigation",
+  settings.contact AS "contact",
+  settings.footer AS "footer",
+  settings.seo AS "seo",
+  event.description AS "description",
+  event.mascot_asset_id AS "mascotAssetId",
+  event.fallback_icon AS "fallbackIcon"
+FROM competition_categories category
+JOIN organizations org ON org.id=category.organization_id
+JOIN event_sites event ON event.category_id=category.id AND event.is_active=true AND event.deleted_at IS NULL
+LEFT JOIN site_settings settings ON settings.event_site_id=event.id`;
+
+const SITE_WHERE = `AND category.status='active'
+  AND event.status='active'
+  AND category.publication_status='published'
+  AND category.deleted_at IS NULL
+  AND org.status='active'
+  AND org.deleted_at IS NULL`;

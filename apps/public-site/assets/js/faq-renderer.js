@@ -29,7 +29,7 @@
       : baseline;
     root.innerHTML = buildFaqPageMarkup(state, {
       idPrefix: "public-faq",
-      homeHref: TalentaPaths.to("template.home"),
+      homeHref: TalentaPaths.to("publicSite.home"),
     });
     document.title = `${state.page.title} — ${apiData?.site?.name || "Talenta Prestasi"}`;
     bindFaqAccordion(root);

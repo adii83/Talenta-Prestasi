@@ -3935,6 +3935,12 @@ body.admin-dialog-open {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-2);
 }
+.schedule-preview-frame--mobile .schedule-public-preview .schedule-card {
+  padding: var(--sp-2);
+}
+.schedule-preview-frame--mobile .schedule-public-preview .schedule-card__date {
+  font-size: 13px;
+}
 .schedule-preview {
   --preview-primary: #1e4b8c;
   min-height: 350px;

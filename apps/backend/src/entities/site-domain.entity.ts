@@ -6,15 +6,15 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { EventSite } from './event-site.entity';
+import { CompetitionCategory } from './competition-category.entity';
 
 @Entity('site_domains')
 export class SiteDomain {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ name: 'event_site_id', type: 'uuid' })
-  eventSiteId!: string;
+  @Column({ name: 'category_id', type: 'uuid' })
+  categoryId!: string;
 
   @Index({ unique: true })
   @Column()
@@ -26,7 +26,9 @@ export class SiteDomain {
   @Column({ name: 'verified_at', type: 'timestamptz', nullable: true })
   verifiedAt!: Date | null;
 
-  @ManyToOne(() => EventSite, (s) => s.domains, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'event_site_id' })
-  eventSite!: EventSite;
+  @ManyToOne(() => CompetitionCategory, (c) => c.domains, {
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'category_id' })
+  category!: CompetitionCategory;
 }

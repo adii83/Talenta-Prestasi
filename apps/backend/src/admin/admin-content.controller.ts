@@ -4,6 +4,8 @@ import {
   Delete,
   Get,
   Param,
+  ParseEnumPipe,
+  ParseUUIDPipe,
   Patch,
   Post,
   Put,
@@ -28,16 +30,14 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminContentService } from './admin-content.service';
 
-class CompetitionParams {
-  @IsUUID() competitionId!: string;
+enum AdminPageType {
+  Home = 'home',
+  Download = 'download',
+  Winners = 'winners',
+  Archive = 'archive',
+  Faq = 'faq',
 }
-class ResourceParams extends CompetitionParams {
-  @IsUUID() resourceId!: string;
-}
-class PageParams {
-  @IsUUID() siteId!: string;
-  @IsIn(['home', 'download', 'winners', 'archive', 'faq']) pageType!: string;
-}
+
 class DocumentDto {
   @IsString() @MinLength(1) @MaxLength(200) title!: string;
   @IsOptional() @IsString() @MaxLength(80) category?: string;
@@ -48,7 +48,7 @@ class DocumentDto {
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
 }
-class CategoryDto {
+class WinnerCategoryDto {
   @IsString() @MinLength(1) @MaxLength(160) name!: string;
   @IsOptional() @IsString() @MaxLength(40) rankPrefix?: string;
   @IsOptional() @IsString() @MaxLength(60) icon?: string;
@@ -86,7 +86,6 @@ class DecreeDto {
   @IsOptional() @IsString() @MaxLength(40) displaySize?: string;
   @IsOptional() @IsBoolean() deleteFile?: boolean;
 }
-
 class DetailCategoryDto {
   @IsUUID() categoryId!: string;
   @IsBoolean() isVisible!: boolean;
@@ -112,168 +111,139 @@ class DetailSettingsDto {
   documents!: DetailDocumentDto[];
 }
 
-@Controller('admin')
+@Controller('admin/events/:eventId')
 @UseGuards(JwtAuthGuard)
 export class AdminContentController {
   constructor(private readonly content: AdminContentService) {}
 
-  @Get('competitions/:competitionId/detail-settings') detailSettings(
-    @Param() p: CompetitionParams,
+  @Get('detail-settings') detailSettings(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.detailSettings(p.competitionId, u.userId);
+    return this.content.detailSettings(eventId, u.userId);
   }
-  @Put('competitions/:competitionId/detail-settings') putDetailSettings(
-    @Param() p: CompetitionParams,
+  @Put('detail-settings') putDetailSettings(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @Body() input: DetailSettingsDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.putDetailSettings(p.competitionId, u.userId, input);
+    return this.content.putDetailSettings(eventId, u.userId, input);
   }
 
-  @Get('competitions/:competitionId/decree') decree(
-    @Param() p: CompetitionParams,
+  @Get('decree') decree(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.decree(p.competitionId, u.userId);
+    return this.content.decree(eventId, u.userId);
   }
-
-  @Put('competitions/:competitionId/decree') putDecree(
-    @Param() p: CompetitionParams,
+  @Put('decree') putDecree(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @Body() input: DecreeDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.putDecree(p.competitionId, u.userId, input);
+    return this.content.putDecree(eventId, u.userId, input);
   }
 
-  @Get('competitions/:competitionId/documents') documents(
-    @Param() p: CompetitionParams,
+  @Get('documents') documents(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.list(
-      'competition_documents',
-      p.competitionId,
-      u.userId,
-    );
+    return this.content.list('event_documents', eventId, u.userId);
   }
-  @Post('competitions/:competitionId/documents') createDocument(
-    @Param() p: CompetitionParams,
+  @Post('documents') createDocument(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @Body() d: DocumentDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.createDocument(p.competitionId, u.userId, d);
+    return this.content.createDocument(eventId, u.userId, d);
   }
-  @Patch('competitions/:competitionId/documents/:resourceId') updateDocument(
-    @Param() p: ResourceParams,
+  @Patch('documents/:resourceId') updateDocument(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('resourceId', ParseUUIDPipe) resourceId: string,
     @Body() d: DocumentDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.updateDocument(
-      p.competitionId,
-      p.resourceId,
-      u.userId,
-      d,
-    );
+    return this.content.updateDocument(eventId, resourceId, u.userId, d);
   }
-  @Delete('competitions/:competitionId/documents/:resourceId') deleteDocument(
-    @Param() p: ResourceParams,
+  @Delete('documents/:resourceId') deleteDocument(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('resourceId', ParseUUIDPipe) resourceId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.remove(
-      'competition_documents',
-      p.competitionId,
-      p.resourceId,
-      u.userId,
-    );
+    return this.content.remove('event_documents', eventId, resourceId, u.userId);
   }
 
-  @Get('competitions/:competitionId/winner-categories') categories(
-    @Param() p: CompetitionParams,
+  @Get('winner-categories') categories(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.list('winner_categories', p.competitionId, u.userId);
+    return this.content.list('winner_categories', eventId, u.userId);
   }
-  @Post('competitions/:competitionId/winner-categories') createCategory(
-    @Param() p: CompetitionParams,
-    @Body() d: CategoryDto,
+  @Post('winner-categories') createCategory(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body() d: WinnerCategoryDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.createCategory(p.competitionId, u.userId, d);
+    return this.content.createWinnerCategory(eventId, u.userId, d);
   }
-  @Patch('competitions/:competitionId/winner-categories/:resourceId')
-  updateCategory(
-    @Param() p: ResourceParams,
-    @Body() d: CategoryDto,
+  @Patch('winner-categories/:resourceId') updateCategory(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('resourceId', ParseUUIDPipe) resourceId: string,
+    @Body() d: WinnerCategoryDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.updateCategory(
-      p.competitionId,
-      p.resourceId,
-      u.userId,
-      d,
-    );
+    return this.content.updateWinnerCategory(eventId, resourceId, u.userId, d);
   }
-  @Delete('competitions/:competitionId/winner-categories/:resourceId')
-  deleteCategory(
-    @Param() p: ResourceParams,
+  @Delete('winner-categories/:resourceId') deleteCategory(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('resourceId', ParseUUIDPipe) resourceId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.remove(
-      'winner_categories',
-      p.competitionId,
-      p.resourceId,
-      u.userId,
-    );
+    return this.content.remove('winner_categories', eventId, resourceId, u.userId);
   }
 
-  @Get('competitions/:competitionId/winners') winners(
-    @Param() p: CompetitionParams,
+  @Get('winners') winners(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.list('winners', p.competitionId, u.userId);
+    return this.content.list('winners', eventId, u.userId);
   }
-  @Post('competitions/:competitionId/winners') createWinner(
-    @Param() p: CompetitionParams,
+  @Post('winners') createWinner(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @Body() d: WinnerDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.createWinner(p.competitionId, u.userId, d);
+    return this.content.createWinner(eventId, u.userId, d);
   }
-  @Patch('competitions/:competitionId/winners/:resourceId') updateWinner(
-    @Param() p: ResourceParams,
+  @Patch('winners/:resourceId') updateWinner(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('resourceId', ParseUUIDPipe) resourceId: string,
     @Body() d: WinnerDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.updateWinner(
-      p.competitionId,
-      p.resourceId,
-      u.userId,
-      d,
-    );
+    return this.content.updateWinner(eventId, resourceId, u.userId, d);
   }
-  @Delete('competitions/:competitionId/winners/:resourceId') deleteWinner(
-    @Param() p: ResourceParams,
+  @Delete('winners/:resourceId') deleteWinner(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('resourceId', ParseUUIDPipe) resourceId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.remove(
-      'winners',
-      p.competitionId,
-      p.resourceId,
-      u.userId,
-    );
+    return this.content.remove('winners', eventId, resourceId, u.userId);
   }
 
-  @Get('sites/:siteId/pages/:pageType') page(
-    @Param() p: PageParams,
+  @Get('pages/:pageType') page(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('pageType', new ParseEnumPipe(AdminPageType)) pageType: AdminPageType,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.page(p.siteId, p.pageType, u.userId);
+    return this.content.page(eventId, pageType, u.userId);
   }
-  @Put('sites/:siteId/pages/:pageType') putPage(
-    @Param() p: PageParams,
+  @Put('pages/:pageType') putPage(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('pageType', new ParseEnumPipe(AdminPageType)) pageType: AdminPageType,
     @Body() d: PageDto,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.putPage(p.siteId, p.pageType, u.userId, d);
+    return this.content.putPage(eventId, pageType, u.userId, d);
   }
 }

@@ -15,15 +15,35 @@ const navigationItems = [
   ["faq", "FAQ", "circle-help", "faq.html"],
 ];
 async function loadGlobalSettingsApi() {
-  const site = TalentaAdminAuth.currentSite();
-  if (!site?.id)
-    throw new TalentaApi.ApiError("Portal Admin belum dipilih", 400);
-  return (await TalentaApi.request(`/admin/sites/${site.id}/settings`)).data;
+  const event = TalentaAdminAuth.currentEvent();
+  if (!event?.id)
+    return {
+      eventName: globalState.identity.eventName,
+      eventDescription: globalState.identity.eventDescription,
+      logoAssetId: globalState.identity.logoAssetId || null,
+      logoUrl: globalState.identity.logo || "",
+      primaryColor: globalState.theme.primaryColor,
+      navigation: globalState.navigation,
+      contact: globalState.contact,
+      footer: globalState.footer,
+    };
+  return (await TalentaApi.request(`/admin/events/${event.id}/settings`)).data;
 }
 async function loadHomeSettingsApi() {
-  const site = TalentaAdminAuth.currentSite();
-  if (!site?.id) return null;
-  const response = await TalentaApi.request(`/admin/sites/${site.id}/home`);
+  const site = TalentaAdminAuth.currentEvent();
+  if (!site?.id)
+    return {
+      sections: getHomeAdminState(),
+      categories:
+        typeof getHomeWinnerCategories === "function"
+          ? getHomeWinnerCategories()
+          : [],
+      display:
+        typeof getHomeWinnerDisplay === "function"
+          ? getHomeWinnerDisplay()
+          : {},
+    };
+  const response = await TalentaApi.request(`/admin/events/${site.id}/home`);
   const sections = Object.fromEntries(
     response.data.sections.map((section) => [
       section.sectionType,
@@ -35,27 +55,22 @@ async function loadHomeSettingsApi() {
   let display = { showPhoto: true, showSchool: true, showExam: true, showRegency: true, showProvince: true };
   
   try {
-    const pagesReq = await TalentaApi.request(`/admin/sites/${site.id}/pages/winners`);
+    const [pagesReq, catReq, winReq] = await Promise.all([
+      TalentaApi.request(`/admin/events/${site.id}/pages/winners`),
+      TalentaApi.request(`/admin/events/${site.id}/winner-categories`),
+      TalentaApi.request(`/admin/events/${site.id}/winners`),
+    ]);
     display = pagesReq.data.metadataVisibility || display;
-
-    const compsReq = await TalentaApi.request(`/admin/sites/${site.id}/competitions`);
-    const activeComp = compsReq.data.find(c => c.lifecycle === "current" && !c.deletedAt);
-    if (activeComp) {
-      const [catReq, winReq] = await Promise.all([
-        TalentaApi.request(`/admin/competitions/${activeComp.id}/winner-categories`),
-        TalentaApi.request(`/admin/competitions/${activeComp.id}/winners`)
-      ]);
-      categories = catReq.data.filter(c => c.isActive).map(c => ({
-        ...c,
-        winners: winReq.data.filter(w => w.categoryId === c.id && w.isActive).map(w => ({
-          ...w,
-          name: w.fullName,
-          rank: w.rankLabel,
-          exam: w.examNumber,
-          photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : ""
-        }))
-      })).filter(c => c.winners.length > 0);
-    }
+    categories = catReq.data.filter(c => c.isActive).map(c => ({
+      ...c,
+      winners: winReq.data.filter(w => w.categoryId === c.id && w.isActive).map(w => ({
+        ...w,
+        name: w.fullName,
+        rank: w.rankLabel,
+        exam: w.examNumber,
+        photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : ""
+      }))
+    })).filter(c => c.winners.length > 0);
   } catch (e) {
     console.warn("Gagal memuat data pemenang untuk pratinjau global", e);
   }
@@ -63,14 +78,12 @@ async function loadHomeSettingsApi() {
   return { sections, categories, display };
 }
 async function saveGlobalSettingsApi() {
-  const site = TalentaAdminAuth.currentSite();
-  return TalentaApi.request(`/admin/sites/${site.id}/settings`, {
+  const event = TalentaAdminAuth.currentEvent();
+  return TalentaApi.request(`/admin/events/${event.id}/settings`, {
     method: "PUT",
     body: {
       eventName: globalState.identity.eventName,
       eventDescription: globalState.identity.eventDescription,
-      eventSlug: globalState.identity.eventSlug,
-      organizerName: globalState.identity.organizerName,
       primaryColor: globalState.theme.primaryColor,
       logoAssetId: globalState.identity.logoAssetId || undefined,
       navigation: globalState.navigation,
@@ -82,7 +95,6 @@ async function saveGlobalSettingsApi() {
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("eventSettingsForm"),
     byId = (id) => document.getElementById(id);
-  byId("eventDomainSuffix").textContent = `.${TalentaConfig.publicBaseDomain}`;
   function esc(value) {
     return String(value ?? "")
       .replaceAll("&", "&amp;")
@@ -102,8 +114,6 @@ document.addEventListener("DOMContentLoaded", () => {
       values = {
         eventName: i.eventName,
         eventDescription: i.eventDescription,
-        eventSlug: i.eventSlug,
-        organizerName: i.organizerName,
         primaryColor: t.primaryColor,
         contactEmail: c.email,
         contactWhatsapp: c.whatsappDisplay,
@@ -154,8 +164,6 @@ document.addEventListener("DOMContentLoaded", () => {
       ...globalState.identity,
       eventName: eventName.value,
       eventDescription: eventDescription.value,
-      eventSlug: eventSlug.value,
-      organizerName: organizerName.value,
       logo:
         globalState.identity.logo ||
         "",
@@ -210,10 +218,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const heroEyebrow = h.eyebrow || "PENDAFTARAN DIBUKA";
     const heroTitle = h.title || "Judul Utama Event Anda";
     const heroDesc = h.description || "Deskripsi singkat atau subtitle event akan muncul di sini. Teks ini dikendalikan dari pengaturan Kelola Halaman > Beranda.";
-    let heroImage = h.image || "../template/assets/images/garuda.png";
-    if (heroImage.startsWith("../../../template/")) {
-      heroImage = heroImage.replace("../../../template/", "../template/");
-    }
+    let heroImage = h.image || "../public-site/assets/images/garuda.png";
+    const persistedHeroPath = heroImage.match(
+      /^\.\.\/\.\.\/\.\.\/(?:template|public-site)\/(.+)$/,
+    );
+    if (persistedHeroPath) heroImage = `../public-site/${persistedHeroPath[1]}`;
     const heroImageAlt = h.imageAlt || "Hero Image";
     const heroBadges = (h.badges || [{label: "SD / MI"}, {label: "SMP / MTs"}, {label: "SMA / MA / SMK"}]).filter(b => b.active !== false);
     const heroButtons = (h.buttons || [
@@ -428,10 +437,7 @@ document.addEventListener("DOMContentLoaded", () => {
     readForm();
     try {
       const response = await saveGlobalSettingsApi();
-      TalentaAdminAuth.updateCurrentSite({
-        name: response.data.eventName,
-        slug: response.data.eventSlug,
-      });
+      TalentaAdminAuth.updateCurrentEvent({ name: response.data.eventName });
       globalState = saveGlobalSettings(globalState);
       showToast("Pengaturan global tersimpan ke database.");
     } catch (error) {
@@ -453,9 +459,8 @@ document.addEventListener("DOMContentLoaded", () => {
     globalState = resetGlobalSettings();
     try {
       await saveGlobalSettingsApi();
-      TalentaAdminAuth.updateCurrentSite({
+      TalentaAdminAuth.updateCurrentEvent({
         name: globalState.identity.eventName,
-        slug: globalState.identity.eventSlug,
       });
       fill();
       renderNavigation();
@@ -478,8 +483,6 @@ document.addEventListener("DOMContentLoaded", () => {
           ...globalState.identity,
           eventName: data.eventName,
           eventDescription: data.eventDescription,
-          eventSlug: data.eventSlug,
-          organizerName: data.organizerName,
           logoAssetId: data.logoAssetId || null,
           logo: data.logoUrl ? TalentaMedia.url({ url: data.logoUrl }) : "",
         },

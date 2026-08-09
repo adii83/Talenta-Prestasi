@@ -59,8 +59,8 @@ function syncForm() {
     comp.name || "Detail Arsip";
   document.getElementById("detailContextTitle").textContent =
     comp.name || "Detail Arsip";
-  const publicUrl = TalentaPaths.to("template.archiveDetail", {
-    query: { id: comp.id },
+  const publicUrl = TalentaPaths.to("publicSite.archiveDetail", {
+    query: { event: comp.slug },
   });
   document.getElementById("detailPublicLink").href = publicUrl;
   document.getElementById("detailToolbarPublicLink").href = publicUrl;

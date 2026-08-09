@@ -8,18 +8,18 @@ class HostnameParams {
   hostname!: string;
 }
 
-class SiteSlugParams {
+class CategorySlugParams {
   @IsString()
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   @MaxLength(100)
-  siteSlug!: string;
+  categorySlug!: string;
 }
 
-class ArchiveParams extends SiteSlugParams {
+class ArchiveParams extends CategorySlugParams {
   @IsString()
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   @MaxLength(100)
-  competitionSlug!: string;
+  eventSlug!: string;
 }
 
 @Controller('public/sites')
@@ -31,41 +31,41 @@ export class PublicController {
     return this.publicService.bootstrap(params.hostname);
   }
 
-  @Get(':siteSlug/bootstrap')
-  bootstrapBySlug(@Param() params: SiteSlugParams) {
-    return this.publicService.bootstrapBySlug(params.siteSlug);
+  @Get(':categorySlug/bootstrap')
+  bootstrapBySlug(@Param() params: CategorySlugParams) {
+    return this.publicService.bootstrapBySlug(params.categorySlug);
   }
 
-  @Get(':siteSlug/home')
-  home(@Param() params: SiteSlugParams) {
-    return this.publicService.home(params.siteSlug);
+  @Get(':categorySlug/home')
+  home(@Param() params: CategorySlugParams) {
+    return this.publicService.home(params.categorySlug);
   }
 
-  @Get(':siteSlug/downloads')
-  downloads(@Param() params: SiteSlugParams) {
-    return this.publicService.downloads(params.siteSlug);
+  @Get(':categorySlug/downloads')
+  downloads(@Param() params: CategorySlugParams) {
+    return this.publicService.downloads(params.categorySlug);
   }
 
-  @Get(':siteSlug/faq')
-  faq(@Param() params: SiteSlugParams) {
-    return this.publicService.faq(params.siteSlug);
+  @Get(':categorySlug/faq')
+  faq(@Param() params: CategorySlugParams) {
+    return this.publicService.faq(params.categorySlug);
   }
 
-  @Get(':siteSlug/winners')
-  winners(@Param() params: SiteSlugParams) {
-    return this.publicService.winners(params.siteSlug);
+  @Get(':categorySlug/winners')
+  winners(@Param() params: CategorySlugParams) {
+    return this.publicService.winners(params.categorySlug);
   }
 
-  @Get(':siteSlug/archives')
-  archives(@Param() params: SiteSlugParams) {
-    return this.publicService.archives(params.siteSlug);
+  @Get(':categorySlug/archives')
+  archives(@Param() params: CategorySlugParams) {
+    return this.publicService.archives(params.categorySlug);
   }
 
-  @Get(':siteSlug/archives/:competitionSlug')
+  @Get(':categorySlug/archives/:eventSlug')
   archiveDetail(@Param() params: ArchiveParams) {
     return this.publicService.archiveDetail(
-      params.siteSlug,
-      params.competitionSlug,
+      params.categorySlug,
+      params.eventSlug,
     );
   }
 }

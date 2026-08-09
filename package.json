@@ -1,8 +1,8 @@
-﻿{
+{
   "name": "talenta-prestasi-frontend",
   "private": true,
   "scripts": {
-    "dev": "npx -y http-server@14.1.1 . -p 4173 -c-1 -o /apps/template/",
+    "dev": "npx -y http-server@14.1.1 . -p 4173 -c-1 -o /apps/public-site/",
     "gateway": "node scripts/public-gateway.mjs",
     "tunnel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-cloudflare-tunnel.ps1",
     "check:routes": "node scripts/validate-routes.mjs",
@@ -16,6 +16,7 @@
     "test:archive-relations": "node scripts/audit-archive-relations.mjs",
     "test:faq-relations": "node scripts/audit-faq-relations.mjs",
     "test:admin-dialogs": "node scripts/audit-admin-dialogs.mjs",
+    "test:category-events": "node scripts/audit-category-event-contracts.mjs",
     "format": "npx -y prettier@3.9.6 . --write",
     "format:check": "npx -y prettier@3.9.6 . --check",
     "check": "npm run check:routes && npm run check:js && npm run check:theme && npm run format:check"

@@ -1,9 +1,9 @@
 function partnerAssetUrl(value = "") {
   const source = String(value).trim();
   if (!source || /^(?:data:|blob:|https?:\/\/)/i.test(source)) return source;
-  const file = source.match(/template\/assets\/images\/([^/?#]+)$/i)?.[1];
+  const file = source.match(/(?:template|public-site)\/assets\/images\/([^/?#]+)$/i)?.[1];
   if (!file || typeof TalentaPaths === "undefined") return source;
-  return new URL(`assets/images/${file}`, TalentaPaths.to("template.home"))
+  return new URL(`assets/images/${file}`, TalentaPaths.to("publicSite.home"))
     .href;
 }
 
@@ -18,12 +18,12 @@ const partnerDefaults = {
   items: [
     partnerItem(
       "Mitra OAIN",
-      "../../../../template/assets/images/mitra-oain.jpg",
+      "../../../../public-site/assets/images/mitra-oain.jpg",
       "Mitra OAIN",
     ),
     partnerItem(
       "Talenta Prestasi Indonesia",
-      "../../../../template/assets/images/mitra-talenta.png",
+      "../../../../public-site/assets/images/mitra-talenta.png",
       "Talenta Prestasi Indonesia",
     ),
   ],

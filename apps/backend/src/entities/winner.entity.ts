@@ -5,7 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
 } from 'typeorm';
-import { Competition } from './competition.entity';
+import { EventSite } from './event-site.entity';
 import { WinnerCategory } from './winner-category.entity';
 import { MediaAsset } from './media-asset.entity';
 
@@ -14,8 +14,8 @@ export class Winner {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ name: 'competition_id', type: 'uuid' })
-  competitionId!: string;
+  @Column({ name: 'event_site_id', type: 'uuid' })
+  eventSiteId!: string;
 
   @Column({ name: 'category_id', type: 'uuid' })
   categoryId!: string;
@@ -53,14 +53,14 @@ export class Winner {
   @Column({ name: 'sort_order', type: 'int', default: 0 })
   sortOrder!: number;
 
-  @ManyToOne(() => Competition, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'competition_id' })
-  competition!: Competition;
+  @ManyToOne(() => EventSite, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'event_site_id' })
+  eventSite!: EventSite;
 
   @ManyToOne(() => WinnerCategory, (c) => c.winners, { onDelete: 'CASCADE' })
   @JoinColumn([
     { name: 'category_id', referencedColumnName: 'id' },
-    { name: 'competition_id', referencedColumnName: 'competitionId' },
+    { name: 'event_site_id', referencedColumnName: 'eventSiteId' },
   ])
   category!: WinnerCategory;
 

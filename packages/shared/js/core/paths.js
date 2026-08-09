@@ -11,12 +11,12 @@
     !["localhost", "127.0.0.1"].includes(location.hostname) &&
     !location.pathname.startsWith("/apps/");
   const routes = Object.freeze({
-    "template.home": "/apps/template/",
-    "template.download": "/apps/template/unduh/",
-    "template.winners": "/apps/template/pemenang/",
-    "template.archive": "/apps/template/arsip/",
-    "template.archiveDetail": "/apps/template/arsip/detail/",
-    "template.faq": "/apps/template/faq/",
+    "publicSite.home": "/apps/public-site/",
+    "publicSite.download": "/apps/public-site/unduh/",
+    "publicSite.winners": "/apps/public-site/pemenang/",
+    "publicSite.archive": "/apps/public-site/arsip/",
+    "publicSite.archiveDetail": "/apps/public-site/arsip/detail/",
+    "publicSite.faq": "/apps/public-site/faq/",
     "admin.shell": "/apps/admin/",
     "admin.homeEditor": "/apps/admin/editors/beranda/",
     "admin.downloadEditor": "/apps/admin/editors/unduh/",
@@ -28,8 +28,8 @@
   function to(id, options = {}) {
     if (!routes[id]) throw new Error(`Unknown route: ${id}`);
     const route =
-      isPublicRoot && id.startsWith("template.")
-        ? routes[id].replace(/^\/apps\/template/, "") || "/"
+      isPublicRoot && id.startsWith("publicSite.")
+        ? routes[id].replace(/^\/apps\/public-site/, "") || "/"
         : `${basePath}${routes[id]}`;
     const url = new URL(route, location.origin);
     Object.entries(options.query || {}).forEach(([key, value]) => {
@@ -42,8 +42,8 @@
   function is(id) {
     if (!routes[id]) return false;
     const route =
-      isPublicRoot && id.startsWith("template.")
-        ? routes[id].replace(/^\/apps\/template/, "") || "/"
+      isPublicRoot && id.startsWith("publicSite.")
+        ? routes[id].replace(/^\/apps\/public-site/, "") || "/"
         : `${basePath}${routes[id]}`;
     return location.pathname.replace(/index\.html$/, "") === route;
   }

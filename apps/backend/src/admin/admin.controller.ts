@@ -3,10 +3,9 @@ import {
   Controller,
   Delete,
   Get,
-  Headers,
   Param,
-  Patch,
   ParseUUIDPipe,
+  Patch,
   Post,
   Put,
   UseGuards,
@@ -30,40 +29,39 @@ import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminService } from './admin.service';
 
-class SiteParams {
-  @IsUUID() siteId!: string;
-}
-
-class CreateCompetitionDto {
+class CreateCategoryDto {
   @IsString() @MinLength(1) @MaxLength(160) name!: string;
   @IsString()
   @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
   @MaxLength(100)
   slug!: string;
-  @IsIn(['current', 'archived']) lifecycle!: 'current' | 'archived';
 }
 
-class CreateSiteDto {
+class CreateEventDto {
   @IsString() @MinLength(1) @MaxLength(160) name!: string;
 }
 
-class CompetitionParams {
-  @IsUUID() competitionId!: string;
+class UpdateCategoryDto {
+  @IsString() @MinLength(1) @MaxLength(160) name!: string;
+  @IsString() @MaxLength(160) organizerName!: string;
 }
 
-class SiteSettingsDto {
+class UpdateEventDto {
+  @IsString() @MinLength(1) @MaxLength(160) name!: string;
+  @IsOptional() @IsString() @MaxLength(5000) description?: string;
+  @IsOptional() @IsString() @MaxLength(60) fallbackIcon?: string;
+  @IsOptional() @IsUUID() mascotAssetId?: string;
+}
+
+class EventSettingsDto {
   @IsString() @MinLength(1) @MaxLength(160) eventName!: string;
   @IsOptional() @IsString() @MaxLength(5000) eventDescription?: string;
-  @IsString()
-  @Matches(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
-  @MaxLength(100)
-  eventSlug!: string;
-  @IsString() @MinLength(1) @MaxLength(160) organizerName!: string;
   @IsString() @MaxLength(20) primaryColor!: string;
   @IsOptional() @IsUUID() logoAssetId?: string;
   @IsObject() navigation!: Record<string, boolean>;
   @IsObject() contact!: Record<string, string>;
   @IsObject() footer!: Record<string, string>;
+  @IsOptional() @IsObject() seo?: Record<string, string>;
 }
 
 class FaqQuestionDto {
@@ -91,8 +89,7 @@ class DownloadDocumentDto {
   @IsBoolean() isVisible!: boolean;
   @IsString() @MaxLength(200) labelOverride!: string;
 }
-class DownloadCompetitionDto {
-  @IsUUID() competitionId!: string;
+class DownloadTabDto {
   @IsString() @MaxLength(160) customTabName!: string;
   @IsBoolean() isDefault!: boolean;
   @IsBoolean() isActive!: boolean;
@@ -104,8 +101,8 @@ class DownloadCompetitionDto {
 class DownloadAggregateDto {
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => DownloadCompetitionDto)
-  competitions!: DownloadCompetitionDto[];
+  @Type(() => DownloadTabDto)
+  tabs!: DownloadTabDto[];
 }
 
 class HomeSectionDto {
@@ -129,12 +126,6 @@ class HomeAggregateDto {
   sections!: HomeSectionDto[];
 }
 
-class UpdateCompetitionDto {
-  @IsOptional() @IsString() @MinLength(1) @MaxLength(160) name?: string;
-  @IsOptional() @IsString() @MaxLength(5000) description?: string;
-  @IsOptional() @IsUUID() mascotAssetId?: string;
-}
-
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
 export class AdminSessionController {
@@ -145,182 +136,187 @@ export class AdminSessionController {
     return this.adminService.session(user.userId, user.email);
   }
 
-  @Post('sites')
-  createSite(
-    @Body() input: CreateSiteDto,
+  @Get('categories')
+  categories(@CurrentUser() user: AuthenticatedUser) {
+    return this.adminService.listCategories(user.userId);
+  }
+
+  @Post('categories')
+  createCategory(
+    @Body() input: CreateCategoryDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.adminService.createSite(user.userId, input);
+    return this.adminService.createCategory(user.userId, input);
   }
 }
 
-@Controller('admin/sites/:siteId')
+@Controller('admin/categories/:categoryId')
+@UseGuards(JwtAuthGuard)
+export class AdminCategoryController {
+  constructor(private readonly adminService: AdminService) {}
+
+  @Get('events')
+  events(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.categoryEvents(categoryId, user.userId);
+  }
+
+  @Post('events')
+  createEvent(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @Body() input: CreateEventDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.createEvent(categoryId, user.userId, input);
+  }
+
+  @Patch()
+  update(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @Body() input: UpdateCategoryDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.updateCategory(categoryId, user.userId, input);
+  }
+
+  @Delete()
+  remove(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.deleteCategory(categoryId, user.userId);
+  }
+
+  @Post('publish')
+  publish(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.publishCategory(categoryId, user.userId);
+  }
+
+  @Post('unpublish')
+  unpublish(
+    @Param('categoryId', ParseUUIDPipe) categoryId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.unpublishCategory(categoryId, user.userId);
+  }
+}
+
+@Controller('admin/events/:eventId')
 @UseGuards(JwtAuthGuard)
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   @Get()
-  site(@Param() params: SiteParams, @CurrentUser() user: AuthenticatedUser) {
-    return this.adminService.site(params.siteId, user.userId);
-  }
-
-  @Delete()
-  removeSite(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
+  event(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.adminService.deleteSite(siteId, user.userId);
+    return this.adminService.event(eventId, user.userId);
   }
-
-  @Post('publish')
-  publishSite(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.adminService.publishSite(siteId, user.userId);
-  }
-
-  @Post('unpublish')
-  unpublishSite(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.adminService.unpublishSite(siteId, user.userId);
-  }
-
-  @Get('settings')
-  settings(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.adminService.settings(siteId, user.userId);
-  }
-
-  @Put('settings')
-  putSettings(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() input: SiteSettingsDto,
-  ) {
-    return this.adminService.putSettings(siteId, user.userId, input);
-  }
-
-  @Get('faq')
-  faq(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.adminService.faq(siteId, user.userId);
-  }
-
-  @Put('faq')
-  putFaq(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() input: FaqAggregateDto,
-  ) {
-    return this.adminService.putFaq(siteId, user.userId, input.categories);
-  }
-
-  @Get('downloads')
-  downloads(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.adminService.downloads(siteId, user.userId);
-  }
-
-  @Put('downloads')
-  putDownloads(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() input: DownloadAggregateDto,
-  ) {
-    return this.adminService.putDownloads(
-      siteId,
-      user.userId,
-      input.competitions,
-    );
-  }
-
-  @Get('home')
-  home(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.adminService.home(siteId, user.userId);
-  }
-
-  @Put('home')
-  putHome(
-    @Param('siteId', ParseUUIDPipe) siteId: string,
-    @CurrentUser() user: AuthenticatedUser,
-    @Body() input: HomeAggregateDto,
-  ) {
-    return this.adminService.putHome(siteId, user.userId, input.sections);
-  }
-
-  @Get('competitions')
-  competitions(
-    @Param() params: SiteParams,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.adminService.competitions(params.siteId, user.userId);
-  }
-
-  @Post('competitions')
-  createCompetition(
-    @Param() params: SiteParams,
-    @Body() dto: CreateCompetitionDto,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    return this.adminService.createCompetition(params.siteId, user.userId, dto);
-  }
-}
-
-@Controller('admin/competitions/:competitionId')
-@UseGuards(JwtAuthGuard)
-export class AdminCompetitionController {
-  constructor(private readonly adminService: AdminService) {}
 
   @Patch()
   update(
-    @Param() params: CompetitionParams,
-    @Headers('if-match') version: string | undefined,
-    @Body() dto: UpdateCompetitionDto,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body() input: UpdateEventDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.adminService.updateCompetition(
-      params.competitionId,
-      user.userId,
-      version,
-      dto,
-    );
+    return this.adminService.updateEvent(eventId, user.userId, input);
   }
 
   @Delete()
   remove(
-    @Param() params: CompetitionParams,
-    @Headers('if-match') version: string | undefined,
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.adminService.deleteCompetition(
-      params.competitionId,
-      user.userId,
-      version,
-    );
+    return this.adminService.deleteEvent(eventId, user.userId);
   }
 
-  @Post('publish')
-  publish(
-    @Param() params: CompetitionParams,
-    @Headers('if-match') version: string | undefined,
+  @Post('activate')
+  activate(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.adminService.publishCompetition(
-      params.competitionId,
-      user.userId,
-      version,
-    );
+    return this.adminService.activateEvent(eventId, user.userId);
+  }
+
+  @Post('deactivate')
+  deactivate(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.deactivateEvent(eventId, user.userId);
+  }
+
+  @Get('settings')
+  settings(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.settings(eventId, user.userId);
+  }
+
+  @Put('settings')
+  putSettings(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: EventSettingsDto,
+  ) {
+    return this.adminService.putSettings(eventId, user.userId, input);
+  }
+
+  @Get('faq')
+  faq(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.faq(eventId, user.userId);
+  }
+
+  @Put('faq')
+  putFaq(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: FaqAggregateDto,
+  ) {
+    return this.adminService.putFaq(eventId, user.userId, input.categories);
+  }
+
+  @Get('downloads')
+  downloads(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.downloads(eventId, user.userId);
+  }
+
+  @Put('downloads')
+  putDownloads(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: DownloadAggregateDto,
+  ) {
+    return this.adminService.putDownloads(eventId, user.userId, input.tabs);
+  }
+
+  @Get('home')
+  home(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.home(eventId, user.userId);
+  }
+
+  @Put('home')
+  putHome(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() input: HomeAggregateDto,
+  ) {
+    return this.adminService.putHome(eventId, user.userId, input.sections);
   }
 }

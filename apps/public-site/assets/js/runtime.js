@@ -114,7 +114,7 @@
       version: 3,
       identity: {
         ...baseline.identity,
-        eventName: data.site.name,
+        eventName: data.currentEvent?.name || data.site.name,
         eventSlug: data.site.slug,
         organizerName: data.site.organizerName,
         logo: data.site.logoUrl

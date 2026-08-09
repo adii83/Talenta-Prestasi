@@ -1,5 +1,5 @@
 (() => {
-  const slug = () => TalentaConfig.siteSlug;
+  const slug = () => TalentaConfig.categorySlug;
   async function load(page, detailSlug = "") {
     const suffix =
       page === "archiveDetail"

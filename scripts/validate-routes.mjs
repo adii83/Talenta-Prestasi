@@ -2,12 +2,12 @@ import fs from "node:fs";
 import path from "node:path";
 const root = process.cwd();
 const routes = [
-  "apps/template/index.html",
-  "apps/template/unduh/index.html",
-  "apps/template/pemenang/index.html",
-  "apps/template/arsip/index.html",
-  "apps/template/arsip/detail/index.html",
-  "apps/template/faq/index.html",
+  "apps/public-site/index.html",
+  "apps/public-site/unduh/index.html",
+  "apps/public-site/pemenang/index.html",
+  "apps/public-site/arsip/index.html",
+  "apps/public-site/arsip/detail/index.html",
+  "apps/public-site/faq/index.html",
   "apps/admin/index.html",
   "apps/admin/editors/beranda/index.html",
   "apps/admin/editors/unduh/index.html",
@@ -50,10 +50,21 @@ for (const file of walk(path.join(root, "apps")).filter((x) =>
       errors.push(`${path.relative(root, file)} missing ${ref}`);
   }
 }
-const source = walk(path.join(root, "apps"))
+const source = ["apps", "packages"]
+  .flatMap((directory) => walk(path.join(root, directory)))
   .filter((x) => /\.(?:html|js)$/.test(x))
   .map((x) => fs.readFileSync(x, "utf8"))
   .join("\n");
+if (source.includes("apps/template"))
+  errors.push("Active application source still references apps/template");
+if (
+  /['"]template\.(?:home|download|winners|archive|archiveDetail|faq)['"]/.test(
+    source,
+  )
+)
+  errors.push("Active canonical route IDs still use template.*");
+if (/['"]\.\.\/(?:\.\.\/)*template\//.test(source))
+  errors.push("Active relative path literals still reference template/");
 if (/(?:href|src)="[^"]*\.html(?:[?#"])/.test(source))
   errors.push("Internal .html navigation remains");
 if (errors.length) {

@@ -1,28 +1,28 @@
 ﻿window.ADMIN_ROUTE_REGISTRY = Object.freeze({
-  settings: { title: "Identitas & Tema", publicRoute: "template.home" },
+  settings: { title: "Identitas & Tema", publicRoute: "publicSite.home" },
   home: {
     title: "Editor Beranda",
-    publicRoute: "template.home",
+    publicRoute: "publicSite.home",
     editorRoute: "admin.homeEditor",
   },
   download: {
     title: "Editor Unduh",
-    publicRoute: "template.download",
+    publicRoute: "publicSite.download",
     editorRoute: "admin.downloadEditor",
   },
   winners: {
     title: "Manajemen Pemenang",
-    publicRoute: "template.winners",
+    publicRoute: "publicSite.winners",
     editorRoute: "admin.winnersEditor",
   },
   archive: {
     title: "Manajemen Arsip",
-    publicRoute: "template.archive",
+    publicRoute: "publicSite.archive",
     editorRoute: "admin.archiveEditor",
   },
   faq: {
     title: "Manajemen FAQ",
-    publicRoute: "template.faq",
+    publicRoute: "publicSite.faq",
     editorRoute: "admin.faqEditor",
   },
 });

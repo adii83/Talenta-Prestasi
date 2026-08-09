@@ -196,12 +196,12 @@ function publicPageId(path = location.pathname) {
   const basePath =
     typeof TalentaPaths !== "undefined" ? TalentaPaths.basePath : "";
   const routeMap = [
-    ["template.home", "home"],
-    ["template.download", "download"],
-    ["template.winners", "winners"],
-    ["template.archive", "archive"],
-    ["template.archiveDetail", "archive"],
-    ["template.faq", "faq"],
+    ["publicSite.home", "home"],
+    ["publicSite.download", "download"],
+    ["publicSite.winners", "winners"],
+    ["publicSite.archive", "archive"],
+    ["publicSite.archiveDetail", "archive"],
+    ["publicSite.faq", "faq"],
   ];
   if (typeof TalentaPaths !== "undefined") {
     const match = routeMap.find(
@@ -212,12 +212,12 @@ function publicPageId(path = location.pathname) {
     if (match) return match[1];
   }
   const fallback = [
-    ["/apps/template/", "home"],
-    ["/apps/template/unduh/", "download"],
-    ["/apps/template/pemenang/", "winners"],
-    ["/apps/template/arsip/", "archive"],
-    ["/apps/template/arsip/detail/", "archive"],
-    ["/apps/template/faq/", "faq"],
+    ["/apps/public-site/", "home"],
+    ["/apps/public-site/unduh/", "download"],
+    ["/apps/public-site/pemenang/", "winners"],
+    ["/apps/public-site/arsip/", "archive"],
+    ["/apps/public-site/arsip/detail/", "archive"],
+    ["/apps/public-site/faq/", "faq"],
   ];
   return (
     fallback.find(([suffix]) => normalizedPath.endsWith(suffix))?.[1] || null
@@ -228,8 +228,8 @@ function isPublicPageEnabled(id, s = getGlobalSettings()) {
 }
 function getFirstEnabledPublicPage() {
   return typeof TalentaPaths !== "undefined"
-    ? TalentaPaths.to("template.home")
-    : "/apps/template/";
+    ? TalentaPaths.to("publicSite.home")
+    : "/apps/public-site/";
 }
 function buildWhatsappUrl(s = getGlobalSettings()) {
   const number = normalizeWhatsappNumber(

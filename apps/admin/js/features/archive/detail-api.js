@@ -1,21 +1,15 @@
 (() => {
-  const call = async (path) => (await TalentaApi.request(path)).data;
-  async function load(competitionId) {
-    const site = window.parent?.TalentaAdminAuth?.currentSite?.();
-    if (!site?.id)
-      throw new TalentaApi.ApiError("Portal Admin belum dipilih", 400);
-    const [competitions, documents, categories, winners, page, detailConfig] =
+  const call = async (path, options) =>
+    (await TalentaApi.request(path, options)).data;
+  async function load(eventId) {
+    const [event, documents, categories, winners, detailConfig] =
       await Promise.all([
-        call(`/admin/sites/${site.id}/competitions`),
-        call(`/admin/competitions/${competitionId}/documents`),
-        call(`/admin/competitions/${competitionId}/winner-categories`),
-        call(`/admin/competitions/${competitionId}/winners`),
-        call(`/admin/sites/${site.id}/pages/archive`),
-        call(`/admin/competitions/${competitionId}/detail-settings`),
+        call(`/admin/events/${eventId}`),
+        call(`/admin/events/${eventId}/documents`),
+        call(`/admin/events/${eventId}/winner-categories`),
+        call(`/admin/events/${eventId}/winners`),
+        call(`/admin/events/${eventId}/detail-settings`),
       ]);
-    const competition = competitions.find((item) => item.id === competitionId);
-    if (!competition)
-      throw new TalentaApi.ApiError("Lomba tidak ditemukan", 404);
     const settings = detailConfig.settings || {};
     const categoryVisibility = new Map(
       detailConfig.categories.map((item) => [item.categoryId, item.isVisible]),
@@ -25,10 +19,10 @@
     );
     const metadata = settings.metadataVisibility || {};
     return {
-      ...competition,
-      shortName: competition.name,
-      status: competition.publicationStatus,
-      active: !competition.deletedAt,
+      ...event,
+      shortName: event.name,
+      status: event.isActive ? "active" : "archive",
+      active: !event.deletedAt,
       detail: {
         ...archiveDetailDefaults(),
         active: settings.isActive ?? true,
@@ -43,9 +37,7 @@
           .filter((item) => categoryVisibility.get(item.id) === false)
           .map((item) => item.id),
         hiddenDocumentIds: documents
-          .filter(
-            (item) => documentVisibility.get(item.id)?.isVisible === false,
-          )
+          .filter((item) => documentVisibility.get(item.id)?.isVisible === false)
           .map((item) => item.id),
         documentLabelOverrides: Object.fromEntries(
           detailConfig.documents
@@ -56,8 +48,8 @@
       documents: documents.map((item) => ({
         ...item,
         active: item.isActive,
-        type: item.assetId ? "FILE" : "METADATA",
-        size: item.assetId ? "Tersedia" : "Belum ada file",
+        type: item.fileType || "PDF",
+        size: item.displaySize || (item.assetId ? "Tersedia" : "Belum ada file"),
         url: item.assetId ? TalentaMedia.url(item.assetId) : "",
       })),
       winnerCategories: categories.map((category) => ({
@@ -70,10 +62,7 @@
             name: winner.fullName,
             rank: winner.rankLabel,
             exam: winner.examNumber,
-            photoAssetId: winner.photoAssetId || null,
-            photo: winner.photoAssetId
-              ? TalentaMedia.url(winner.photoAssetId)
-              : "",
+            photo: winner.photoAssetId ? TalentaMedia.url(winner.photoAssetId) : "",
             active: winner.isActive,
           })),
       })),
@@ -85,74 +74,64 @@
           ? {
               ...document,
               title: settings.decreeTitle || document.title,
-              description:
-                settings.decreeDescription ||
-                "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+              description: settings.decreeDescription || "Unduh dokumen resmi SK Pemenang.",
             }
           : null;
       })(),
     };
   }
-  async function save(competition) {
-    const site = window.parent.TalentaAdminAuth.currentSite();
-    const updated = await TalentaApi.request(
-      `/admin/competitions/${competition.id}`,
-      {
-        method: "PATCH",
-        headers: { "If-Match": String(competition.version) },
-        body: {
-          name: competition.name,
-          description: competition.description || "",
-        },
+
+  async function save(event) {
+    await TalentaApi.request(`/admin/events/${event.id}`, {
+      method: "PATCH",
+      body: {
+        name: event.name,
+        description: event.description || "",
+        fallbackIcon: event.fallbackIcon || event.icon || "graduation-cap",
+        mascotAssetId: event.mascotAssetId || undefined,
       },
-    );
-    competition.version = updated.data.version;
-    await TalentaApi.request(
-      `/admin/competitions/${competition.id}/detail-settings`,
-      {
-        method: "PUT",
-        body: {
-          decreeDocumentId: competition.skDocument?.id,
-          decreeTitle: competition.skDocument?.title,
-          decreeDescription: competition.skDocument?.description,
-          isActive: competition.detail.active,
-          winnersActive: competition.detail.winnersActive,
-          documentsActive: competition.detail.documentsActive,
-          metadataVisibility: {
-            showPhoto: competition.detail.showPhoto,
-            showSchool: competition.detail.showSchool,
-            showExam: competition.detail.showExam,
-            showRegency: competition.detail.showRegency,
-            showProvince: competition.detail.showProvince,
-          },
-          categories: competition.winnerCategories.map((category) => ({
-            categoryId: category.id,
-            isVisible: !competition.detail.hiddenCategoryIds.includes(
-              category.id,
-            ),
-          })),
-          documents: competition.documents.map((document) => ({
-            documentId: document.id,
-            isVisible: !competition.detail.hiddenDocumentIds.includes(
-              document.id,
-            ),
-            labelOverride:
-              competition.detail.documentLabelOverrides[document.id] || "",
-          })),
+    });
+    await TalentaApi.request(`/admin/events/${event.id}/detail-settings`, {
+      method: "PUT",
+      body: {
+        decreeDocumentId: event.skDocument?.id,
+        decreeTitle: event.skDocument?.title,
+        decreeDescription: event.skDocument?.description,
+        isActive: event.detail.active,
+        winnersActive: event.detail.winnersActive,
+        documentsActive: event.detail.documentsActive,
+        metadataVisibility: {
+          showPhoto: event.detail.showPhoto,
+          showSchool: event.detail.showSchool,
+          showExam: event.detail.showExam,
+          showRegency: event.detail.showRegency,
+          showProvince: event.detail.showProvince,
         },
+        categories: event.winnerCategories.map((category) => ({
+          categoryId: category.id,
+          isVisible: !event.detail.hiddenCategoryIds.includes(category.id),
+        })),
+        documents: event.documents.map((document) => ({
+          documentId: document.id,
+          isVisible: !event.detail.hiddenDocumentIds.includes(document.id),
+          labelOverride: event.detail.documentLabelOverrides[document.id] || "",
+        })),
       },
-    );
+    });
   }
-  async function uploadDocument(competition, document, file) {
+
+  async function uploadDocument(event, document, file) {
     const asset = await TalentaMedia.upload(file, { kind: "document" });
     const updated = await TalentaApi.request(
-      `/admin/competitions/${competition.id}/documents/${document.id}`,
+      `/admin/events/${event.id}/documents/${document.id}`,
       {
         method: "PATCH",
         body: {
           title: document.title,
-          category: document.category || "",
+          category: document.category || "Dokumen",
           documentRole: document.documentRole || "general",
+          fileType: "PDF",
+          displaySize: `${(asset.byteSize / 1024 / 1024).toFixed(2)} MB`,
           assetId: asset.assetId,
           isActive: document.active !== false,
           sortOrder: document.sortOrder || 0,
@@ -165,9 +144,5 @@
     document.size = `${(asset.byteSize / 1024 / 1024).toFixed(2)} MB`;
     return updated.data;
   }
-  window.TalentaArchiveDetailApi = Object.freeze({
-    load,
-    save,
-    uploadDocument,
-  });
+  window.TalentaArchiveDetailApi = Object.freeze({ load, save, uploadDocument });
 })();

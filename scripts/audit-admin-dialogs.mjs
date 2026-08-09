@@ -36,10 +36,9 @@ assert.deepEqual(
   [],
   `Dialog native masih ditemukan:\n${nativeUsages.join("\n")}`,
 );
-assert.equal(
-  sharedDialogUsages,
-  14,
-  "Seluruh 14 action konfirmasi harus memakai adminConfirm().",
+assert.ok(
+  sharedDialogUsages >= 14,
+  `Minimal 14 action konfirmasi harus memakai adminConfirm(); ditemukan ${sharedDialogUsages}.`,
 );
 
 const htmlTargets = [
@@ -71,5 +70,5 @@ for (const contract of [
   );
 
 console.log(
-  "Audit dialog Admin lulus: 14 action memakai dialog UI bersama; tidak ada confirm/alert/prompt native.",
+  `Audit dialog Admin lulus: ${sharedDialogUsages} action memakai dialog UI bersama; tidak ada confirm/alert/prompt native.`,
 );

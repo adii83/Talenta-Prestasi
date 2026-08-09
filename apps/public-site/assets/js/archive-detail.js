@@ -2,12 +2,12 @@
 (() => {
   const root = document.getElementById("archiveDetailPublicRoot");
   if (!root) return;
-  const slug = new URLSearchParams(location.search).get("id");
+  const slug = new URLSearchParams(location.search).get("event");
 
   function apiState(data) {
     const visibility = data.settings?.metadataVisibility || {};
     return {
-      competition: data.competition,
+      competition: data.event,
       detail: {
         ...archiveDetailDefaults(),
         active: data.settings?.isActive ?? true,
@@ -73,7 +73,7 @@
       descriptionMeta.content =
         source.competition.description || `Detail ${source.competition.name}`;
     root.innerHTML = buildArchiveDetailMarkup(source, {
-      archiveHref: () => TalentaPaths.to("template.archive"),
+      archiveHref: () => TalentaPaths.to("publicSite.archive"),
     });
     lucide.createIcons();
     if (location.hash)
@@ -83,16 +83,60 @@
   }
 
   if (!slug) {
-    root.innerHTML = `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="file-question"></i><h1 class="t-h2">Detail arsip tidak tersedia</h1><p>ID lomba tidak ditemukan.</p><a class="btn btn--outline" href="${TalentaPaths.to("template.archive")}">Kembali ke Arsip</a></div></div></section>`;
+    root.innerHTML = `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="file-question"></i><h1 class="t-h2">Detail arsip tidak tersedia</h1><p>Slug Event tidak ditemukan.</p><a class="btn btn--outline" href="${TalentaPaths.to("publicSite.archive")}">Kembali ke Arsip</a></div></div></section>`;
     lucide.createIcons();
     return;
+  }
+  const fallback =
+    typeof getPublicArchiveCompetitionById === "function"
+      ? getPublicArchiveCompetitionById(slug)
+      : null;
+  if (fallback && typeof resolveArchiveDetailState === "function") {
+    const state = resolveArchiveDetailState(fallback);
+    render({
+      event: state.competition,
+      settings: {
+        isActive: state.detail.active,
+        winnersActive: state.detail.winnersActive,
+        documentsActive: state.detail.documentsActive,
+        metadataVisibility: {
+          showPhoto: state.detail.showPhoto,
+          showSchool: state.detail.showSchool,
+          showExam: state.detail.showExam,
+          showRegency: state.detail.showRegency,
+          showProvince: state.detail.showProvince,
+        },
+        decreeDocumentId: state.sk?.documentId,
+        decreeTitle: state.sk?.title,
+        decreeDescription: state.sk?.description,
+      },
+      categories: state.categories.map((category) => ({
+        ...category,
+        winners: category.winners.map((winner) => ({
+          fullName: winner.name,
+          rankLabel: winner.rank,
+          school: winner.school,
+          examNumber: winner.exam,
+          regency: winner.regency,
+          province: winner.province,
+          photoUrl: winner.photo,
+        })),
+      })),
+      documents: state.documents.map((document) => ({
+        ...document,
+        fileType: document.type,
+        displaySize: document.size,
+      })),
+    });
   }
   window.addEventListener("talenta:public:archiveDetail", (event) =>
     render(event.detail),
   );
   void TalentaPublic.load("archiveDetail", slug).catch((error) => {
-    console.error("Archive Detail API tidak tersedia.", error);
-    root.innerHTML = `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="file-question"></i><h1 class="t-h2">Detail arsip tidak tersedia</h1><p>Lomba tidak ditemukan atau belum dipublikasikan.</p><a class="btn btn--outline" href="${TalentaPaths.to("template.archive")}">Kembali ke Arsip</a></div></div></section>`;
-    lucide.createIcons();
+    console.error("Archive Detail API tidak tersedia; fallback ditampilkan.", error);
+    if (!fallback) {
+      root.innerHTML = `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="file-question"></i><h1 class="t-h2">Detail arsip tidak tersedia</h1><p>Event arsip tidak ditemukan.</p><a class="btn btn--outline" href="${TalentaPaths.to("publicSite.archive")}">Kembali ke Arsip</a></div></div></section>`;
+      lucide.createIcons();
+    }
   });
 })();
