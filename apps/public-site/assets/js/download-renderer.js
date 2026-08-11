@@ -1,4 +1,4 @@
-/* Renderer publik Unduh — data API memakai markup shared. */
+/* Renderer publik Unduh — data API saja tanpa mock fallback. */
 (() => {
   const root = document.getElementById("unduh");
   if (!root) return;
@@ -12,33 +12,64 @@
     });
   }
 
+  function sanitizeUrl(value) {
+    if (!value) return "";
+    try {
+      const parsed = new URL(value, TalentaConfig.apiBaseUrl);
+      return parsed.protocol === "http:" || parsed.protocol === "https:"
+        ? parsed.href
+        : "";
+    } catch (_error) {
+      return "";
+    }
+  }
+
   function apiState(data) {
-    const baseline = getPublicDownloadState();
     return {
-      ...baseline,
-      active: data.page?.isActive ?? baseline.active,
-      eyebrow: data.page?.eyebrow || baseline.eyebrow,
-      title: data.page?.title || baseline.title,
-      description: data.page?.description || baseline.description,
-      alignment: data.page?.alignment || baseline.alignment,
-      competitions: data.tabs.map((tab, index) => ({
+      version: 2,
+      active: data.page?.isActive !== false,
+      eyebrow: data.page?.eyebrow || "Unduh",
+      title: data.page?.title || "Dokumen & Materi",
+      description:
+        data.page?.description ||
+        "Unduh dokumen resmi yang disediakan untuk ajang talenta.",
+      alignment: data.page?.alignment === "left" ? "left" : "center",
+      competitions: (data.tabs || []).map((tab, index) => ({
         competitionId: tab.id || `tab-${index + 1}`,
-        customTabName: tab.tabName,
-        isDefault: tab.isDefault,
-        documents: tab.documents.map((document) => ({
-          title: document.title,
-          category: document.category,
+        customTabName: tab.tabName || "Dokumen",
+        isDefault: tab.isDefault === true,
+        documents: (tab.documents || []).map((document) => ({
+          title: document.title || "Dokumen Tanpa Judul",
+          category: document.category || "",
           type: document.fileType || "PDF",
           size: document.displaySize || "-",
-          url: document.url
-            ? new URL(document.url, TalentaConfig.apiBaseUrl).href
-            : "",
+          url: sanitizeUrl(document.url),
         })),
       })),
     };
   }
 
-  function render(state = getPublicDownloadState()) {
+  function renderLoading() {
+    root.className = "section";
+    root.innerHTML =
+      '<div class="container" role="status" aria-live="polite" aria-busy="true"><div class="public-empty-state"><i data-lucide="loader-2" class="spin"></i><h2 class="t-h3">Memuat dokumen...</h2><p>Mengambil daftar dokumen resmi dari database.</p></div></div>';
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function renderError(message = "Dokumen belum dapat ditampilkan saat ini.") {
+    root.className = "section";
+    root.innerHTML = `<div class="container" role="alert"><div class="public-empty-state"><i data-lucide="alert-circle"></i><h2 class="t-h3">Gagal Memuat Dokumen</h2><p>${downloadEscape(message)}</p><button type="button" class="btn btn--outline btn--sm" id="btnRetryPublicDownload" style="margin-top:12px"><i data-lucide="rotate-ccw"></i> Coba lagi</button></div></div>`;
+    const btnRetry = root.querySelector("#btnRetryPublicDownload");
+    if (btnRetry) {
+      btnRetry.onclick = () => {
+        void fetchPublicDownloads();
+      };
+    }
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function render(state) {
+    if (!state) return renderError();
     root.className = `section${state.active ? "" : " section--disabled"}`;
     root.innerHTML = buildDownloadMarkup(state);
     root
@@ -47,12 +78,34 @@
     if (window.lucide) lucide.createIcons();
   }
 
-  render();
-  window.addEventListener("talenta:public:download", (event) =>
-    render(apiState(event.detail)),
-  );
-  void TalentaPublic.load("download").catch((error) =>
-    console.error("Downloads API tidak tersedia; baseline ditampilkan.", error),
-  );
+  async function fetchPublicDownloads() {
+    renderLoading();
+    try {
+      const data = await TalentaPublic.load("download");
+      render(apiState(data));
+    } catch (error) {
+      // Jika diakses sebagai preview dari Admin (memiliki state local/localStorage), tampilkan data preview
+      if (typeof getPublicDownloadState === "function") {
+        try {
+          const localState = getPublicDownloadState();
+          if (localState) {
+            render(localState);
+            return;
+          }
+        } catch (_localError) {}
+      }
+
+      renderError(
+        error?.message ||
+          "Koneksi database atau layanan publik belum tersedia.",
+      );
+    }
+  }
+
+  window.addEventListener("talenta:public:download", (event) => {
+    if (event.detail) render(apiState(event.detail));
+  });
+
+  void fetchPublicDownloads();
   window.TalentaDownload = Object.freeze({ render });
 })();

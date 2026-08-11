@@ -44,16 +44,27 @@ async function loadHomeSettingsApi() {
           : {},
     };
   const response = await TalentaApi.request(`/admin/events/${site.id}/home`);
-  const sections = Object.fromEntries(
+  const apiSections = Object.fromEntries(
     response.data.sections.map((section) => [
       section.sectionType,
       { ...section.settings, active: section.isActive },
-    ])
+    ]),
   );
 
+  // Merge dengan default admin state agar tidak kosong ketika event baru
+  const baseAdminState =
+    typeof getHomeAdminState === "function" ? getHomeAdminState() : {};
+  const sections = { ...baseAdminState, ...apiSections };
+
   let categories = [];
-  let display = { showPhoto: true, showSchool: true, showExam: true, showRegency: true, showProvince: true };
-  
+  let display = {
+    showPhoto: true,
+    showSchool: true,
+    showExam: true,
+    showRegency: true,
+    showProvince: true,
+  };
+
   try {
     const [pagesReq, catReq, winReq] = await Promise.all([
       TalentaApi.request(`/admin/events/${site.id}/pages/winners`),
@@ -61,16 +72,21 @@ async function loadHomeSettingsApi() {
       TalentaApi.request(`/admin/events/${site.id}/winners`),
     ]);
     display = pagesReq.data.metadataVisibility || display;
-    categories = catReq.data.filter(c => c.isActive).map(c => ({
-      ...c,
-      winners: winReq.data.filter(w => w.categoryId === c.id && w.isActive).map(w => ({
-        ...w,
-        name: w.fullName,
-        rank: w.rankLabel,
-        exam: w.examNumber,
-        photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : ""
+    categories = catReq.data
+      .filter((c) => c.isActive)
+      .map((c) => ({
+        ...c,
+        winners: winReq.data
+          .filter((w) => w.categoryId === c.id && w.isActive)
+          .map((w) => ({
+            ...w,
+            name: w.fullName,
+            rank: w.rankLabel,
+            exam: w.examNumber,
+            photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : "",
+          })),
       }))
-    })).filter(c => c.winners.length > 0);
+      .filter((c) => c.winners.length > 0);
   } catch (e) {
     console.warn("Gagal memuat data pemenang untuk pratinjau global", e);
   }
@@ -164,9 +180,7 @@ document.addEventListener("DOMContentLoaded", () => {
       ...globalState.identity,
       eventName: eventName.value,
       eventDescription: eventDescription.value,
-      logo:
-        globalState.identity.logo ||
-        "",
+      logo: globalState.identity.logo || "",
     };
     globalState.theme = {
       primaryColor: primaryColor.value,
@@ -210,55 +224,111 @@ document.addEventListener("DOMContentLoaded", () => {
       header = isDesktop
         ? `<nav class="navbar" aria-label="Preview menu utama"><div class="navbar__inner"><span class="navbar__brand">${brandMark("navbar__logo", short)}<span class="navbar__brand-text">${esc(brand)}</span></span><div class="navbar__menu">${active.map(([id, label]) => `<span class="navbar__link ${id === "home" ? "navbar__link--active" : ""}">${label}</span>`).join("")}<span class="navbar__link navbar__link--desktop-only">Kontak Kami</span></div></div></nav>`
         : `<header class="mobile-header"><span class="mobile-header__brand">${brandMark("mobile-header__logo", short)}<span class="mobile-header__text">${esc(brand)}</span></span></header>`;
-    const h = globalHomeState?.sections?.hero || {};
-    const w = globalHomeState?.sections?.winnerHighlight || {};
+    const fallbackHomeState =
+      typeof getHomeAdminState === "function" ? getHomeAdminState() : {};
+    const h = globalHomeState?.sections?.hero || fallbackHomeState?.hero || {};
+    const w =
+      globalHomeState?.sections?.winnerHighlight ||
+      fallbackHomeState?.winnerHighlight ||
+      {};
     const categories = globalHomeState?.categories || [];
-    const display = globalHomeState?.display || { showPhoto: true, showSchool: true, showExam: true, showRegency: true, showProvince: true };
-    
+    const display = globalHomeState?.display || {
+      showPhoto: true,
+      showSchool: true,
+      showExam: true,
+      showRegency: true,
+      showProvince: true,
+    };
+
     const heroEyebrow = h.eyebrow || "PENDAFTARAN DIBUKA";
-    const heroTitle = h.title || "Judul Utama Event Anda";
-    const heroDesc = h.description || "Deskripsi singkat atau subtitle event akan muncul di sini. Teks ini dikendalikan dari pengaturan Kelola Halaman > Beranda.";
+    const heroTitle = h.title || "Olimpiade Sains Nusantara 2026";
+    const heroDesc =
+      h.description ||
+      "Ajang talenta akademik bergengsi untuk siswa SD, SMP, dan SMA se-Indonesia. Asah kemampuan, raih prestasi, dan jadilah yang terbaik di tingkat nasional.";
     let heroImage = h.image || "../public-site/assets/images/garuda.png";
     const persistedHeroPath = heroImage.match(
       /^\.\.\/\.\.\/\.\.\/(?:template|public-site)\/(.+)$/,
     );
     if (persistedHeroPath) heroImage = `../public-site/${persistedHeroPath[1]}`;
     const heroImageAlt = h.imageAlt || "Hero Image";
-    const heroBadges = (h.badges || [{label: "SD / MI"}, {label: "SMP / MTs"}, {label: "SMA / MA / SMK"}]).filter(b => b.active !== false);
-    const heroButtons = (h.buttons || [
-      {label: "Daftar Sekarang", style: "primary", libraryIcon: "arrow-right"},
-      {label: "Unduh Juknis", style: "outline", libraryIcon: "download"}
-    ]).filter(b => b.active !== false);
+    const heroBadges = (
+      h.badges || [
+        { label: "SD / MI" },
+        { label: "SMP / MTs" },
+        { label: "SMA / MA / SMK" },
+      ]
+    ).filter((b) => b.active !== false);
+    const heroButtons = (
+      h.buttons || [
+        {
+          label: "Daftar Sekarang",
+          style: "primary",
+          libraryIcon: "arrow-right",
+        },
+        { label: "Unduh Juknis", style: "outline", libraryIcon: "download" },
+      ]
+    ).filter((b) => b.active !== false);
 
     const winnerEyebrow = w.eyebrow || "Kombinasi Tema";
     const winnerTitle = w.title || "Warna utama dipadukan dengan putih";
-    const winnerDesc = w.description || "Badge dan detail kontras otomatis menyesuaikan latar terang atau gelap.";
-    const winnerAlignment = w.alignment === "left" ? " section__header--left" : "";
+    const winnerDesc =
+      w.description ||
+      "Badge dan detail kontras otomatis menyesuaikan latar terang atau gelap.";
+    const winnerAlignment =
+      w.alignment === "left" ? " section__header--left" : "";
 
-    const groups = categories.length ? categories.map(category => 
-      `<section class="winner-group home-winner-group"><h3 class="winner-group__title"><i data-lucide="${category.icon || "trophy"}"></i>${esc(category.name)} <span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${
-        category.winners.map(item => {
-          const initials = (item.name || "?").trim().split(/\s+/).slice(0, 2).map(p => p[0] || "").join("").toUpperCase();
-          const meta = [
-            display.showExam && item.exam ? `<span><span class="meta-label">No. Ujian:</span> ${esc(item.exam)}</span>` : "",
-            display.showRegency && item.regency ? `<span><span class="meta-label">Kabupaten:</span> ${esc(item.regency)}</span>` : "",
-            display.showProvince && item.province ? `<span><span class="meta-label">Provinsi:</span> ${esc(item.province)}</span>` : ""
-          ].join("");
-          return `<div class="champion-card">${display.showPhoto ? `<div class="champion-card__photo">${item.photo ? `<img src="${esc(item.photo)}" alt="Foto ${esc(item.name)}">` : initials}</div>` : ""}<p class="champion-card__rank t-mono">${esc(item.rank)}</p><p class="champion-card__name">${esc(item.name)}</p>${display.showSchool ? `<p class="champion-card__school">${esc(item.school)}</p>` : ""}<div class="champion-card__meta">${meta}</div></div>`;
-        }).join("")
-      }</div></section>`
-    ).join("") : `<div class="public-empty-state home-winner-empty"><i data-lucide="trophy"></i><p>Belum ada data pemenang aktif.</p></div>`;
+    const groups = categories.length
+      ? categories
+          .map(
+            (category) =>
+              `<section class="winner-group home-winner-group"><h3 class="winner-group__title"><i data-lucide="${category.icon || "trophy"}"></i>${esc(category.name)} <span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners
+                .map((item) => {
+                  const initials = (item.name || "?")
+                    .trim()
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((p) => p[0] || "")
+                    .join("")
+                    .toUpperCase();
+                  const meta = [
+                    display.showExam && item.exam
+                      ? `<span><span class="meta-label">No. Ujian:</span> ${esc(item.exam)}</span>`
+                      : "",
+                    display.showRegency && item.regency
+                      ? `<span><span class="meta-label">Kabupaten:</span> ${esc(item.regency)}</span>`
+                      : "",
+                    display.showProvince && item.province
+                      ? `<span><span class="meta-label">Provinsi:</span> ${esc(item.province)}</span>`
+                      : "",
+                  ].join("");
+                  return `<div class="champion-card">${display.showPhoto ? `<div class="champion-card__photo">${item.photo ? `<img src="${esc(item.photo)}" alt="Foto ${esc(item.name)}">` : initials}</div>` : ""}<p class="champion-card__rank t-mono">${esc(item.rank)}</p><p class="champion-card__name">${esc(item.name)}</p>${display.showSchool ? `<p class="champion-card__school">${esc(item.school)}</p>` : ""}<div class="champion-card__meta">${meta}</div></div>`;
+                })
+                .join("")}</div></section>`,
+          )
+          .join("")
+      : `<div class="public-empty-state home-winner-empty"><i data-lucide="trophy"></i><p>Belum ada data pemenang aktif.</p></div>`;
 
-    const badgeMarkup = heroBadges.map(b => `<span class="hero__badge">${esc(b.label)}</span>`).join("");
-    const buttonMarkup = heroButtons.map(b => {
-      const icon = b.iconMode === "upload" && b.uploadedIcon 
-        ? `<img class="home-custom-icon" src="${esc(b.uploadedIcon)}" alt="${esc(b.iconAlt || "")}" style="width:18px;height:18px">`
-        : `<i data-lucide="${b.libraryIcon || b.icon || "arrow-right"}"></i>`;
-      const btnClass = b.style === "outline" ? "btn--outline global-theme-preview__hero-outline" : "btn--white";
-      return `<span class="btn ${btnClass} btn--lg">${esc(b.label)} ${icon}</span>`;
-    }).join("");
+    const badgeMarkup = heroBadges
+      .map((b) => `<span class="hero__badge">${esc(b.label)}</span>`)
+      .join("");
+    const buttonMarkup = heroButtons
+      .map((b) => {
+        const icon =
+          b.iconMode === "upload" && b.uploadedIcon
+            ? `<img class="home-custom-icon" src="${esc(b.uploadedIcon)}" alt="${esc(b.iconAlt || "")}" style="width:18px;height:18px">`
+            : `<i data-lucide="${b.libraryIcon || b.icon || "arrow-right"}"></i>`;
+        const btnClass =
+          b.style === "outline"
+            ? "btn--outline global-theme-preview__hero-outline"
+            : "btn--white";
+        return `<span class="btn ${btnClass} btn--lg">${esc(b.label)} ${icon}</span>`;
+      })
+      .join("");
 
-    const winnerBackground = w.background === "soft" ? " section--soft" : " section--navy section--winner-gradient";
+    const winnerBackground =
+      w.background === "soft"
+        ? " section--soft"
+        : " section--navy section--winner-gradient";
 
     return `${header}<main><section class="hero"><div class="container hero__layout"><div class="hero__inner"><p class="t-eyebrow">${esc(heroEyebrow)}</p><h1 class="t-h1">${esc(heroTitle)}</h1><div class="hero__image hero__image--mobile"><img src="${esc(heroImage)}" alt="${esc(heroImageAlt)}"></div><p class="hero__subtitle">${esc(heroDesc)}</p><div class="hero__badges">${badgeMarkup}</div><div class="hero__buttons">${buttonMarkup}</div></div><div class="hero__image hero__image--desktop"><img src="${esc(heroImage)}" alt="${esc(heroImageAlt)}"></div></div></section><section class="section global-theme-preview__winner-section${winnerBackground}"><div class="container"><div class="section__header${winnerAlignment}"><p class="t-eyebrow">${esc(winnerEyebrow)}</p><h2 class="t-h2">${esc(winnerTitle)}</h2><p>${esc(winnerDesc)}</p></div><div class="winner-section">${groups}</div></div></section></main>`;
   }
@@ -502,8 +572,20 @@ document.addEventListener("DOMContentLoaded", () => {
       try {
         const local = JSON.parse(e.newValue);
         if (local && globalHomeState && globalHomeState.sections) {
-          if (local.hero) Object.assign(globalHomeState.sections.hero, local.hero);
-          if (local.winnerHighlight) Object.assign(globalHomeState.sections.winnerHighlight, local.winnerHighlight);
+          if (local.hero)
+            Object.assign(globalHomeState.sections.hero, local.hero);
+          if (local.winnerHighlight)
+            Object.assign(
+              globalHomeState.sections.winnerHighlight,
+              local.winnerHighlight,
+            );
+
+          // Juga salin atribut section type jika form struktur data dari section berbeda
+          Object.entries(local).forEach(([key, val]) => {
+            if (globalHomeState.sections[key] && val) {
+              Object.assign(globalHomeState.sections[key], val);
+            }
+          });
           renderPreview();
         }
       } catch (err) {
@@ -524,7 +606,12 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 function setLogo(source) {
   const brand = globalState?.identity?.eventName || "Nama Event";
-  const short = brand.split(/\s+/).map((x) => x[0]).slice(0, 3).join("").toUpperCase();
+  const short = brand
+    .split(/\s+/)
+    .map((x) => x[0])
+    .slice(0, 3)
+    .join("")
+    .toUpperCase();
   document.getElementById("logoPreview").innerHTML = source
     ? `<img src="${source}" alt="Pratinjau logo event">`
     : short;

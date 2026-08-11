@@ -121,7 +121,7 @@ function bind() {
     const title = titleInput.value.trim();
     const file = fileInput.files[0];
     if (!title) return toast("Nama dokumen wajib diisi.", true);
-    if (!file) return toast("Pilih file PDF yang akan diunggah.", true);
+    if (!file) return toast("Pilih file PDF yang akan disimpan.", true);
     event.currentTarget.disabled = true;
     try {
       const uploadedDocument = await TalentaDownloadApi.createCurrentDocument(
@@ -137,15 +137,34 @@ function bind() {
       titleInput.value = "";
       categoryInput.value = "";
       fileInput.value = "";
+      document.getElementById("addDocumentFormContainer").style.display =
+        "none";
       renderCurrentDocuments();
       renderPreview();
-      toast("Dokumen lomba saat ini berhasil diunggah.");
+      toast("Dokumen lomba saat ini berhasil disimpan.");
     } catch (error) {
       toast(error.message, true);
     } finally {
       event.currentTarget.disabled = false;
     }
   };
+
+  const btnShowAddForm = document.getElementById("btnShowAddDocumentForm");
+  const btnCancelAddForm = document.getElementById("btnCancelAddDocument");
+  const formContainer = document.getElementById("addDocumentFormContainer");
+
+  if (btnShowAddForm && btnCancelAddForm && formContainer) {
+    btnShowAddForm.onclick = () => {
+      formContainer.style.display = "block";
+      document.getElementById("downloadDocumentTitle").focus();
+    };
+    btnCancelAddForm.onclick = () => {
+      formContainer.style.display = "none";
+      document.getElementById("downloadDocumentTitle").value = "";
+      document.getElementById("downloadDocumentCategory").value = "";
+      document.getElementById("downloadDocumentFile").value = "";
+    };
+  }
   document.getElementById("downloadEditorForm").onsubmit = async (e) => {
     e.preventDefault();
     const submit = e.submitter;
@@ -334,6 +353,37 @@ function renderCompetitions() {
   lucide.createIcons();
 }
 
+function moveCurrentDocument(fromIndex, toIndex, options = {}) {
+  if (!currentDownloadCompetition?.documents) return false;
+  const list = currentDownloadCompetition.documents;
+  if (
+    fromIndex < 0 ||
+    fromIndex >= list.length ||
+    toIndex < 0 ||
+    toIndex >= list.length ||
+    fromIndex === toIndex
+  ) {
+    return false;
+  }
+  const [moved] = list.splice(fromIndex, 1);
+  list.splice(toIndex, 0, moved);
+  renderCurrentDocuments();
+  renderPreview();
+  if (options.focusId && options.focusControl) {
+    const targetRow = document.querySelector(
+      `[data-current-document="${options.focusId}"]`,
+    );
+    const targetControl = targetRow?.querySelector(
+      `[data-current-${options.focusControl}]`,
+    );
+    if (targetControl) targetControl.focus();
+  }
+  toast(
+    `Urutan "${moved.title}" diubah ke posisi ${toIndex + 1}. Simpan perubahan untuk memperbarui ke database.`,
+  );
+  return true;
+}
+
 function renderCurrentDocuments() {
   const name = document.getElementById("downloadCurrentCompetitionName");
   const root = document.getElementById("downloadCurrentDocumentList");
@@ -345,52 +395,185 @@ function renderCurrentDocuments() {
     return;
   }
   name.textContent = `${currentDownloadCompetition.name} · ${currentDownloadCompetition.documents.length} dokumen`;
-  root.innerHTML = currentDownloadCompetition.documents.length
+  const total = currentDownloadCompetition.documents.length;
+  root.innerHTML = total
     ? currentDownloadCompetition.documents
         .map(
-          (
-            item,
-          ) => `<article class="download-current-document" data-current-document="${item.id}">
-            <div class="admin-field"><label>Nama dokumen</label><input class="form-input" data-current-title value="${esc(item.title)}"></div>
-            <div class="admin-field"><label>Banner</label><input class="form-input" data-current-category value="${esc(item.category || "Dokumen")}"></div>
-            <div class="admin-field"><label>File PDF</label><input class="form-input" type="file" data-current-file accept="application/pdf"></div>
-            <label class="admin-switch admin-switch--label"><input type="checkbox" data-current-active ${item.active !== false ? "checked" : ""}><span></span><em>${item.active !== false ? "Aktif" : "Nonaktif"}</em></label>
-            <div class="download-current-document__actions"><button type="button" class="btn btn--outline btn--sm" data-current-save><i data-lucide="save"></i> Simpan</button><button type="button" class="btn btn--outline btn--danger btn--sm" data-current-delete><i data-lucide="trash-2"></i> Hapus</button></div>
+          (item, index) =>
+            `<article class="repeat-row download-document-row" data-current-document="${item.id}" data-document-index="${index}">
+            <button type="button" class="repeat-row__grip" data-current-grip aria-label="Seret untuk mengubah urutan ${esc(item.title)} (posisi ${index + 1} dari ${total})">
+              <i data-lucide="grip-vertical"></i>
+            </button>
+            <div class="download-document-row__main">
+              <div class="download-document-row__heading">
+                <strong>${esc(item.title)}</strong>
+                <span class="download-document-row__badge">${esc(item.category || "Dokumen")}</span>
+              </div>
+              <a class="download-document-row__file" href="${esc(item.url || item.fileUrl || "#")}" target="_blank" rel="noopener">
+                <i data-lucide="file-text"></i> Lihat File PDF
+              </a>
+            </div>
+            <div class="download-document-row__order-actions">
+              <button type="button" class="repeat-row__order-btn" data-current-up ${index === 0 ? "disabled" : ""} aria-label="Naikkan urutan ${esc(item.title)}" title="Naikkan urutan">
+                <i data-lucide="arrow-up"></i>
+              </button>
+              <button type="button" class="repeat-row__order-btn" data-current-down ${index === total - 1 ? "disabled" : ""} aria-label="Turunkan urutan ${esc(item.title)}" title="Turunkan urutan">
+                <i data-lucide="arrow-down"></i>
+              </button>
+            </div>
+            <label class="admin-switch"><input type="checkbox" data-current-active ${item.active !== false ? "checked" : ""}><span></span><em>${item.active !== false ? "Aktif" : "Nonaktif"}</em></label>
+            <button type="button" class="repeat-row__delete" data-current-delete aria-label="Hapus ${esc(item.title)}" title="Hapus dokumen"><i data-lucide="trash-2"></i></button>
           </article>`,
         )
         .join("")
-    : '<div class="download-empty"><i data-lucide="file-plus-2"></i><strong>Belum ada dokumen untuk lomba saat ini.</strong><span>Isi form di atas untuk mengunggah dokumen pertama.</span></div>';
+    : '<div class="download-empty"><i data-lucide="file-plus-2"></i><strong>Belum ada dokumen untuk lomba saat ini.</strong><span>Klik "Tambah dokumen baru" untuk memulai.</span></div>';
+
+  let activePointer = null;
+
   root.querySelectorAll("[data-current-document]").forEach((row) => {
-    const item = currentDownloadCompetition.documents.find(
-      (document) => document.id === row.dataset.currentDocument,
-    );
-    row.querySelector("[data-current-save]").onclick = async (event) => {
-      item.title = row.querySelector("[data-current-title]").value.trim();
-      item.category =
-        row.querySelector("[data-current-category]").value.trim() || "Dokumen";
-      item.active = row.querySelector("[data-current-active]").checked;
-      const file = row.querySelector("[data-current-file]").files[0];
-      if (!item.title) return toast("Nama dokumen wajib diisi.", true);
-      event.currentTarget.disabled = true;
+    const documentId = row.dataset.currentDocument;
+    const currentIndex = Number(row.dataset.documentIndex);
+    const item = currentDownloadCompetition.documents[currentIndex];
+
+    const btnUp = row.querySelector("[data-current-up]");
+    const btnDown = row.querySelector("[data-current-down]");
+    if (btnUp) {
+      btnUp.onclick = () =>
+        moveCurrentDocument(currentIndex, currentIndex - 1, {
+          focusId: documentId,
+          focusControl: "up",
+        });
+    }
+    if (btnDown) {
+      btnDown.onclick = () =>
+        moveCurrentDocument(currentIndex, currentIndex + 1, {
+          focusId: documentId,
+          focusControl: "down",
+        });
+    }
+
+    const grip = row.querySelector("[data-current-grip]");
+    if (grip) {
+      grip.onkeydown = (event) => {
+        if (event.key === "ArrowUp") {
+          event.preventDefault();
+          moveCurrentDocument(currentIndex, currentIndex - 1, {
+            focusId: documentId,
+            focusControl: "grip",
+          });
+        } else if (event.key === "ArrowDown") {
+          event.preventDefault();
+          moveCurrentDocument(currentIndex, currentIndex + 1, {
+            focusId: documentId,
+            focusControl: "grip",
+          });
+        }
+      };
+
+      grip.onpointerdown = (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        activePointer = {
+          pointerId: event.pointerId,
+          startY: event.clientY,
+          sourceIndex: currentIndex,
+          documentId,
+          moved: false,
+          targetIndex: currentIndex,
+        };
+        grip.setPointerCapture(event.pointerId);
+      };
+
+      grip.onpointermove = (event) => {
+        if (!activePointer || activePointer.pointerId !== event.pointerId)
+          return;
+        const deltaY = event.clientY - activePointer.startY;
+        if (Math.abs(deltaY) > 6) activePointer.moved = true;
+        if (!activePointer.moved) return;
+
+        event.preventDefault();
+        const rows = Array.from(
+          root.querySelectorAll("[data-current-document]"),
+        );
+        let targetIndex = activePointer.sourceIndex;
+        rows.forEach((candidateRow, index) => {
+          const rect = candidateRow.getBoundingClientRect();
+          const middleY = rect.top + rect.height / 2;
+          if (event.clientY > middleY) targetIndex = index;
+        });
+        targetIndex = Math.max(0, Math.min(rows.length - 1, targetIndex));
+        activePointer.targetIndex = targetIndex;
+        rows.forEach((r, idx) => {
+          r.classList.toggle(
+            "download-document-row--drag-target",
+            idx === targetIndex && idx !== activePointer.sourceIndex,
+          );
+        });
+      };
+
+      const cleanupPointer = (event) => {
+        if (!activePointer || activePointer.pointerId !== event.pointerId)
+          return;
+        const state = activePointer;
+        activePointer = null;
+        try {
+          if (grip.hasPointerCapture(event.pointerId)) {
+            grip.releasePointerCapture(event.pointerId);
+          }
+        } catch (_error) {}
+        root.querySelectorAll("[data-current-document]").forEach((r) => {
+          r.classList.remove(
+            "download-document-row--drag-active",
+            "download-document-row--drag-target",
+          );
+        });
+        if (
+          state.moved &&
+          state.targetIndex !== undefined &&
+          state.targetIndex !== state.sourceIndex
+        ) {
+          moveCurrentDocument(state.sourceIndex, state.targetIndex, {
+            focusId: state.documentId,
+            focusControl: "grip",
+          });
+        }
+      };
+
+      grip.onpointerup = cleanupPointer;
+      grip.onpointercancel = cleanupPointer;
+    }
+
+    const activeToggle = row.querySelector("[data-current-active]");
+    activeToggle.onchange = async () => {
+      const previousActive = item.active !== false;
+      activeToggle.disabled = true;
+      item.active = activeToggle.checked;
+      activeToggle.parentElement.querySelector("em").textContent = item.active
+        ? "Aktif"
+        : "Nonaktif";
       try {
         const updated = await TalentaDownloadApi.updateCurrentDocument(
           currentDownloadCompetition.id,
           item,
-          file,
         );
         Object.assign(item, updated);
-        renderCurrentDocuments();
         renderPreview();
-        toast("Dokumen berhasil diperbarui.");
+        toast(`Status dokumen "${item.title}" diperbarui.`);
       } catch (error) {
+        item.active = previousActive;
+        activeToggle.checked = previousActive;
+        activeToggle.parentElement.querySelector("em").textContent =
+          previousActive ? "Aktif" : "Nonaktif";
         toast(error.message, true);
-        event.currentTarget.disabled = false;
+      } finally {
+        activeToggle.disabled = false;
       }
     };
+
     row.querySelector("[data-current-delete]").onclick = async () => {
       let message = `${item.title} akan dihapus dari lomba saat ini.`;
       if (item.documentRole === "winner_decree") {
-        message += " PENTING: Ini adalah file SK Pemenang. Jika dokumen ini dihapus, SK pada Manajemen Pemenang juga akan otomatis ikut terhapus.";
+        message +=
+          " PENTING: Ini adalah file SK Pemenang. Jika dokumen ini dihapus, SK pada Manajemen Pemenang juga akan otomatis ikut terhapus.";
       }
       const confirmed = await adminConfirm({
         title: "Hapus dokumen?",
@@ -491,6 +674,9 @@ function toast(msg, error = false) {
 
 window.addEventListener("storage", (e) => {
   if (e.key === "talenta_download_editor_v2") {
-    toast("Peringatan: Data Unduhan baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.", true);
+    toast(
+      "Peringatan: Data Unduhan baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.",
+      true,
+    );
   }
 });

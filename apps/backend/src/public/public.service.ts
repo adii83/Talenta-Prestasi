@@ -319,7 +319,6 @@ LEFT JOIN site_settings settings ON settings.event_site_id=event.id`;
 
 const SITE_WHERE = `AND category.status='active'
   AND event.status='active'
-  AND category.publication_status='published'
   AND category.deleted_at IS NULL
   AND org.status='active'
   AND org.deleted_at IS NULL`;

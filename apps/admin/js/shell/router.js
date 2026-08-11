@@ -75,10 +75,49 @@
     document.getElementById("routeTitle").textContent = r.title;
     document.getElementById("routeBreadcrumb").textContent = r.crumb;
     const publicUrl = new URL(r.public, location.href);
+    const selectedCategory = TalentaAdminAuth.currentCategory();
     const selectedSite = TalentaAdminAuth.currentSite();
-    if (selectedSite?.categorySlug)
-      publicUrl.searchParams.set("site", selectedSite.categorySlug);
-    document.getElementById("routePublicLink").href = publicUrl.href;
+    let verifiedHostname = "";
+    if (selectedCategory?.hostname) {
+      try {
+        const parsed = new URL(`https://${selectedCategory.hostname}`);
+        if (
+          parsed.protocol === "https:" &&
+          parsed.hostname &&
+          !parsed.username &&
+          !parsed.password &&
+          !parsed.port &&
+          parsed.pathname === "/" &&
+          !parsed.search &&
+          !parsed.hash
+        ) {
+          verifiedHostname = parsed.hostname;
+        }
+      } catch (_error) {}
+    }
+
+    if (
+      verifiedHostname &&
+      (selectedCategory?.publicationStatus === "published" ||
+        selectedSite?.publicationStatus === "published")
+    ) {
+      const publicPath =
+        name === "download"
+          ? "/unduh/"
+          : name === "winners"
+            ? "/pemenang/"
+            : name === "archive"
+              ? "/arsip/"
+              : name === "faq"
+                ? "/faq/"
+                : "/";
+      document.getElementById("routePublicLink").href =
+        `https://${verifiedHostname}${publicPath}`;
+    } else {
+      if (selectedSite?.categorySlug)
+        publicUrl.searchParams.set("site", selectedSite.categorySlug);
+      document.getElementById("routePublicLink").href = publicUrl.href;
+    }
     document
       .querySelectorAll("[data-route]")
       .forEach((a) =>

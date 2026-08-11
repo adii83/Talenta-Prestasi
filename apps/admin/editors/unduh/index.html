@@ -191,48 +191,122 @@ Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
                   <div>
                     <h3>Dokumen lomba saat ini</h3>
                     <p id="downloadCurrentCompetitionName">
-                      Memuat lomba yang sedang dikelolaâ€¦
+                      Memuat lomba yang sedang dikelola…
                     </p>
                   </div>
-                </div>
-                <div class="download-document-create">
-                  <div class="admin-field">
-                    <label for="downloadDocumentTitle">Nama dokumen</label>
-                    <input
-                      class="form-input"
-                      id="downloadDocumentTitle"
-                      placeholder="Contoh: Petunjuk Teknis"
-                    />
-                  </div>
-                  <div class="admin-field">
-                    <label for="downloadDocumentCategory">Banner</label>
-                    <input
-                      class="form-input"
-                      id="downloadDocumentCategory"
-                      placeholder="Contoh: Juknis"
-                    />
-                  </div>
-                  <div class="admin-field">
-                    <label for="downloadDocumentFile">File PDF</label>
-                    <input
-                      class="form-input"
-                      id="downloadDocumentFile"
-                      type="file"
-                      accept="application/pdf"
-                    />
-                  </div>
                   <button
-                    class="btn btn--outline btn--sm"
                     type="button"
-                    id="addCurrentDocument"
+                    class="btn btn--primary btn--sm"
+                    id="btnShowAddDocumentForm"
                   >
-                    <i data-lucide="upload"></i> Unggah dokumen
+                    <i data-lucide="plus"></i> Tambah dokumen baru
                   </button>
                 </div>
-                <p class="admin-field__hint">
-                  Dokumen PDF maksimal 10 MB. Dokumen ini akan menjadi bagian
-                  Arsip ketika Event berikutnya dibuat.
-                </p>
+
+                <div
+                  id="addDocumentFormContainer"
+                  class="download-document-create admin-card"
+                  style="
+                    display: none;
+                    background: #f8f9fa;
+                    border: 1px solid #e2e8f0;
+                    margin-bottom: 24px;
+                    padding: 16px;
+                    border-radius: 8px;
+                  "
+                >
+                  <h4
+                    style="margin-top: 0; font-size: 14px; margin-bottom: 12px"
+                  >
+                    Simpan Dokumen Baru
+                  </h4>
+                  <div
+                    style="
+                      display: grid;
+                      gap: 16px;
+                      grid-template-columns: 1fr 1fr;
+                    "
+                  >
+                    <div class="admin-field" style="margin-bottom: 0">
+                      <label for="downloadDocumentTitle">Nama dokumen</label>
+                      <input
+                        class="form-input"
+                        id="downloadDocumentTitle"
+                        placeholder="Contoh: Petunjuk Teknis"
+                      />
+                    </div>
+                    <div class="admin-field" style="margin-bottom: 0">
+                      <label for="downloadDocumentCategory">Banner</label>
+                      <input
+                        class="form-input"
+                        id="downloadDocumentCategory"
+                        placeholder="Contoh: Juknis"
+                      />
+                    </div>
+                  </div>
+                  <div
+                    class="admin-field"
+                    style="margin-top: 16px; margin-bottom: 0"
+                  >
+                    <label for="downloadDocumentFile">Pilih File PDF</label>
+                    <div
+                      class="file-upload-wrapper"
+                      style="
+                        border: 1px dashed #cbd5e1;
+                        border-radius: 6px;
+                        padding: 8px 12px;
+                        display: flex;
+                        align-items: center;
+                        background: #fff;
+                      "
+                    >
+                      <input
+                        class="form-input"
+                        id="downloadDocumentFile"
+                        type="file"
+                        accept="application/pdf"
+                        style="
+                          border: none;
+                          padding: 0;
+                          background: transparent;
+                        "
+                      />
+                    </div>
+                  </div>
+                  <div
+                    style="
+                      margin-top: 16px;
+                      display: flex;
+                      justify-content: flex-end;
+                      gap: 12px;
+                      align-items: center;
+                    "
+                  >
+                    <p
+                      class="admin-field__hint"
+                      style="margin: 0; margin-right: auto"
+                    >
+                      PDF maksimal 10 MB.
+                    </p>
+                    <button
+                      class="btn btn--outline btn--sm"
+                      type="button"
+                      id="btnCancelAddDocument"
+                      style="height: 32px; padding: 0 16px"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      class="btn btn--primary btn--sm"
+                      type="button"
+                      id="addCurrentDocument"
+                      style="height: 32px; padding: 0 16px"
+                    >
+                      <i data-lucide="save"></i> Simpan dokumen
+                    </button>
+                  </div>
+                </div>
+
                 <div
                   id="downloadCurrentDocumentList"
                   class="download-current-document-list"
@@ -323,13 +397,13 @@ Unduh dokumen resmi yang diperlukan untuk persiapan ajang talenta.</textarea>
         </div>
       </form>
     </main>
-    <div class="admin-toast" id="adminToast">
+    <div class="admin-toast" id="adminToast" role="status" aria-live="polite">
       <i data-lucide="check-circle"></i><span>Berhasil disimpan.</span>
     </div>
     <script src="../../../../packages/shared/js/core/runtime-config.js"></script>
     <script src="../../../../packages/shared/js/core/api-client.js"></script>
     <script src="../../../../packages/shared/js/core/media-client.js"></script>
-    
+
     <script src="../../../../packages/shared/js/data/repositories/settings-repository.js"></script>
     <script src="../../../../packages/shared/js/data/mock-archive-database.js"></script>
     <script src="../../../../packages/shared/js/data/repositories/archive-repository.js"></script>

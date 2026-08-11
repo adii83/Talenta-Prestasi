@@ -58,7 +58,7 @@ function faqRenderEditor() {
           `<article class="faq-manager-category" data-category-id="${faqEsc(cat.id)}"><header class="faq-manager-category__head"><span class="faq-manager-category__index">${String(ci + 1).padStart(2, "0")}</span><div class="admin-field"><label>Nama kategori</label><input class="form-input" data-category-title value="${faqEsc(cat.title)}"></div><label class="admin-switch admin-switch--label"><input type="checkbox" data-category-active ${cat.active ? "checked" : ""}><span></span><em>Aktif</em></label><div class="faq-manager-actions"><button type="button" data-category-up ${ci === 0 ? "disabled" : ""} aria-label="Naikkan kategori"><i data-lucide="arrow-up"></i></button><button type="button" data-category-down ${ci === faqState.categories.length - 1 ? "disabled" : ""} aria-label="Turunkan kategori"><i data-lucide="arrow-down"></i></button><button type="button" data-category-delete class="is-danger" aria-label="Hapus kategori"><i data-lucide="trash-2"></i></button></div></header><div class="faq-manager-questions">${cat.questions.map((q, qi) => `<div class="faq-manager-question" data-question-id="${faqEsc(q.id)}"><header><span>${qi + 1}</span><strong>Pertanyaan ${qi + 1}</strong><label class="admin-switch"><input type="checkbox" data-question-active ${q.active ? "checked" : ""}><span></span></label><div class="faq-manager-actions"><button type="button" data-question-up ${qi === 0 ? "disabled" : ""} aria-label="Naikkan pertanyaan"><i data-lucide="arrow-up"></i></button><button type="button" data-question-down ${qi === cat.questions.length - 1 ? "disabled" : ""} aria-label="Turunkan pertanyaan"><i data-lucide="arrow-down"></i></button><button type="button" data-question-delete class="is-danger" aria-label="Hapus pertanyaan"><i data-lucide="trash-2"></i></button></div></header><div class="admin-field"><label>Pertanyaan</label><input class="form-input" data-question-text value="${faqEsc(q.question)}"></div><div class="admin-field"><label>Jawaban</label><textarea class="form-input editor-textarea" data-question-answer>${faqEsc(q.answer)}</textarea></div></div>`).join("")}<button type="button" class="faq-add-question" data-add-question><i data-lucide="plus"></i>Tambah Pertanyaan</button></div></article>`,
       )
       .join("") ||
-    '<div class="editor-empty"><i data-lucide="folder-plus"></i><strong>Belum ada kategori</strong><span>Tambahkan kategori FAQ pertama.</span></div>';
+    '<div class="faq-manager-empty" role="status"><span class="faq-manager-empty__icon" aria-hidden="true"><i data-lucide="folder-plus"></i></span><strong>Belum ada kategori</strong><span>Tambahkan kategori FAQ pertama.</span></div>';
   faqBindEditor();
   faqIcons();
 }
@@ -249,7 +249,10 @@ void faqHydrate();
 
 window.addEventListener("storage", (e) => {
   if (e.key === "talenta_faq_manager_v1") {
-    faqToast("Peringatan: Data FAQ baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.", true);
+    faqToast(
+      "Peringatan: Data FAQ baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.",
+      true,
+    );
   }
 });
 

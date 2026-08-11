@@ -117,6 +117,30 @@ assert.deepEqual(
   "Urutan kategori harus stabil setelah disimpan.",
 );
 
+const [faqManagerSource, mainCss] = await Promise.all([
+  readFile("apps/admin/js/features/faq/manager.js", "utf8"),
+  readFile("apps/public-site/assets/css/main.css", "utf8"),
+]);
+assert.ok(
+  faqManagerSource.includes('class="faq-manager-empty"'),
+  "Empty state FAQ harus memakai class khusus agar tidak bergantung pada style global yang tidak tersedia.",
+);
+assert.match(
+  mainCss,
+  /\.faq-manager-empty\s*\{[^}]*display:\s*grid;[^}]*text-align:\s*center;/s,
+  "Empty state FAQ harus menata ikon dan teks secara terpusat.",
+);
+assert.match(
+  mainCss,
+  /\.faq-manager-empty__icon\s+svg\s*\{[^}]*width:\s*22px;[^}]*height:\s*22px;/s,
+  "Ukuran ikon empty state FAQ harus terkontrol.",
+);
+assert.match(
+  mainCss,
+  /\.faq-manager-empty\s*>\s*(?:strong|span):not\([^}]+\)\s*\{[^}]*display:\s*block;/s,
+  "Judul dan deskripsi empty state FAQ harus berada pada baris terpisah.",
+);
+
 console.log(
-  "Audit FAQ lulus: owner kategori, ID unik, urutan, status publik, sanitasi, dan aksesibilitas accordion tervalidasi.",
+  "Audit FAQ lulus: owner kategori, ID unik, urutan, status publik, sanitasi, aksesibilitas accordion, dan empty state tervalidasi.",
 );

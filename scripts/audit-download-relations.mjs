@@ -207,6 +207,87 @@ assert.equal(
   "Override label harus diterapkan tanpa menggandakan data dokumen.",
 );
 
+const [
+  downloadEditorSource,
+  downloadApiSource,
+  publicApiSource,
+  downloadRendererSource,
+  downloadHtml,
+] = await Promise.all([
+  readFile("apps/admin/js/features/downloads/editor.js", "utf8"),
+  readFile("apps/admin/js/features/downloads/api.js", "utf8"),
+  readFile("apps/public-site/assets/js/public-api.js", "utf8"),
+  readFile("apps/public-site/assets/js/download-renderer.js", "utf8"),
+  readFile("apps/public-site/unduh/index.html", "utf8"),
+]);
+const mainCss = await readFile("apps/public-site/assets/css/main.css", "utf8");
+
+assert.ok(
+  downloadEditorSource.includes('class="repeat-row download-document-row"'),
+  "Baris dokumen harus memakai repeat-row tanpa class grid dokumen lama.",
+);
+assert.ok(
+  downloadEditorSource.includes('class="download-document-row__heading"'),
+  "Judul dan banner dokumen harus berada dalam satu baris heading.",
+);
+assert.ok(
+  downloadEditorSource.includes('class="download-document-row__file"'),
+  "Tautan file harus berada pada baris tersendiri di bawah heading.",
+);
+assert.match(
+  mainCss,
+  /\.download-document-row__main\s*\{[^}]*text-align:\s*left;/s,
+  "Konten dokumen harus dipaksa rata kiri oleh CSS khusus.",
+);
+assert.ok(
+  !downloadEditorSource.includes("saveDownloadCompetitionSettings"),
+  "Toggle dokumen tidak boleh memanggil fungsi simpan yang tidak tersedia.",
+);
+assert.ok(
+  !downloadEditorSource.includes("showToast("),
+  "Editor Unduh harus memakai helper toast lokal yang tersedia.",
+);
+assert.ok(
+  !downloadApiSource.includes("`${current.id}:${index}`") &&
+    !downloadApiSource.includes("`${current.id}:0`"),
+  "Konfigurasi tab Event saat ini harus memakai current.id agar resolver preview menemukan sumber dokumen.",
+);
+assert.ok(
+  downloadApiSource.includes("restoreDocumentOrder"),
+  "Load Admin harus memulihkan urutan dokumen dari konfigurasi tab tersimpan.",
+);
+assert.ok(
+  downloadEditorSource.includes("moveCurrentDocument") &&
+    downloadEditorSource.includes("pointerdown") &&
+    downloadEditorSource.includes("data-current-up") &&
+    downloadEditorSource.includes("data-current-down"),
+  "Dokumen saat ini harus mendukung pointer drag dan tombol naik/turun accessible.",
+);
+assert.match(
+  mainCss,
+  /button\.repeat-row__grip\s*\{[^}]*min-width:\s*44px;[^}]*touch-action:\s*none;/s,
+  "Grip dokumen harus berupa target pointer 44px tanpa mengambil scroll di luar grip.",
+);
+assert.ok(
+  publicApiSource.includes("by-host") &&
+    publicApiSource.includes("bootstrapPromise"),
+  "Runtime publik harus resolve hostname melalui bootstrap canonical dan menghindari request bootstrap ganda.",
+);
+assert.ok(
+  downloadRendererSource.includes("TalentaPublic.load"),
+  "Renderer publik harus memuat data dari API sebagai sumber utama.",
+);
+assert.ok(
+  downloadRendererSource.includes("Coba lagi") &&
+    downloadRendererSource.includes('role="alert"'),
+  "Kegagalan API publik harus menampilkan error accessible dengan retry.",
+);
+assert.ok(
+  !downloadHtml.includes("OSN 2025") &&
+    !downloadHtml.includes("TAB PANEL: Lomba Sekarang"),
+  "HTML Unduh publik tidak boleh membawa payload dokumen OSN dummy.",
+);
+
 console.log(
-  "Audit relasi Unduh lulus: competition FK, document FK, sanitasi, status publik, dan fallback default tervalidasi.",
+  "Audit relasi Unduh lulus: competition FK, document FK, sanitasi, status publik, fallback default, reorder persisted, runtime API-only, dan struktur baris dokumen tervalidasi.",
 );

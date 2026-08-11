@@ -8,9 +8,32 @@
     ...document,
     active: document.isActive,
     type: document.fileType || "PDF",
-    size: document.displaySize || (document.assetId ? "Tersedia" : "Belum ada file"),
+    size:
+      document.displaySize ||
+      (document.assetId ? "Tersedia" : "Belum ada file"),
     url: document.assetId ? TalentaMedia.url(document.assetId) : "",
   });
+
+  const restoreDocumentOrder = (documents, tabConfig) => {
+    if (!documents.length || !tabConfig?.documents?.length) return documents;
+    const documentMap = new Map(documents.map((doc) => [doc.id, doc]));
+    const ordered = [];
+    const seenIds = new Set();
+    tabConfig.documents.forEach((item) => {
+      const doc = documentMap.get(item.documentId);
+      if (doc && !seenIds.has(doc.id)) {
+        seenIds.add(doc.id);
+        ordered.push(doc);
+      }
+    });
+    documents.forEach((doc) => {
+      if (!seenIds.has(doc.id)) {
+        seenIds.add(doc.id);
+        ordered.push(doc);
+      }
+    });
+    return ordered;
+  };
 
   async function load() {
     const current = event();
@@ -36,25 +59,35 @@
       call(`/admin/events/${current.id}/downloads`),
       call(`/admin/events/${current.id}/pages/download`),
     ]);
+    const chosenTab =
+      config.tabs.find((tab) => tab.isDefault) || config.tabs[0] || null;
+    const orderedDocuments = restoreDocumentOrder(
+      documents.map(mapDocument),
+      chosenTab,
+    );
     const source = {
       ...current,
       shortName: current.name,
-      documents: documents.map(mapDocument),
+      documents: orderedDocuments,
     };
-    const configs = config.tabs.map((tab, index) => ({
-      competitionId: `${current.id}:${index}`,
+    const configs = config.tabs.slice(0, 1).map((tab) => ({
+      competitionId: current.id,
       tabId: tab.tabId,
       customTabName: tab.customTabName,
       isDefault: tab.isDefault,
       active: tab.isActive,
-      hiddenDocumentIds: tab.documents.filter((doc) => !doc.isVisible).map((doc) => doc.documentId),
+      hiddenDocumentIds: tab.documents
+        .filter((doc) => !doc.isVisible)
+        .map((doc) => doc.documentId),
       documentLabelOverrides: Object.fromEntries(
-        tab.documents.filter((doc) => doc.labelOverride).map((doc) => [doc.documentId, doc.labelOverride]),
+        tab.documents
+          .filter((doc) => doc.labelOverride)
+          .map((doc) => [doc.documentId, doc.labelOverride]),
       ),
     }));
     if (!configs.length)
       configs.push({
-        competitionId: `${current.id}:0`,
+        competitionId: current.id,
         customTabName: current.name,
         isDefault: true,
         active: true,
@@ -149,9 +182,12 @@
 
   async function deleteCurrentDocument(_sourceId, documentId) {
     const current = event();
-    await TalentaApi.request(`/admin/events/${current.id}/documents/${documentId}`, {
-      method: "DELETE",
-    });
+    await TalentaApi.request(
+      `/admin/events/${current.id}/documents/${documentId}`,
+      {
+        method: "DELETE",
+      },
+    );
   }
   window.TalentaDownloadApi = Object.freeze({
     load,

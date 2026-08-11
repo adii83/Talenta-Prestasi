@@ -87,3 +87,72 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 - **Validasi**: Audit istilah/endpoint/tabel lama pada dokumentasi aktif tidak menemukan klaim aktif yang tertinggal; 10 dokumen aktif lulus Prettier; seluruh link Markdown lokal valid; pemeriksaan pola secret pada Work Log bersih; `git diff --check` lulus.
 - **Kendala**: Auditor subagent eksternal gagal karena autentikasi provider `403`; audit lokal langsung tetap diselesaikan.
 - **Tindak lanjut**: Pertahankan `PROGRESS.md` sebagai status/receipt dan tambahkan setiap tugas pengubah file ke `docs/WORK_LOG.md` pada sesi berikutnya.
+
+### 2026-08-10 — Perapian Pengelolaan Dokumen Unduh dan Sinkronisasi Preview Tema
+
+- **Tanggal/Judul**: 2026-08-10 — Perapian Pengelolaan Dokumen Unduh dan Sinkronisasi Preview Tema
+- **Permintaan**: Menyamakan fallback Hero/Pemenang pada preview Identitas & Tema dengan Beranda serta menyederhanakan alur tambah dan daftar dokumen pada editor Unduh.
+- **Proses/Keputusan**: Preview tema memakai baseline Beranda ketika data API belum tersedia. Form dokumen baru dipisahkan dari daftar dan ditampilkan melalui tombol tambah. Dokumen tersimpan memakai pola visual `repeat-row` Beranda: grip, judul dan banner dalam satu baris, tautan PDF di bawahnya, toggle tanpa pembungkus tambahan, dan ikon hapus. Konflik CSS antara layout grid lama `.download-current-document` dan flex `.repeat-row` dihilangkan dengan modifier khusus `.download-document-row`; toggle disambungkan ke endpoint pembaruan dokumen yang tersedia. Preview Unduh diperbaiki dengan memakai ID Event asli sebagai `competitionId`; ID sintetis `<event-id>:<index>` sebelumnya membuat resolver gagal menemukan sumber dokumen meskipun daftar Admin sudah terisi.
+- **File**:
+  - `apps/admin/editors/unduh/index.html`
+  - `apps/admin/js/features/downloads/api.js`
+  - `apps/admin/js/features/downloads/editor.js`
+  - `apps/admin/js/shell/settings-editor.js`
+  - `apps/public-site/assets/css/main.css`
+  - `scripts/audit-download-relations.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: `npm run test:download-relations`, `npm run check:js`, dan `git diff --check` lulus. Inspeksi browser pada `http://localhost:4173/apps/admin/editors/unduh/` membuktikan row memakai flex, konten rata kiri, judul/banner sejajar, toggle tanpa border, tombol hapus berukuran konsisten, dan preview merender kartu dokumen dari sumber Event aktif.
+- **Kendala**: Verifikasi browser memakai data fallback karena sesi autentikasi Admin backend tidak tersedia pada browser otomasi; struktur dan computed style row tetap tervalidasi.
+- **Tindak lanjut**: Drag-and-drop urutan dokumen belum diaktifkan; tambahkan hanya jika persistensi urutan diminta secara eksplisit.
+
+### 2026-08-10 — Perapian Empty State Kategori FAQ Admin
+
+- **Tanggal/Judul**: 2026-08-10 — Perapian Empty State Kategori FAQ Admin
+- **Permintaan**: Merapikan tampilan kondisi kosong kategori FAQ agar ikon, judul, deskripsi, spacing, dan hierarki visual tampil jelas serta elegan.
+- **Proses/Keputusan**: Akar masalah ditemukan pada markup `.editor-empty` yang tidak memiliki aturan CSS. Empty state diberi class khusus, status semantik, pembungkus ikon dekoratif, dan styling terpusat yang membatasi ukuran ikon serta memisahkan judul dan deskripsi tanpa dekorasi berlebihan.
+- **File**:
+  - `apps/admin/js/features/faq/manager.js`
+  - `apps/public-site/assets/css/main.css`
+  - `scripts/audit-faq-relations.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: `npm run test:faq-relations`, `npm run check:js`, Prettier untuk file FAQ yang diubah, dan `git diff --check` lulus. Inspeksi browser pada editor FAQ dengan kategori kosong membuktikan layout grid terpusat, ikon 22×22 piksel dalam pembungkus 46×46 piksel, serta judul dan deskripsi berada pada baris terpisah.
+- **Kendala**: Data fallback lokal berisi kategori default sehingga kondisi kosong disimulasikan pada DOM browser untuk inspeksi visual tanpa mengubah data aplikasi.
+- **Tindak lanjut**: Tidak ada.
+
+### 2026-08-10 — Pengaktifan Reorder Dokumen Unduh dan Akses Draf Publik Tanpa Syarat Published
+
+- **Tanggal/Judul**: 2026-08-10 — Pengaktifan Reorder Dokumen Unduh dan Akses Draf Publik Tanpa Syarat Published
+- **Permintaan**: Mengaktifkan fitur drag-and-drop / reorder dokumen pada editor Unduh Admin, menghubungkan renderer publik ke database backend, serta memastikan hasil pengeditan dan unggahan dokumen langsung tertampil pada halaman publik/preview tanpa harus dipublikasikan (_published_) terlebih dahulu.
+- **Proses/Keputusan**:
+  1. Mengimplementasikan Pointer Events (`setPointerCapture` dengan `touch-action: none`) pada grip dokumen editor Unduh Admin (`apps/admin/js/features/downloads/editor.js`), dilengkapi tombol **Naikkan / Turunkan** accessible dan navigasi keyboard `ArrowUp` / `ArrowDown`.
+  2. Menambahkan `restoreDocumentOrder` pada `apps/admin/js/features/downloads/api.js` untuk memulihkan dan mempersistensikan urutan dokumen melalui endpoint `PUT /admin/events/:id/downloads`.
+  3. Mengganti data static dummy OSN pada `apps/public-site/unduh/index.html` dan menyesuaikan `download-renderer.js` agar memuat data real-time via `TalentaPublic.load('download')`, dengan fallback otomatis ke data preview lokal jika koneksi API backend belum merespons.
+  4. Mengatur `apps/admin/js/shell/router.js` agar routing tombol _Lihat halaman_ mengarah ke domain terverifikasi.
+  5. Memperbarui `SITE_WHERE` pada `apps/backend/src/public/public.service.ts` dengan melepaskan syarat `category.publication_status = 'published'`, sehingga data draf pengeditan dokumen/kategori dari Admin langsung tertampil instan pada halaman publik/preview.
+- **File**:
+  - `apps/admin/editors/unduh/index.html`
+  - `apps/admin/js/features/downloads/api.js`
+  - `apps/admin/js/features/downloads/editor.js`
+  - `apps/admin/js/shell/router.js`
+  - `apps/backend/src/public/public.service.ts`
+  - `apps/public-site/assets/css/main.css`
+  - `apps/public-site/assets/js/download-renderer.js`
+  - `apps/public-site/assets/js/public-api.js`
+  - `apps/public-site/unduh/index.html`
+  - `scripts/audit-download-relations.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: `npm run test:download-relations`, `npm run check:routes`, `npm run check:js`, `npm --prefix apps/backend run build`, Prettier format check, dan `git diff --check` lulus 100%. Screenshot Puppeteer dan verifikasi browser mengonfirmasi reorder grip interaktif dan rendering dokumen publik berjalan responsif.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Pekerjaan fitur Unduh dan sinkronisasi preview draf publik telah selesai seluruhnya.
+
+### 2026-08-10 — Standarisasi Styling Checkbox `.editor-check` Admin
+
+- **Tanggal/Judul**: 2026-08-10 — Standarisasi Styling Checkbox `.editor-check` Admin
+- **Permintaan**: Menyeragamkan seluruh tampilan checkbox bertipe `.editor-check` di Admin Panel (seperti _Tandai sebagai paket unggulan_, _Buka tautan di tab baru_, dll.) agar presisi dengan ukuran kotak 16×16px, font-size 13px, gap 8px rapat, dan tidak lagi terpisah oleh alignment global.
+- **Proses/Keputusan**: Memperbarui aturan CSS `.editor-check` global di `apps/public-site/assets/css/main.css` menggunakan `inline-flex`, `justify-content: flex-start`, `align-items: center`, gap 8px, dan input checkbox 16×16px.
+- **File**:
+  - `apps/public-site/assets/css/main.css`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Audit route, JS, Prettier format check, dan git diff check lulus 100%.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Tidak ada.
