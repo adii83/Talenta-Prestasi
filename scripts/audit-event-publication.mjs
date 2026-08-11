@@ -33,6 +33,19 @@ assert.doesNotMatch(files.publicApi, /searchParams\.get\(["']preview["']\)/);
 assert.match(files.admin, /preview-token/);
 assert.match(files.admin, /discard-draft/);
 assert.match(files.admin, /\/publish/);
+assert.match(
+  files.admin,
+  /const isLocal = \["localhost", "127\.0\.0\.1"\]\.includes\(location\.hostname\)/,
+);
+assert.match(files.admin, /if \(!isLocal && verifiedHostname\)/);
+assert.match(
+  files.admin,
+  /url\.searchParams\.set\("site", event\.categorySlug\)/,
+);
+assert.match(
+  files.admin,
+  /url\.hash = new URLSearchParams\(\{ preview: token \}\)\.toString\(\)/,
+);
 assert.match(files.publication, /transaction\('REPEATABLE READ'/);
 assert.match(files.seed, /collectAssetIds\(publicSnapshot\)/);
 assert.match(files.seed, /DELETE FROM event_publication_assets/);

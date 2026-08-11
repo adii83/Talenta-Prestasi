@@ -186,6 +186,19 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 - **Kendala**: Tidak ada file yang di-stage, commit, atau push pada audit ini.
 - **Tindak lanjut**: Review `git diff --staged` setelah staging dan sebelum commit/push.
 
+### 2026-08-11 — Perbaikan URL Preview Admin pada Development Lokal
+
+- **Tanggal/Judul**: 2026-08-11 — Perbaikan URL Preview Admin pada Development Lokal
+- **Permintaan**: Mendiagnosis kegagalan **Lihat preview** saat Admin dijalankan secara lokal dan menentukan apakah tunnel Cloudflare wajib diaktifkan.
+- **Proses/Keputusan**: Akar masalah berada pada pembentuk URL preview yang selalu memprioritaskan hostname kategori, termasuk ketika Admin dibuka melalui `localhost` atau `127.0.0.1`. Routing diperbaiki agar kedua hostname development tersebut tetap membuka Public Site pada origin lokal dengan query `site`; token preview tetap dikirim melalui fragment. Admin pada hostname nonlokal tetap memakai hostname kategori HTTPS yang telah divalidasi. Cloudflare tidak diperlukan untuk preview development lokal dan hanya diperlukan ketika sengaja menguji hostname publik.
+- **File**:
+  - `apps/admin/js/shell/router.js`
+  - `scripts/audit-event-publication.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regresi audit publikasi terbukti gagal sebelum perbaikan lalu lulus setelah perbaikan. `npm run test:event-publication`, `npm run check:js`, `npm run check:routes`, build backend, dan `git diff --check` lulus. Uji browser melalui tombol **Lihat preview** membuktikan `localhost` serta `127.0.0.1` mempertahankan origin lokal, menambahkan `?site=osn`, dan membawa token pada fragment; simulasi hostname Admin nonlokal tetap memilih hostname kategori HTTPS. Public Site membersihkan fragment segera dan menampilkan pesan sesi berakhir ketika token uji sengaja tidak valid.
+- **Kendala**: Chrome DevTools MCP tidak dapat terhubung karena browser tidak menyediakan `DevToolsActivePort`; verifikasi browser dilanjutkan dengan Puppeteer. Uji klik memakai token stub tanpa credential agar tidak mengungkap data sensitif; alur token nyata sebelumnya telah tervalidasi pada acceptance draf-preview-publish.
+- **Tindak lanjut**: Tidak ada. Tunnel Cloudflare dijalankan hanya untuk pengujian domain publik, bukan untuk preview lokal.
+
 ### 2026-08-10 — Standarisasi Styling Checkbox `.editor-check` Admin
 
 - **Tanggal/Judul**: 2026-08-10 — Standarisasi Styling Checkbox `.editor-check` Admin

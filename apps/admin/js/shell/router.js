@@ -75,6 +75,7 @@
     const url = new URL(route.public, location.href);
     const category = TalentaAdminAuth.currentCategory();
     const event = TalentaAdminAuth.currentEvent();
+    const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
     let verifiedHostname = "";
     if (category?.hostname) {
       try {
@@ -92,7 +93,7 @@
           verifiedHostname = parsed.hostname;
       } catch (_error) {}
     }
-    if (verifiedHostname) {
+    if (!isLocal && verifiedHostname) {
       const path =
         name === "download"
           ? "/unduh/"
