@@ -1,6 +1,13 @@
 import 'dotenv/config';
 import { hash } from 'bcrypt';
+import { createHash } from 'node:crypto';
 import { Client } from 'pg';
+import {
+  canonicalJson,
+  collectAssetIds,
+} from '../admin/event-publication.service';
+import { PublicContentService } from '../public/public-content.service';
+import { WorkspaceSnapshotService } from '../public/workspace-snapshot.service';
 
 async function main() {
   const email = process.env.LOCAL_ADMIN_EMAIL;
@@ -102,6 +109,51 @@ async function main() {
        ON CONFLICT(organization_id,user_id) DO UPDATE SET role='owner'`,
       [organizationId, user.rows[0].id],
     );
+    const executor = {
+      query: async <T>(sql: string, parameters?: unknown[]) =>
+        (await db.query(sql, parameters)).rows as T,
+    };
+    const publicContent = new PublicContentService(executor as never);
+    const workspace = new WorkspaceSnapshotService(executor as never);
+    for (const eventId of [activeEvent.rows[0].id, archivedEvent.rows[0].id]) {
+      const [publicSnapshot, workspaceSnapshot] = await Promise.all([
+        publicContent.build(eventId, executor),
+        workspace.capture(eventId, executor),
+      ]);
+      const checksum = createHash('sha256')
+        .update(canonicalJson(workspaceSnapshot))
+        .digest('hex');
+      await db.query(
+        `INSERT INTO event_publications(
+           event_site_id,organization_id,category_id,version,schema_version,
+           public_snapshot,workspace_snapshot,workspace_checksum,published_at,published_by
+         ) VALUES($1,$2,$3,1,1,$4,$5,$6,now(),$7)
+         ON CONFLICT(event_site_id) DO UPDATE SET
+           public_snapshot=EXCLUDED.public_snapshot,workspace_snapshot=EXCLUDED.workspace_snapshot,
+           workspace_checksum=EXCLUDED.workspace_checksum,published_at=now(),published_by=EXCLUDED.published_by`,
+        [
+          eventId,
+          organizationId,
+          categoryId,
+          publicSnapshot,
+          workspaceSnapshot,
+          checksum,
+          user.rows[0].id,
+        ],
+      );
+      await db.query(
+        `DELETE FROM event_publication_assets WHERE event_site_id=$1`,
+        [eventId],
+      );
+      const assetIds = collectAssetIds(publicSnapshot);
+      if (assetIds.length)
+        await db.query(
+          `INSERT INTO event_publication_assets(event_site_id,asset_id)
+           SELECT $1,asset.id FROM media_assets asset
+           WHERE asset.id=ANY($2::uuid[]) AND asset.organization_id=$3 AND asset.status='active'`,
+          [eventId, assetIds, organizationId],
+        );
+    }
     await db.query('COMMIT');
     console.log(
       JSON.stringify({

@@ -1,5 +1,16 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Header,
+  Headers,
+  Param,
+  Post,
+  Req,
+  Res,
+} from '@nestjs/common';
 import { IsFQDN, IsString, Matches, MaxLength } from 'class-validator';
+import type { Request, Response } from 'express';
+import { PreviewTokenService } from './preview-token.service';
 import { PublicService } from './public.service';
 
 class HostnameParams {
@@ -22,50 +33,130 @@ class ArchiveParams extends CategorySlugParams {
   eventSlug!: string;
 }
 
-@Controller('public/sites')
+@Controller('public')
 export class PublicController {
-  constructor(private readonly publicService: PublicService) {}
+  constructor(
+    private readonly publicService: PublicService,
+    private readonly previewTokens: PreviewTokenService,
+  ) {}
 
-  @Get('by-host/:hostname/bootstrap')
-  bootstrap(@Param() params: HostnameParams) {
-    return this.publicService.bootstrap(params.hostname);
+  @Post('preview/session')
+  @Header('Cache-Control', 'private, no-store')
+  async previewSession(
+    @Headers('x-talenta-preview') token: string,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    await this.publicService.validatePreview(token);
+    const forwardedProtocol = request
+      .get('x-forwarded-proto')
+      ?.split(',')[0]
+      .trim()
+      .toLowerCase();
+    response.setHeader(
+      'Set-Cookie',
+      this.previewTokens.cookie(
+        token,
+        request.secure || forwardedProtocol === 'https',
+      ),
+    );
+    return { data: { active: true }, errors: [] };
   }
 
-  @Get(':categorySlug/bootstrap')
-  bootstrapBySlug(@Param() params: CategorySlugParams) {
-    return this.publicService.bootstrapBySlug(params.categorySlug);
+  @Get('sites/by-host/:hostname/bootstrap')
+  bootstrap(
+    @Param() params: HostnameParams,
+    @Headers('x-talenta-preview') headerToken = '',
+    @Headers('cookie') cookie = '',
+  ) {
+    return this.publicService.bootstrap(
+      params.hostname,
+      headerToken || this.previewTokens.fromCookie(cookie),
+    );
   }
 
-  @Get(':categorySlug/home')
-  home(@Param() params: CategorySlugParams) {
-    return this.publicService.home(params.categorySlug);
+  @Get('sites/:categorySlug/bootstrap')
+  bootstrapBySlug(
+    @Param() params: CategorySlugParams,
+    @Headers('x-talenta-preview') headerToken = '',
+    @Headers('cookie') cookie = '',
+  ) {
+    return this.publicService.bootstrapBySlug(
+      params.categorySlug,
+      headerToken || this.previewTokens.fromCookie(cookie),
+    );
   }
 
-  @Get(':categorySlug/downloads')
-  downloads(@Param() params: CategorySlugParams) {
-    return this.publicService.downloads(params.categorySlug);
+  @Get('sites/:categorySlug/home')
+  home(
+    @Param() params: CategorySlugParams,
+    @Headers('x-talenta-preview') headerToken = '',
+    @Headers('cookie') cookie = '',
+  ) {
+    return this.publicService.home(
+      params.categorySlug,
+      headerToken || this.previewTokens.fromCookie(cookie),
+    );
   }
 
-  @Get(':categorySlug/faq')
-  faq(@Param() params: CategorySlugParams) {
-    return this.publicService.faq(params.categorySlug);
+  @Get('sites/:categorySlug/downloads')
+  downloads(
+    @Param() params: CategorySlugParams,
+    @Headers('x-talenta-preview') headerToken = '',
+    @Headers('cookie') cookie = '',
+  ) {
+    return this.publicService.downloads(
+      params.categorySlug,
+      headerToken || this.previewTokens.fromCookie(cookie),
+    );
   }
 
-  @Get(':categorySlug/winners')
-  winners(@Param() params: CategorySlugParams) {
-    return this.publicService.winners(params.categorySlug);
+  @Get('sites/:categorySlug/faq')
+  faq(
+    @Param() params: CategorySlugParams,
+    @Headers('x-talenta-preview') headerToken = '',
+    @Headers('cookie') cookie = '',
+  ) {
+    return this.publicService.faq(
+      params.categorySlug,
+      headerToken || this.previewTokens.fromCookie(cookie),
+    );
   }
 
-  @Get(':categorySlug/archives')
-  archives(@Param() params: CategorySlugParams) {
-    return this.publicService.archives(params.categorySlug);
+  @Get('sites/:categorySlug/winners')
+  winners(
+    @Param() params: CategorySlugParams,
+    @Headers('x-talenta-preview') headerToken = '',
+    @Headers('cookie') cookie = '',
+  ) {
+    return this.publicService.winners(
+      params.categorySlug,
+      headerToken || this.previewTokens.fromCookie(cookie),
+    );
   }
 
-  @Get(':categorySlug/archives/:eventSlug')
-  archiveDetail(@Param() params: ArchiveParams) {
+  @Get('sites/:categorySlug/archives')
+  archives(
+    @Param() params: CategorySlugParams,
+    @Headers('x-talenta-preview') headerToken = '',
+    @Headers('cookie') cookie = '',
+  ) {
+    return this.publicService.archives(
+      params.categorySlug,
+      headerToken || this.previewTokens.fromCookie(cookie),
+    );
+  }
+
+  @Get('sites/:categorySlug/archives/:eventSlug')
+  archiveDetail(
+    @Param() params: ArchiveParams,
+    @Headers('x-talenta-preview') headerToken = '',
+    @Headers('cookie') cookie = '',
+  ) {
     return this.publicService.archiveDetail(
       params.categorySlug,
       params.eventSlug,
+      headerToken || this.previewTokens.fromCookie(cookie),
     );
   }
 }

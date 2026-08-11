@@ -57,7 +57,7 @@ Buat `apps/backend/.env`, isi seluruh variabel wajib, lalu pastikan PostgreSQL d
 
 ## Migration dan Seed Lokal
 
-Jalankan migration dari `apps/backend` sebelum menjalankan aplikasi pada database baru. Migration reset Category→Event bersifat destruktif terhadap schema lama; gunakan backup atau database development/disposable jika data perlu dipertahankan:
+Jalankan migration dari `apps/backend` sebelum menjalankan aplikasi pada database baru. Migration reset Category→Event bersifat destruktif terhadap schema lama; gunakan backup atau database development/disposable jika data perlu dipertahankan. Migration `1786586400000-AddEventDraftPublications` bersifat non-destruktif dan menambahkan penyimpanan snapshot/draf Event, tetapi tetap harus dijalankan melalui prosedur perubahan database yang terotorisasi:
 
 ```bash
 cd apps/backend
@@ -188,7 +188,9 @@ Jangan memakai force-kill kecuali proses tidak merespons. Pastikan proses yang m
 - **Seed gagal:** periksa `LOCAL_ADMIN_EMAIL`, panjang `LOCAL_ADMIN_PASSWORD`, dan koneksi database.
 - **Admin terkena CORS:** samakan origin browser dengan salah satu nilai `CORS_ORIGINS`, lalu restart backend.
 - **Gateway memberi `502`:** pastikan frontend dan backend hidup pada port yang sama dengan konfigurasi gateway.
-- **Gateway memberi `404` untuk kategori:** pastikan kategori berstatus published/aktif, Organization aktif, dan terdapat tepat satu Event aktif yang belum soft delete.
+- **Gateway memberi `404` untuk kategori:** pastikan kategori berstatus published/aktif, Organization aktif, terdapat tepat satu Event aktif/operasional yang belum soft delete, dan Event tersebut sudah memiliki snapshot publik.
+- **Preview Admin berakhir:** buka kembali melalui tombol **Lihat preview**; token berlaku 15 menit dan tidak fallback ke versi publik.
+- **Publish Event gagal:** perbaiki validasi aggregate yang dilaporkan; snapshot publik lama dan draf tetap dipertahankan.
 - **Port sudah dipakai:** gunakan `netstat -ano | findstr :3000`, `:4173`, atau `:8080`, lalu hentikan proses yang benar.
 - **`npm run tunnel` tidak menemukan executable/config:** periksa instalasi `cloudflared` dan `%USERPROFILE%\.cloudflared\config.yml`.
 - **Cloudflare `1033` atau reconnect berulang:** pastikan gateway hidup di `127.0.0.1:8080`, credential JSON cocok dengan tunnel, dan ingress lokal benar.

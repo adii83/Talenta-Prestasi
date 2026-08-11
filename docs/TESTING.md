@@ -9,6 +9,7 @@ npm run check:routes
 npm run check:js
 npm run check:theme
 npm run test:category-events
+npm run test:event-publication
 npm run test:download-relations
 npm run test:winner-relations
 npm run test:archive-relations
@@ -61,12 +62,25 @@ E2E memerlukan PostgreSQL writable dengan schema migration terbaru. Test membuat
 - Ubah nama/deskripsi Event; slug kategori tidak berubah.
 - Hapus Event uji; Event hilang dari list aktif/arsip.
 
+## Draf, Preview, dan Publikasi Event
+
+- Edit Event aktif lalu simpan draf; Public API biasa harus tetap mengembalikan snapshot lama.
+- Buka **Lihat preview**; workspace terbaru tampil pada Public Site asli dan fragment token segera hilang dari address bar.
+- Kategori unpublished dan Event nonaktif hanya dapat dipreview dengan token yang sesuai; request biasa menghasilkan `404`.
+- Token kedaluwarsa, purpose salah, tenant lain, dan Event soft-deleted ditolak tanpa fallback ke versi publik.
+- Publikasikan perubahan; seluruh modul berpindah ke satu versi snapshot secara atomik.
+- Batalkan draf; workspace kembali ke snapshot terakhir tanpa mengubah website publik.
+- Event tanpa snapshot tidak dapat diaktifkan pada kategori published.
+- Media draf tidak dapat dibaca hanya dengan UUID; media snapshot dan media preview Event yang sesuai dapat dibaca.
+- Publish atau batalkan draf memakai checksum status terbaru; perubahan aggregate oleh Admin lain menghasilkan `409`.
+- Simpan editor lintas Admin masih last-write-wins pada initial scope; revision workspace seragam harus ditambahkan sebelum kolaborasi multi-Admin aktif.
+
 ## Pengaturan dan Beranda
 
-- Ubah warna, navigasi, kontak, footer, SEO, nama/deskripsi Event; simpan dan refresh.
-- Pastikan perubahan hanya memengaruhi Event terpilih.
+- Ubah warna, navigasi, kontak, footer, SEO, nama/deskripsi Event; simpan draf dan refresh.
+- Pastikan perubahan hanya memengaruhi workspace Event terpilih.
 - Ubah Hero/section Beranda dan cocokkan preview dengan Public Site pada 1440px, 768px, dan 390px.
-- Viewer tidak dapat menyimpan perubahan; editor dapat.
+- Viewer tidak dapat menyimpan/publish perubahan; editor dapat menyimpan draf, preview, dan publish.
 
 ## FAQ
 

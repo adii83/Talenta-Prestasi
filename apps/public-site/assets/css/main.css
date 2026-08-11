@@ -2642,6 +2642,24 @@ textarea {
   }
 }
 
+.draft-preview-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1200;
+  padding: 10px 20px;
+  background: #fff3cd;
+  color: #5c4300;
+  border-bottom: 1px solid #e8cc72;
+  font-weight: 700;
+  text-align: center;
+}
+
+.draft-preview-banner--expired {
+  background: #fde2e7;
+  color: #8b2438;
+  border-color: #e6a8b4;
+}
+
 /* --- 30. ADMIN EVENT SETTINGS --- */
 .admin-body {
   background: #f1f4f8;
@@ -5814,6 +5832,28 @@ button.repeat-row__grip:focus-visible,
   .admin-main {
     width: 100%;
   }
+}
+
+.event-publication-status {
+  display: grid;
+  min-width: 150px;
+  gap: 2px;
+  color: var(--c-text-secondary);
+  font-size: 0.75rem;
+}
+
+.event-publication-status strong {
+  color: var(--c-text-primary);
+}
+
+.event-publication-status[data-state="draft"] span {
+  color: #9a5b00;
+  font-weight: 700;
+}
+
+.event-publication-status[data-state="clean"] span {
+  color: #197044;
+  font-weight: 700;
 }
 
 /* --- 39. PERSISTENT ADMIN ROUTER --- */

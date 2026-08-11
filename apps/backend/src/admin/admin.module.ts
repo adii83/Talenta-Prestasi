@@ -11,11 +11,14 @@ import {
 import { AdminService } from './admin.service';
 import { AdminContentController } from './admin-content.controller';
 import { AdminContentService } from './admin-content.service';
+import { EventPublicationService } from './event-publication.service';
+import { PublicModule } from '../public/public.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([CompetitionCategory, EventSite]),
     AuthModule,
+    PublicModule,
   ],
   controllers: [
     AdminSessionController,
@@ -23,6 +26,6 @@ import { AdminContentService } from './admin-content.service';
     AdminController,
     AdminContentController,
   ],
-  providers: [AdminService, AdminContentService],
+  providers: [AdminService, AdminContentService, EventPublicationService],
 })
 export class AdminModule {}

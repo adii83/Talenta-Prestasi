@@ -99,12 +99,20 @@ SK Pemenang disimpan sebagai Event Document dan direferensikan oleh `event_detai
 
 `media_assets` dimiliki Organization dan menyimpan storage key, nama asli, MIME, ukuran, checksum SHA-256, dimensi opsional, alt text, status, creator, dan waktu pembuatan. File fisik berada di storage lokal; URL publik hanya mengekspos UUID asset.
 
+## Draf dan Snapshot Publik Event
+
+Tabel relasional Event dan kontennya menjadi workspace draf Admin. `event_publications` menyimpan tepat satu snapshot publik aktif per Event, snapshot workspace saat publish, checksum workspace, nomor versi, waktu, dan pengguna publisher. `event_publication_assets` menjadi allowlist media yang direferensikan snapshot publik.
+
+Publish Event membangun DTO lengkap dan mengganti snapshot serta allowlist media dalam satu transaksi. Menyimpan draf berikutnya tidak mengubah snapshot. Batalkan draf memulihkan row workspace dari snapshot workspace terakhir dalam urutan foreign key yang aman.
+
 ## Publikasi, Aktivasi, dan Arsip
 
 - CompetitionCategory memakai `publication_status` untuk membuka/menutup situs publik.
 - EventSite memakai `is_active` untuk menentukan periode yang tampil.
-- Resolver publik mensyaratkan kategori published/aktif, Organization aktif, dan Event aktif/operasional.
-- Event nonaktif yang belum soft delete dikembalikan sebagai arsip.
+- EventPublication menentukan versi konten Event yang terlihat pengunjung.
+- Resolver publik mensyaratkan kategori published/aktif, Organization aktif, Event aktif/operasional, dan snapshot publik.
+- Event nonaktif yang memiliki snapshot publik dikembalikan sebagai arsip; draf Event tersebut tidak ikut tampil.
+- Preview bertoken dapat membaca workspace Event terpilih tanpa mengubah status.
 - Soft delete kategori/Event mengeluarkannya dari query aktif tanpa mengandalkan UI.
 
 ## Reset Migration
@@ -136,6 +144,8 @@ Admin API utama:
 - `POST /admin/categories/:categoryId/publish|unpublish`
 - `GET|PATCH|DELETE /admin/events/:eventId`
 - `POST /admin/events/:eventId/activate|deactivate`
+- `GET /admin/events/:eventId/publication-status`
+- `POST /admin/events/:eventId/preview-token|publish|discard-draft`
 - `/admin/events/:eventId/settings|home|faq|downloads|documents|winner-categories|winners|decree|detail-settings|pages/...`
 - `POST /admin/events/:eventId/media`
 

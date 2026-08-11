@@ -31,9 +31,13 @@
     document.getElementById("dashboardCreate").onclick = openCreate;
     document.getElementById("categoryForm").onsubmit = createCategory;
     document.getElementById("eventForm").onsubmit = createEvent;
-    root.querySelectorAll("[data-close]").forEach(
-      (button) => (button.onclick = () => document.getElementById(button.dataset.close).close()),
-    );
+    root
+      .querySelectorAll("[data-close]")
+      .forEach(
+        (button) =>
+          (button.onclick = () =>
+            document.getElementById(button.dataset.close).close()),
+      );
     return root;
   }
 
@@ -43,7 +47,8 @@
     node.classList.toggle("event-dashboard__status--error", error);
   };
   const canManage = (item) => ["owner", "admin"].includes(item.role);
-  const badge = (text, state) => `<span class="event-card__badge event-card__badge--${state}">${text}</span>`;
+  const badge = (text, state) =>
+    `<span class="event-card__badge event-card__badge--${state}">${text}</span>`;
 
   function showCategories() {
     selectedCategory = null;
@@ -66,10 +71,13 @@
     const grid = document.getElementById("eventGrid");
     grid.replaceChildren();
     if (!session.categories.length) {
-      grid.innerHTML = '<div class="event-dashboard__empty">Belum ada kategori lomba.</div>';
+      grid.innerHTML =
+        '<div class="event-dashboard__empty">Belum ada kategori lomba.</div>';
       return;
     }
-    session.categories.forEach((category) => grid.append(categoryCard(category)));
+    session.categories.forEach((category) =>
+      grid.append(categoryCard(category)),
+    );
   }
 
   function categoryCard(category) {
@@ -79,12 +87,21 @@
     card.innerHTML = `<div class="event-card__heading"><h2></h2>${badge(state === "published" ? "Dipublikasikan" : state === "unpublished" ? "Nonaktif" : "Draft", state)}</div><p class="event-card__domain"></p><div class="event-card__buttons"></div>`;
     card.querySelector("h2").textContent = category.name;
     const domain = card.querySelector(".event-card__domain");
-    domain.textContent = category.hostname || `${category.slug}.${TalentaConfig.publicBaseDomain}`;
+    domain.textContent =
+      category.hostname || `${category.slug}.${TalentaConfig.publicBaseDomain}`;
     const buttons = card.querySelector(".event-card__buttons");
     buttons.append(
-      action("Kelola Event", "event-dashboard__primary", () => openCategory(category)),
-      action(state === "published" ? "Nonaktifkan" : "Publikasikan", "event-dashboard__secondary", () => toggleCategory(category)),
-      action("Hapus", "event-dashboard__secondary event-card__delete", () => deleteCategory(category)),
+      action("Kelola Event", "event-dashboard__primary", () =>
+        openCategory(category),
+      ),
+      action(
+        state === "published" ? "Nonaktifkan" : "Publikasikan",
+        "event-dashboard__secondary",
+        () => toggleCategory(category),
+      ),
+      action("Hapus", "event-dashboard__secondary event-card__delete", () =>
+        deleteCategory(category),
+      ),
     );
     return card;
   }
@@ -94,7 +111,9 @@
     TalentaAdminAuth.selectCategory(category);
     setStatus("Memuat event...");
     try {
-      events = (await TalentaApi.request(`/admin/categories/${category.id}/events`)).data;
+      events = (
+        await TalentaApi.request(`/admin/categories/${category.id}/events`)
+      ).data;
       renderEvents();
       setStatus("");
     } catch (error) {
@@ -103,8 +122,10 @@
   }
 
   function renderEvents() {
-    document.getElementById("dashboardEyebrow").textContent = selectedCategory.slug;
-    document.getElementById("dashboardTitle").textContent = selectedCategory.name;
+    document.getElementById("dashboardEyebrow").textContent =
+      selectedCategory.slug;
+    document.getElementById("dashboardTitle").textContent =
+      selectedCategory.name;
     document.getElementById("dashboardDescription").textContent =
       "Hanya satu Event aktif. Event nonaktif otomatis tersedia sebagai arsip kategori ini.";
     document.getElementById("backToCategories").hidden = false;
@@ -114,28 +135,75 @@
     const grid = document.getElementById("eventGrid");
     grid.replaceChildren();
     if (!events.length) {
-      grid.innerHTML = '<div class="event-dashboard__empty">Belum ada Event/Periode dalam kategori ini.</div>';
+      grid.innerHTML =
+        '<div class="event-dashboard__empty">Belum ada Event/Periode dalam kategori ini.</div>';
       return;
     }
     events.forEach((event) => grid.append(eventCard(event)));
+    const pendingStatus = events.filter(
+      (event) => !event.publicationStatusLoaded,
+    );
+    if (pendingStatus.length)
+      void Promise.all(
+        pendingStatus.map(async (event) => {
+          try {
+            const status = (
+              await TalentaApi.request(
+                `/admin/events/${event.id}/publication-status`,
+              )
+            ).data;
+            Object.assign(event, status);
+          } catch (_error) {
+          } finally {
+            event.publicationStatusLoaded = true;
+          }
+        }),
+      ).then(() => {
+        if (selectedCategory) renderEvents();
+      });
   }
 
   function eventCard(event) {
     const card = document.createElement("article");
     card.className = "event-card";
     const state = event.isActive ? "active" : "archive";
-    card.innerHTML = `<div class="event-card__heading"><h2></h2>${badge(event.isActive ? "Aktif" : "Arsip", state)}</div><p class="event-card__domain"></p><div class="event-card__buttons"></div>`;
+    const publicationLabel =
+      event.publicationState === "unpublished"
+        ? "Belum dipublikasikan"
+        : event.publicationState === "draft"
+          ? "Ada draf"
+          : "Versi publik tersedia";
+    card.innerHTML = `<div class="event-card__heading"><h2></h2>${badge(event.isActive ? "Aktif" : "Arsip", state)}</div><p class="event-card__domain"></p><small class="event-card__publication"></small><div class="event-card__buttons"></div>`;
     card.querySelector("h2").textContent = event.name;
-    card.querySelector(".event-card__domain").textContent = `Periode: ${event.slug}`;
+    card.querySelector(".event-card__domain").textContent =
+      `Periode: ${event.slug}`;
+    card.querySelector(".event-card__publication").textContent =
+      publicationLabel;
     const buttons = card.querySelector(".event-card__buttons");
     buttons.append(
       action("Kelola Event", "event-dashboard__primary", () =>
         TalentaAdminAuth.selectEvent(event, selectedCategory),
       ),
     );
-    if (!event.isActive)
-      buttons.append(action("Jadikan Aktif", "event-dashboard__secondary", () => activateEvent(event)));
-    buttons.append(action("Hapus", "event-dashboard__secondary event-card__delete", () => deleteEvent(event)));
+    if (!event.isActive) {
+      const activate = action(
+        "Jadikan Aktif",
+        "event-dashboard__secondary",
+        () => activateEvent(event),
+      );
+      activate.disabled =
+        selectedCategory.publicationStatus === "published" &&
+        !event.publishedVersion;
+      activate.title = activate.disabled
+        ? "Publikasikan isi Event terlebih dahulu"
+        : "";
+      buttons.append(activate);
+    }
+    buttons.append(
+      action("Hapus", "event-dashboard__secondary event-card__delete", () =>
+        deleteEvent(event),
+      ),
+    );
     return card;
   }
 
@@ -172,25 +240,52 @@
 
   async function createCategory(event) {
     event.preventDefault();
-    await submit(event.currentTarget, async (body) => {
-      await TalentaApi.request("/admin/categories", { method: "POST", body });
-      await refreshSession();
-    }, "categoryDialog", "categoryError");
+    await submit(
+      event.currentTarget,
+      async (body) => {
+        await TalentaApi.request("/admin/categories", { method: "POST", body });
+        await refreshSession();
+      },
+      "categoryDialog",
+      "categoryError",
+    );
   }
 
   async function createEvent(event) {
     event.preventDefault();
-    await submit(event.currentTarget, async (body) => {
-      await TalentaApi.request(`/admin/categories/${selectedCategory.id}/events`, { method: "POST", body });
-      await openCategory(selectedCategory);
-    }, "eventDialog", "newEventError");
+    await submit(
+      event.currentTarget,
+      async (body) => {
+        await TalentaApi.request(
+          `/admin/categories/${selectedCategory.id}/events`,
+          { method: "POST", body },
+        );
+        await openCategory(selectedCategory);
+      },
+      "eventDialog",
+      "newEventError",
+    );
   }
 
   async function toggleCategory(category) {
     const published = category.publicationStatus === "published";
-    if (published && !(await adminConfirm({ title: "Nonaktifkan kategori?", message: "Subdomain tidak dapat diakses sampai kategori dipublikasikan kembali.", confirmLabel: "Nonaktifkan", variant: "danger", icon: "eye-off" }))) return;
+    if (
+      published &&
+      !(await adminConfirm({
+        title: "Nonaktifkan kategori?",
+        message:
+          "Subdomain tidak dapat diakses sampai kategori dipublikasikan kembali.",
+        confirmLabel: "Nonaktifkan",
+        variant: "danger",
+        icon: "eye-off",
+      }))
+    )
+      return;
     try {
-      await TalentaApi.request(`/admin/categories/${category.id}/${published ? "unpublish" : "publish"}`, { method: "POST" });
+      await TalentaApi.request(
+        `/admin/categories/${category.id}/${published ? "unpublish" : "publish"}`,
+        { method: "POST" },
+      );
       await refreshSession();
     } catch (error) {
       setStatus(error.message, true);
@@ -198,9 +293,20 @@
   }
 
   async function deleteCategory(category) {
-    if (!(await adminConfirm({ title: "Hapus kategori?", message: `${category.name} dan seluruh Event di dalamnya akan disembunyikan.`, confirmLabel: "Hapus kategori", variant: "danger", icon: "trash-2" }))) return;
+    if (
+      !(await adminConfirm({
+        title: "Hapus kategori?",
+        message: `${category.name} dan seluruh Event di dalamnya akan disembunyikan.`,
+        confirmLabel: "Hapus kategori",
+        variant: "danger",
+        icon: "trash-2",
+      }))
+    )
+      return;
     try {
-      await TalentaApi.request(`/admin/categories/${category.id}`, { method: "DELETE" });
+      await TalentaApi.request(`/admin/categories/${category.id}`, {
+        method: "DELETE",
+      });
       await refreshSession();
     } catch (error) {
       setStatus(error.message, true);
@@ -208,9 +314,19 @@
   }
 
   async function activateEvent(event) {
-    if (!(await adminConfirm({ title: "Aktifkan Event?", message: `${event.name} menjadi Event publik; Event aktif sebelumnya otomatis menjadi arsip.`, confirmLabel: "Jadikan aktif", icon: "check-circle" }))) return;
+    if (
+      !(await adminConfirm({
+        title: "Aktifkan Event?",
+        message: `${event.name} menjadi Event aktif. Jika kategori sudah published, pengunjung langsung melihat snapshot publik Event ini; Event aktif sebelumnya otomatis menjadi arsip.`,
+        confirmLabel: "Jadikan aktif",
+        icon: "check-circle",
+      }))
+    )
+      return;
     try {
-      await TalentaApi.request(`/admin/events/${event.id}/activate`, { method: "POST" });
+      await TalentaApi.request(`/admin/events/${event.id}/activate`, {
+        method: "POST",
+      });
       await openCategory(selectedCategory);
     } catch (error) {
       setStatus(error.message, true);
@@ -218,9 +334,20 @@
   }
 
   async function deleteEvent(event) {
-    if (!(await adminConfirm({ title: "Hapus Event?", message: `${event.name} akan disembunyikan dari kategori dan arsip.`, confirmLabel: "Hapus Event", variant: "danger", icon: "trash-2" }))) return;
+    if (
+      !(await adminConfirm({
+        title: "Hapus Event?",
+        message: `${event.name} akan disembunyikan dari kategori dan arsip.`,
+        confirmLabel: "Hapus Event",
+        variant: "danger",
+        icon: "trash-2",
+      }))
+    )
+      return;
     try {
-      await TalentaApi.request(`/admin/events/${event.id}`, { method: "DELETE" });
+      await TalentaApi.request(`/admin/events/${event.id}`, {
+        method: "DELETE",
+      });
       TalentaAdminAuth.clearCurrentEvent(event.id);
       await openCategory(selectedCategory);
     } catch (error) {
@@ -254,7 +381,12 @@
   document.addEventListener("talenta:admin-ready", (event) => {
     session = event.detail.session;
     addSwitchButton();
-    if (event.detail.interactive || !TalentaAdminAuth.currentEvent() || new URLSearchParams(location.search).has("categories")) show();
+    if (
+      event.detail.interactive ||
+      !TalentaAdminAuth.currentEvent() ||
+      new URLSearchParams(location.search).has("categories")
+    )
+      show();
   });
   document.addEventListener("talenta:show-portals", show);
   window.TalentaPortalDashboard = Object.freeze({ show });

@@ -15,11 +15,13 @@ import {
   IsArray,
   IsIn,
   IsOptional,
+  IsInt,
   IsObject,
   IsString,
   IsUUID,
   Matches,
   MaxLength,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -28,6 +30,7 @@ import { CurrentUser } from '../auth/current-user.decorator';
 import type { AuthenticatedUser } from '../auth/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminService } from './admin.service';
+import { EventPublicationService } from './event-publication.service';
 
 class CreateCategoryDto {
   @IsString() @MinLength(1) @MaxLength(160) name!: string;
@@ -126,6 +129,11 @@ class HomeAggregateDto {
   sections!: HomeSectionDto[];
 }
 
+class PublicationActionDto {
+  @IsOptional() @IsInt() @Min(1) expectedVersion?: number;
+  @IsOptional() @IsString() @Matches(/^[a-f0-9]{64}$/) expectedChecksum?: string;
+}
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard)
 export class AdminSessionController {
@@ -209,7 +217,10 @@ export class AdminCategoryController {
 @Controller('admin/events/:eventId')
 @UseGuards(JwtAuthGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly publications: EventPublicationService,
+  ) {}
 
   @Get()
   event(
@@ -250,6 +261,50 @@ export class AdminController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.adminService.deactivateEvent(eventId, user.userId);
+  }
+
+  @Get('publication-status')
+  publicationStatus(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.publications.status(eventId, user.userId);
+  }
+
+  @Post('preview-token')
+  previewToken(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.publications.previewToken(eventId, user.userId);
+  }
+
+  @Post('publish')
+  publishEvent(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body() input: PublicationActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.publications.publish(
+      eventId,
+      user.userId,
+      input.expectedVersion,
+      input.expectedChecksum,
+    );
+  }
+
+  @Post('discard-draft')
+  discardDraft(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body() input: PublicationActionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.publications.discardDraft(
+      eventId,
+      user.userId,
+      input.expectedVersion,
+      input.expectedChecksum,
+    );
   }
 
   @Get('settings')

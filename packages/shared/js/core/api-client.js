@@ -29,8 +29,10 @@
     if (options.body !== undefined && !(options.body instanceof FormData)) {
       headers.set("Content-Type", "application/json");
     }
-    const accessToken = token();
+    const accessToken = options.auth === false ? "" : token();
     if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
+    if (options.previewToken)
+      headers.set("X-Talenta-Preview", options.previewToken);
 
     try {
       const response = await fetch(
@@ -43,12 +45,13 @@
               ? options.body
               : JSON.stringify(options.body),
           signal: controller.signal,
+          credentials: options.credentials || "include",
         },
       );
       const text = await response.text();
       const payload = text ? JSON.parse(text) : null;
       if (!response.ok) {
-        if (response.status === 401) setToken("");
+        if (response.status === 401 && accessToken) setToken("");
         const message = Array.isArray(payload?.message)
           ? payload.message.join(", ")
           : payload?.message || `Permintaan gagal (${response.status})`;

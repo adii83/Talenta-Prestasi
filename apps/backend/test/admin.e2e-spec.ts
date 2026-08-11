@@ -251,6 +251,16 @@ describe('Admin Category → Event flow (e2e)', () => {
       .post(`/api/v1/admin/events/${activeEventId}/activate`)
       .set(auth(ownerToken))
       .expect(201);
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/events/${archivedEventId}/publish`)
+      .set(auth(editorToken))
+      .send({})
+      .expect(201);
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/events/${activeEventId}/publish`)
+      .set(auth(editorToken))
+      .send({})
+      .expect(201);
 
     const events = await request(app.getHttpServer())
       .get(`/api/v1/admin/categories/${categoryId}/events`)

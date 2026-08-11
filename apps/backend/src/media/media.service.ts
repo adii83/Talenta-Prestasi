@@ -11,6 +11,7 @@ import { mkdir, readFile, unlink, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { DataSource, Repository } from 'typeorm';
 import { MediaAsset } from '../entities/media-asset.entity';
+import { PreviewTokenService } from '../public/preview-token.service';
 
 const TYPES: Record<string, { ext: string; max: number }> = {
   'image/png': { ext: '.png', max: 5_242_880 },
@@ -28,6 +29,7 @@ export class MediaService {
     private readonly assets: Repository<MediaAsset>,
     private readonly db: DataSource,
     config: ConfigService,
+    private readonly previewTokens: PreviewTokenService,
   ) {
     this.root = resolve(
       config.get(
@@ -88,7 +90,51 @@ export class MediaService {
     }
   }
 
-  async file(id: string) {
+  async file(id: string, previewToken = '') {
+    let allowed = false;
+    if (previewToken) {
+      const claims = await this.previewTokens.verify(previewToken);
+      const rows = await this.db.query(
+        `SELECT asset.id FROM media_assets asset
+         JOIN event_sites event ON event.organization_id=asset.organization_id
+         JOIN organization_memberships membership ON membership.organization_id=event.organization_id
+         WHERE asset.id=$1 AND event.id=$2 AND event.category_id=$3
+           AND event.organization_id=$4 AND membership.user_id=$5
+           AND asset.status='active' AND event.deleted_at IS NULL
+           AND (
+             event.mascot_asset_id=asset.id OR
+             EXISTS(SELECT 1 FROM event_documents document WHERE document.event_site_id=event.id AND document.asset_id=asset.id) OR
+             EXISTS(SELECT 1 FROM winners winner WHERE winner.event_site_id=event.id AND winner.photo_asset_id=asset.id) OR
+             EXISTS(SELECT 1 FROM competition_categories category WHERE category.id=event.category_id AND (category.logo_asset_id=asset.id OR category.favicon_asset_id=asset.id)) OR
+             EXISTS(SELECT 1 FROM partner_items partner JOIN home_sections section ON section.id=partner.section_id WHERE section.event_site_id=event.id AND partner.logo_asset_id=asset.id) OR
+             EXISTS(SELECT 1 FROM home_sections section WHERE section.event_site_id=event.id AND section.settings::text LIKE '%'||asset.id::text||'%') OR
+             EXISTS(SELECT 1 FROM site_settings settings WHERE settings.event_site_id=event.id AND to_jsonb(settings)::text LIKE '%'||asset.id::text||'%')
+           )`,
+        [
+          id,
+          claims.eventId,
+          claims.categoryId,
+          claims.organizationId,
+          claims.sub,
+        ],
+      );
+      allowed = Boolean(rows[0]);
+    } else {
+      const rows = await this.db.query(
+        `SELECT asset.id FROM media_assets asset
+         JOIN event_publication_assets link ON link.asset_id=asset.id
+         JOIN event_sites event ON event.id=link.event_site_id
+         JOIN competition_categories category ON category.id=event.category_id
+         JOIN organizations org ON org.id=event.organization_id
+         WHERE asset.id=$1 AND asset.status='active'
+           AND category.publication_status='published' AND category.status='active'
+           AND category.deleted_at IS NULL AND event.deleted_at IS NULL
+           AND org.status='active' AND org.deleted_at IS NULL`,
+        [id],
+      );
+      allowed = Boolean(rows[0]);
+    }
+    if (!allowed) throw new NotFoundException('Media not found');
     const asset = await this.assets.findOneBy({ id, status: 'active' });
     if (!asset) throw new NotFoundException('Media not found');
     return { asset, buffer: await readFile(this.path(asset.storageKey)) };

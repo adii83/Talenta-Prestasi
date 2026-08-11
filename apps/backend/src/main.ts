@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import type { NextFunction, Request, Response } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -19,6 +20,19 @@ async function bootstrap() {
     }),
   );
   app.disable('x-powered-by');
+  app.use(
+    '/api/v1/public',
+    (request: Request, response: Response, next: NextFunction) => {
+      const hasPreview =
+        Boolean(request.get('X-Talenta-Preview')) ||
+        String(request.get('Cookie') || '').includes('talenta_preview=');
+      if (hasPreview) {
+        response.setHeader('Cache-Control', 'private, no-store');
+        response.setHeader('Vary', 'X-Talenta-Preview, Cookie');
+      }
+      next();
+    },
+  );
 
   const allowedOrigins = config
     .get<string>('CORS_ORIGINS', 'http://localhost:5500,http://localhost:3001')

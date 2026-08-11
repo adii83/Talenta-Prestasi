@@ -3,6 +3,8 @@ export { User } from './user.entity';
 export { OrganizationMembership } from './organization-membership.entity';
 export { CompetitionCategory } from './competition-category.entity';
 export { EventSite } from './event-site.entity';
+export { EventPublication } from './event-publication.entity';
+export { EventPublicationAsset } from './event-publication-asset.entity';
 export { SiteDomain } from './site-domain.entity';
 export { SiteSettings } from './site-settings.entity';
 export { MediaAsset } from './media-asset.entity';

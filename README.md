@@ -2,7 +2,7 @@
 
 ## Status Proyek
 
-Talenta Prestasi adalah platform website kategori lomba multi-periode. Public Site, CMS Admin, backend NestJS, dan PostgreSQL telah memakai hierarki Organization → Kategori Lomba → Event/Periode. Satu kategori memiliki satu slug/subdomain tetap, satu Event aktif, dan Event nonaktif sebagai arsip otomatis.
+Talenta Prestasi adalah platform website kategori lomba multi-periode. Public Site, CMS Admin, backend NestJS, dan PostgreSQL telah memakai hierarki Organization → Kategori Lomba → Event/Periode. Satu kategori memiliki satu slug/subdomain tetap, satu Event aktif, dan Event nonaktif sebagai arsip otomatis. Setiap Event memiliki satu workspace draf terpadu; pengunjung membaca snapshot publik terakhir, sedangkan Admin dapat memeriksa draf melalui preview aman sebelum memublikasikan seluruh perubahan Event secara atomik.
 
 ## Tujuan Produk
 
@@ -34,6 +34,10 @@ Pendaftaran dan dashboard peserta dikelola melalui website eksternal terpisah.
 
 ## Menjalankan Secara Singkat
 
+Untuk instalasi pertama setelah clone—termasuk PostgreSQL, `.env`, migration, seed, dan login Admin—ikuti [Panduan Setup Lokal](docs/SETUP_LOKAL.md).
+
+Setelah setup pertama selesai:
+
 1. Jalankan backend dari root proyek:
 
 ```bash
@@ -55,14 +59,15 @@ npm run dev
 
 ## Urutan Baca Dokumentasi
 
-1. [PROGRESS.md](PROGRESS.md) — Status produk dan area yang telah selesai.
-2. [docs/AI_SESSION_PROMPT.md](docs/AI_SESSION_PROMPT.md) — Prompt orientasi sesi baru.
-3. [docs/WORK_LOG.md](docs/WORK_LOG.md) — Riwayat pekerjaan lintas sesi.
-4. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Arsitektur sistem dan batas antar komponen.
-5. [docs/ADMIN_SPEC.md](docs/ADMIN_SPEC.md) — Spesifikasi pengoperasian CMS Admin.
-6. [docs/DATA_MODEL.md](docs/DATA_MODEL.md) — Skema basis data NestJS dan TypeORM.
-7. [docs/OPERATIONS.md](docs/OPERATIONS.md) — Panduan deployment dan operasi gateway/tunnel.
-8. [docs/TESTING.md](docs/TESTING.md) — Prosedur pengujian otomatis dan manual.
+1. [docs/SETUP_LOKAL.md](docs/SETUP_LOKAL.md) — Setup pertama setelah clone hingga aplikasi dapat digunakan.
+2. [PROGRESS.md](PROGRESS.md) — Status produk dan area yang telah selesai.
+3. [docs/AI_SESSION_PROMPT.md](docs/AI_SESSION_PROMPT.md) — Prompt orientasi sesi baru.
+4. [docs/WORK_LOG.md](docs/WORK_LOG.md) — Riwayat pekerjaan lintas sesi.
+5. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Arsitektur sistem dan batas antar komponen.
+6. [docs/ADMIN_SPEC.md](docs/ADMIN_SPEC.md) — Spesifikasi pengoperasian CMS Admin.
+7. [docs/DATA_MODEL.md](docs/DATA_MODEL.md) — Skema basis data NestJS dan TypeORM.
+8. [docs/OPERATIONS.md](docs/OPERATIONS.md) — Panduan deployment dan operasi gateway/tunnel.
+9. [docs/TESTING.md](docs/TESTING.md) — Prosedur pengujian otomatis dan manual.
 
 ## Validasi
 

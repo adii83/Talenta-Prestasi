@@ -145,6 +145,47 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 - **Kendala**: Tidak ada.
 - **Tindak lanjut**: Pekerjaan fitur Unduh dan sinkronisasi preview draf publik telah selesai seluruhnya.
 
+### 2026-08-11 — Draf Terpadu, Preview Aman, dan Publikasi Atomik Event
+
+- **Tanggal/Judul**: 2026-08-11 — Draf Terpadu, Preview Aman, dan Publikasi Atomik Event
+- **Permintaan**: Memungkinkan Admin mengedit Event aktif tanpa unpublish, menyimpan satu draf untuk seluruh modul, melihat Public Site asli secara aman, lalu memublikasikan semua perubahan sekaligus.
+- **Proses/Keputusan**: Tabel relasional existing dipertahankan sebagai workspace draf. Ditambahkan snapshot publik per Event, snapshot workspace untuk batalkan draf, allowlist media, token preview read-only 15 menit, cookie HttpOnly khusus media preview yang mendeteksi HTTPS langsung maupun reverse proxy, resolver publik berbasis snapshot, publish transaksi `REPEATABLE READ`, status/preview/publish/discard pada shell Admin, dan guard aktivasi Event/kategori. Seed source membangun ulang allowlist media dari snapshot tetapi seed tidak dijalankan. Publish/batalkan draf memakai konflik checksum; revision seragam untuk setiap endpoint simpan editor dinyatakan di luar initial scope sehingga penyimpanan bersamaan pada modul yang sama masih last-write-wins. Perubahan existing `docs/AI_SESSION_PROMPT.md` tidak disentuh. Setelah persetujuan operasional terpisah, migration non-destruktif ke-15 diterapkan pada database development utama tanpa menjalankan seed atau reset.
+- **File**:
+  - `apps/backend/src/entities/`, `apps/backend/src/database/`, `apps/backend/src/admin/`, `apps/backend/src/public/`, dan `apps/backend/src/media/`
+  - `apps/backend/test/`
+  - `apps/admin/`, `apps/public-site/`, dan `packages/shared/js/core/api-client.js`
+  - `scripts/audit-event-publication.mjs`, `package.json`, `PROGRESS.md`, dan dokumentasi aktif terkait
+  - `docs/superpowers/specs/2026-08-11-event-draft-preview-publication-design.md`
+  - `docs/superpowers/plans/2026-08-11-event-draft-preview-publication.md`
+- **Validasi**: Backend build lulus; 9 suite/24 unit test lulus; audit draf/publikasi, route, JavaScript, tema, dialog, Category→Event, Unduh, Pemenang, Arsip, dan FAQ lulus; `git diff --check` dan format file scope dijalankan. Ledger database development terverifikasi 15/15. Uji browser Puppeteer membuktikan login Admin, public `404` untuk kategori unpublished, preview workspace valid dengan fragment dibersihkan dan banner draf, publish snapshot versi 1, allowlist tiga media, deteksi modul Pengaturan berubah, serta discard mengembalikan workspace ke kondisi clean.
+- **Kendala**: Suite E2E Jest tetap tidak dijalankan karena environment hanya menunjuk database development utama `talenta_prestasi`, sedangkan suite tersebut mensyaratkan database disposable. Tiga subagent read-only gagal karena provider eksternal `403/429`; implementasi dan validasi lokal dilanjutkan di main session.
+- **Tindak lanjut**: Siapkan database E2E disposable untuk menjalankan suite Jest draf-preview-publish tanpa memengaruhi data development utama.
+
+### 2026-08-11 — Panduan Setup Lokal untuk Clone Pertama
+
+- **Tanggal/Judul**: 2026-08-11 — Panduan Setup Lokal untuk Clone Pertama
+- **Permintaan**: Membuat panduan Markdown agar rekan pengembang/tester yang baru clone dapat menjalankan proyek secara lokal.
+- **Proses/Keputusan**: Menyusun alur berurutan dari prasyarat, clone, instalasi dependency, pembuatan database PostgreSQL development baru, `.env` lokal, migration hingga versi 15, seed idempotent, startup backend/frontend, login Admin, pemahaman draf/preview/publikasi, smoke test black-box, troubleshooting, dan pemeriksaan keamanan pra-commit. Nilai credential ditulis sebagai placeholder, bukan secret nyata.
+- **File**:
+  - `docs/SETUP_LOKAL.md`
+  - `README.md`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Memeriksa perintah terhadap script aktif, format Prettier, tautan Markdown lokal, pola credential/secret, dan `git diff --check`.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Rekan pengguna mengisi `.env` lokal sendiri dan tidak membagikan credential tersebut melalui Git atau laporan testing.
+
+### 2026-08-11 — Pengamanan Artifact Lokal Pra-Push
+
+- **Tanggal/Judul**: 2026-08-11 — Pengamanan Artifact Lokal Pra-Push
+- **Permintaan**: Memastikan implementasi baru siap di-commit/push dan credential, database lokal, private key, dump, serta unggahan media tidak ikut Git.
+- **Proses/Keputusan**: Mengaudit seluruh path tracked/untracked/ignored dan pola credential tanpa menampilkan nilainya. Aturan existing sudah melindungi `.env`, database Ruflo, dan cache lokal. Menambahkan ignore untuk SQLite/dump/backup, private key, dan isi `apps/backend/storage/uploads/`, sambil mempertahankan `.gitkeep` agar struktur direktori tetap tersedia setelah clone.
+- **File**:
+  - `.gitignore`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Scan signature credential dan hardcoded secret pada file calon commit tidak menemukan secret nyata; tidak ada database/dump/private key untracked; tidak ada file di atas 5 MB; backend build, 9 suite/24 unit test, audit publikasi Event, dan `git diff --check` lulus. File implementasi baru terkonfirmasi masih untracked sehingga harus dimasukkan saat staging sebelum commit.
+- **Kendala**: Tidak ada file yang di-stage, commit, atau push pada audit ini.
+- **Tindak lanjut**: Review `git diff --staged` setelah staging dan sebelum commit/push.
+
 ### 2026-08-10 — Standarisasi Styling Checkbox `.editor-check` Admin
 
 - **Tanggal/Judul**: 2026-08-10 — Standarisasi Styling Checkbox `.editor-check` Admin

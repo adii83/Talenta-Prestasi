@@ -239,6 +239,21 @@ export class AdminService {
         'owner',
         'admin',
       ]);
+      const categoryState = await manager.query<
+        Array<{ publicationStatus: string; hasPublication: boolean }>
+      >(
+        `SELECT category.publication_status AS "publicationStatus",
+                EXISTS(SELECT 1 FROM event_publications publication WHERE publication.event_site_id=$1) AS "hasPublication"
+         FROM competition_categories category WHERE category.id=$2`,
+        [eventId, event.categoryId],
+      );
+      if (
+        categoryState[0]?.publicationStatus === 'published' &&
+        !categoryState[0].hasPublication
+      )
+        throw new BadRequestException(
+          'Publikasikan isi Event sebelum menjadikannya aktif pada kategori published',
+        );
       // deactivate all others in same category
       await manager.query(
         `UPDATE event_sites SET is_active=false,updated_at=now() WHERE category_id=$1 AND is_active=true AND deleted_at IS NULL`,
@@ -280,9 +295,15 @@ export class AdminService {
         createdAt: Date;
       }[]
     >(
-      `SELECT id,name,slug,is_active AS "isActive",status,created_at AS "createdAt"
-       FROM event_sites WHERE category_id=$1 AND deleted_at IS NULL
-       ORDER BY is_active DESC,created_at DESC`,
+      `SELECT event.id,event.name,event.slug,event.is_active AS "isActive",event.status,
+              event.created_at AS "createdAt",publication.version AS "publishedVersion",
+              publication.published_at AS "publishedAt",
+              CASE WHEN publication.event_site_id IS NULL THEN 'unpublished'
+                   ELSE 'published' END AS "publicationState"
+       FROM event_sites event
+       LEFT JOIN event_publications publication ON publication.event_site_id=event.id
+       WHERE event.category_id=$1 AND event.deleted_at IS NULL
+       ORDER BY event.is_active DESC,event.created_at DESC`,
       [categoryId],
     );
     return { data: rows, errors: [] };
@@ -310,6 +331,17 @@ export class AdminService {
         userId,
         ['owner', 'admin'],
       );
+      const readiness = await manager.query<Array<{ id: string }>>(
+        `SELECT event.id FROM event_sites event
+         JOIN event_publications publication ON publication.event_site_id=event.id
+         WHERE event.category_id=$1 AND event.is_active=true
+           AND event.status='active' AND event.deleted_at IS NULL`,
+        [categoryId],
+      );
+      if (!readiness[0])
+        throw new BadRequestException(
+          'Aktifkan dan publikasikan isi Event sebelum memublikasikan kategori',
+        );
       const hostname = `${cat.slug}.${this.publicBaseDomain()}`;
       const hostnameOwner = await manager.query<{ categoryId: string }[]>(
         `SELECT category_id AS "categoryId" FROM site_domains WHERE hostname=$1`,

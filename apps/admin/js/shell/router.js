@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
   const routes = {
     settings: {
       title: "Pengaturan Event",
@@ -42,7 +42,14 @@
     editor = document.getElementById("editorRouteView"),
     frame = document.getElementById("adminEditorFrame"),
     resetButton = document.getElementById("routeResetButton"),
-    saveButton = document.getElementById("routeSaveButton");
+    saveButton = document.getElementById("routeSaveButton"),
+    previewButton = document.getElementById("routePublicLink"),
+    publishButton = document.getElementById("routePublishButton"),
+    discardButton = document.getElementById("routeDiscardButton"),
+    statusNode = document.getElementById("eventPublicationStatus");
+  let publication = null;
+  let dirty = false;
+
   function activeDocument() {
     return editor.hidden ? document : frame.contentDocument;
   }
@@ -63,7 +70,96 @@
     const p = new URLSearchParams(location.search).get("page");
     return routes[p] ? p : "settings";
   }
-  function render(name, push = false) {
+  function publicUrl(name, token) {
+    const route = routes[name] || routes.settings;
+    const url = new URL(route.public, location.href);
+    const category = TalentaAdminAuth.currentCategory();
+    const event = TalentaAdminAuth.currentEvent();
+    let verifiedHostname = "";
+    if (category?.hostname) {
+      try {
+        const parsed = new URL(`https://${category.hostname}`);
+        if (
+          parsed.protocol === "https:" &&
+          parsed.hostname &&
+          !parsed.username &&
+          !parsed.password &&
+          !parsed.port &&
+          parsed.pathname === "/" &&
+          !parsed.search &&
+          !parsed.hash
+        )
+          verifiedHostname = parsed.hostname;
+      } catch (_error) {}
+    }
+    if (verifiedHostname) {
+      const path =
+        name === "download"
+          ? "/unduh/"
+          : name === "winners"
+            ? "/pemenang/"
+            : name === "archive"
+              ? "/arsip/"
+              : name === "faq"
+                ? "/faq/"
+                : "/";
+      url.href = `https://${verifiedHostname}${path}`;
+    } else if (event?.categorySlug)
+      url.searchParams.set("site", event.categorySlug);
+    url.hash = new URLSearchParams({ preview: token }).toString();
+    return url.href;
+  }
+  async function refreshPublication() {
+    const event = TalentaAdminAuth.currentEvent();
+    if (!event?.id) return;
+    try {
+      publication = (
+        await TalentaApi.request(`/admin/events/${event.id}/publication-status`)
+      ).data;
+      const labels = {
+        unpublished: "Belum pernah dipublikasikan",
+        draft: "Ada perubahan draf",
+        clean: "Draf bersih",
+      };
+      statusNode.dataset.state = publication.publicationState;
+      statusNode.querySelector("span").textContent =
+        labels[publication.publicationState] || publication.publicationState;
+      publishButton.disabled =
+        !publication.draftChanged || publication.role === "viewer";
+      discardButton.disabled =
+        publication.publicationState === "unpublished" ||
+        !publication.draftChanged ||
+        publication.role === "viewer";
+    } catch (error) {
+      statusNode.querySelector("span").textContent = error.message;
+      publishButton.disabled = true;
+      discardButton.disabled = true;
+    }
+  }
+  function bindDirty(doc) {
+    if (!doc || doc.documentElement.dataset.dirtyBound) return;
+    doc.documentElement.dataset.dirtyBound = "true";
+    doc.addEventListener("input", () => (dirty = true));
+    doc.addEventListener("change", () => (dirty = true));
+    doc.addEventListener("submit", () => {
+      dirty = false;
+      setTimeout(refreshPublication, 400);
+    });
+  }
+  async function canLeave() {
+    if (!dirty) return true;
+    return adminConfirm({
+      title: "Perubahan belum disimpan",
+      message:
+        "Simpan sebagai draf sebelum meninggalkan halaman agar pekerjaan tidak hilang.",
+      confirmLabel: "Keluar tanpa menyimpan",
+      variant: "danger",
+      icon: "triangle-alert",
+    });
+  }
+  async function render(name, push = false) {
+    if (push && !(await canLeave())) return;
+    dirty = false;
     const r = routes[name] || routes.settings;
     if (push)
       history.pushState(
@@ -74,50 +170,6 @@
     document.title = `${r.title} — TalentaPanel`;
     document.getElementById("routeTitle").textContent = r.title;
     document.getElementById("routeBreadcrumb").textContent = r.crumb;
-    const publicUrl = new URL(r.public, location.href);
-    const selectedCategory = TalentaAdminAuth.currentCategory();
-    const selectedSite = TalentaAdminAuth.currentSite();
-    let verifiedHostname = "";
-    if (selectedCategory?.hostname) {
-      try {
-        const parsed = new URL(`https://${selectedCategory.hostname}`);
-        if (
-          parsed.protocol === "https:" &&
-          parsed.hostname &&
-          !parsed.username &&
-          !parsed.password &&
-          !parsed.port &&
-          parsed.pathname === "/" &&
-          !parsed.search &&
-          !parsed.hash
-        ) {
-          verifiedHostname = parsed.hostname;
-        }
-      } catch (_error) {}
-    }
-
-    if (
-      verifiedHostname &&
-      (selectedCategory?.publicationStatus === "published" ||
-        selectedSite?.publicationStatus === "published")
-    ) {
-      const publicPath =
-        name === "download"
-          ? "/unduh/"
-          : name === "winners"
-            ? "/pemenang/"
-            : name === "archive"
-              ? "/arsip/"
-              : name === "faq"
-                ? "/faq/"
-                : "/";
-      document.getElementById("routePublicLink").href =
-        `https://${verifiedHostname}${publicPath}`;
-    } else {
-      if (selectedSite?.categorySlug)
-        publicUrl.searchParams.set("site", selectedSite.categorySlug);
-      document.getElementById("routePublicLink").href = publicUrl.href;
-    }
     document
       .querySelectorAll("[data-route]")
       .forEach((a) =>
@@ -126,6 +178,7 @@
     if (name === "settings") {
       settings.hidden = false;
       editor.hidden = true;
+      bindDirty(document);
     } else {
       settings.hidden = true;
       editor.hidden = false;
@@ -136,15 +189,84 @@
     }
     lucide.createIcons();
     syncActions();
+    await refreshPublication();
+  }
+  async function openPreview() {
+    const event = TalentaAdminAuth.currentEvent();
+    if (!event?.id) return;
+    previewButton.disabled = true;
+    try {
+      const { data } = await TalentaApi.request(
+        `/admin/events/${event.id}/preview-token`,
+        { method: "POST" },
+      );
+      open(publicUrl(routeName(), data.token), "_blank", "noopener");
+    } catch (error) {
+      window.showToast?.(error.message, true);
+    } finally {
+      previewButton.disabled = false;
+    }
+  }
+  async function publishDraft() {
+    const event = TalentaAdminAuth.currentEvent();
+    const modules = publication?.changedModules?.join(", ") || "seluruh Event";
+    if (
+      !(await adminConfirm({
+        title: "Publikasikan perubahan?",
+        message: `Pengunjung akan melihat perubahan pada: ${modules}.`,
+        confirmLabel: "Publikasikan sekarang",
+        icon: "send",
+      }))
+    )
+      return;
+    try {
+      await TalentaApi.request(`/admin/events/${event.id}/publish`, {
+        method: "POST",
+        body: {
+          expectedVersion: publication?.eventVersion,
+          expectedChecksum: publication?.workspaceChecksum,
+        },
+      });
+      await refreshPublication();
+      window.showToast?.("Perubahan Event berhasil dipublikasikan.");
+    } catch (error) {
+      window.showToast?.(error.message, true);
+    }
+  }
+  async function discardDraft() {
+    const event = TalentaAdminAuth.currentEvent();
+    if (
+      !(await adminConfirm({
+        title: "Batalkan seluruh perubahan draf?",
+        message:
+          "Workspace akan dikembalikan ke versi publik terakhir. Website publik tidak berubah.",
+        confirmLabel: "Batalkan draf",
+        variant: "danger",
+        icon: "rotate-ccw",
+      }))
+    )
+      return;
+    try {
+      await TalentaApi.request(`/admin/events/${event.id}/discard-draft`, {
+        method: "POST",
+        body: {
+          expectedVersion: publication?.eventVersion,
+          expectedChecksum: publication?.workspaceChecksum,
+        },
+      });
+      location.reload();
+    } catch (error) {
+      window.showToast?.(error.message, true);
+    }
   }
   let initialized = false;
   function initialize() {
     if (initialized || !TalentaAdminAuth.currentSite()) return;
     initialized = true;
     document.querySelectorAll("[data-route]").forEach((a) =>
-      a.addEventListener("click", (e) => {
-        e.preventDefault();
-        render(a.dataset.route, true);
+      a.addEventListener("click", (event) => {
+        event.preventDefault();
+        void render(a.dataset.route, true);
       }),
     );
     resetButton.addEventListener("click", () => nativeActions().reset?.click());
@@ -152,13 +274,24 @@
       const save = activeDocument()?.defaultView?.TalentaHomeEditor?.save;
       if (typeof save === "function") save();
       else nativeActions().submit?.click();
+      dirty = false;
+      setTimeout(refreshPublication, 400);
     });
+    previewButton.addEventListener("click", openPreview);
+    publishButton.addEventListener("click", publishDraft);
+    discardButton.addEventListener("click", discardDraft);
     frame.addEventListener("load", () => {
       view.classList.remove("admin-route-view--loading");
+      bindDirty(frame.contentDocument);
       syncActions();
     });
-    addEventListener("popstate", () => render(routeName()));
-    render(routeName());
+    addEventListener("popstate", () => void render(routeName()));
+    addEventListener("beforeunload", (event) => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = "";
+    });
+    void render(routeName());
   }
   initialize();
   document.addEventListener("talenta:admin-ready", initialize);

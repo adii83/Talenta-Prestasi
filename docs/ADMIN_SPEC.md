@@ -37,7 +37,20 @@ Event dibuat di dalam kategori dengan nama; backend menghasilkan slug periode ya
 - kelola editor Event;
 - hapus Event melalui konfirmasi.
 
-Aktivasi satu Event otomatis menonaktifkan Event aktif sebelumnya dalam kategori. Event nonaktif menjadi arsip otomatis.
+Aktivasi satu Event otomatis menonaktifkan Event aktif sebelumnya dalam kategori. Event nonaktif menjadi arsip otomatis. Jika kategori sudah published, Event baru hanya dapat diaktifkan setelah memiliki snapshot publik.
+
+## Draf, Preview, dan Publikasi Event
+
+Setiap Event memiliki satu workspace draf untuk seluruh modul. Menekan **Simpan draf** tidak mengubah versi yang dilihat pengunjung, termasuk ketika Admin sedang mengedit Event aktif.
+
+Tindakan utama:
+
+- **Simpan draf** menyimpan perubahan workspace ke PostgreSQL;
+- **Lihat preview** membuka Public Site asli dengan token read-only 15 menit;
+- **Publikasikan perubahan** mengganti seluruh snapshot publik Event secara atomik;
+- **Batalkan draf** mengembalikan workspace ke snapshot terakhir dan dinonaktifkan untuk Event yang belum pernah dipublikasikan.
+
+Preview dapat menampilkan kategori unpublished serta Event nonaktif/suspended yang dipilih Admin, tetapi tetap menolak soft delete, lintas tenant, dan token kedaluwarsa. Pengunjung umum tetap memerlukan kategori published, Event aktif/operasional, dan snapshot publik. Publish/unpublish kategori tidak digunakan untuk setiap edit.
 
 ## Role dan Tenant
 

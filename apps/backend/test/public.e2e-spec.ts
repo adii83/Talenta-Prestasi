@@ -3,7 +3,11 @@ import { Test } from '@nestjs/testing';
 import { Client } from 'pg';
 import request from 'supertest';
 import { App } from 'supertest/types';
+import { createHash } from 'node:crypto';
+import { canonicalJson } from '../src/admin/event-publication.service';
 import { AppModule } from '../src/app.module';
+import { PublicContentService } from '../src/public/public-content.service';
+import { WorkspaceSnapshotService } from '../src/public/workspace-snapshot.service';
 
 describe('Public Category → active Event visibility (e2e)', () => {
   let app: INestApplication<App>;
@@ -81,6 +85,33 @@ describe('Public Category → active Event visibility (e2e)', () => {
       }),
     );
     await app.init();
+    const executor = {
+      query: async <T>(sql: string, parameters?: unknown[]) =>
+        (await db.query(sql, parameters)).rows as T,
+    };
+    const content = new PublicContentService(executor as never);
+    const workspace = new WorkspaceSnapshotService(executor as never);
+    for (const eventId of [activeEventId, archivedEventId]) {
+      const [publicSnapshot, workspaceSnapshot] = await Promise.all([
+        content.build(eventId, executor),
+        workspace.capture(eventId, executor),
+      ]);
+      await db.query(
+        `INSERT INTO event_publications(
+           event_site_id,organization_id,category_id,public_snapshot,workspace_snapshot,workspace_checksum
+         ) VALUES($1,$2,$3,$4,$5,$6)`,
+        [
+          eventId,
+          organizationId,
+          categoryId,
+          publicSnapshot,
+          workspaceSnapshot,
+          createHash('sha256')
+            .update(canonicalJson(workspaceSnapshot))
+            .digest('hex'),
+        ],
+      );
+    }
   });
 
   it('hides an unverified hostname', () =>

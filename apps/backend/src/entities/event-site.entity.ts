@@ -19,6 +19,7 @@ import { AuditLog } from './audit-log.entity';
 import { EventDocument } from './event-document.entity';
 import { WinnerCategory } from './winner-category.entity';
 import { EventDetailSettings } from './event-detail-settings.entity';
+import { EventPublication } from './event-publication.entity';
 
 @Entity('event_sites')
 @Index('uq_event_slug_per_category', ['categoryId', 'slug'], {
@@ -100,4 +101,7 @@ export class EventSite {
 
   @OneToOne(() => EventDetailSettings, (s) => s.eventSite, { cascade: true })
   detailSettings!: EventDetailSettings;
+
+  @OneToOne(() => EventPublication, (p) => p.eventSite)
+  publication!: EventPublication | null;
 }

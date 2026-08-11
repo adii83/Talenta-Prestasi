@@ -52,9 +52,12 @@ Browser tidak mengakses PostgreSQL atau path filesystem secara langsung. Admin m
 1. Hostname diverifikasi melalui `site_domains` dan mengarah ke CompetitionCategory.
 2. Resolver memilih satu Event `is_active=true`, `status='active'`, dan belum soft delete dari kategori tersebut.
 3. Kategori harus aktif, published, belum soft delete, dan Organization harus aktif.
-4. Bootstrap mengembalikan identitas kategori, settings Event, route publik, dan `currentEvent`.
-5. Arsip mengambil semua Event nonaktif yang belum soft delete dalam kategori yang sama.
-6. Detail arsip memakai `eventSlug`; URL browser menggunakan query `?event=...`.
+4. Event aktif harus memiliki snapshot publik; request pengunjung membaca snapshot tersebut, bukan workspace draf Admin.
+5. Bootstrap mengembalikan identitas kategori, settings Event, route publik, dan `currentEvent` dari satu versi snapshot yang konsisten.
+6. Arsip mengambil snapshot publik semua Event nonaktif yang belum soft delete dalam kategori yang sama; draf Event arsip tidak bocor ke publik.
+7. Detail arsip memakai `eventSlug`; URL browser menggunakan query `?event=...`.
+
+Admin menyimpan seluruh perubahan modul ke satu workspace draf Event. **Publikasikan perubahan** membangun dan mengganti snapshot publik dalam satu transaksi. Preview Admin memakai Public Site asli dan token read-only 15 menit yang terikat ke pengguna, tenant, kategori, dan Event; token login Admin tidak diteruskan ke Public Site.
 
 Endpoint publik menyediakan bootstrap, Beranda, Unduh, FAQ, Pemenang, Arsip, dan Detail Arsip. Media tersedia melalui `/api/v1/public/media/<asset-id>`.
 
@@ -64,9 +67,10 @@ Endpoint publik menyediakan bootstrap, Beranda, Unduh, FAQ, Pemenang, Arsip, dan
 2. `/api/v1/admin/session` mengembalikan Organization dan kategori yang dapat diakses.
 3. Admin memilih kategori, lalu memuat Event melalui `/api/v1/admin/categories/:categoryId/events`.
 4. Admin memilih Event sebagai konteks editor.
-5. Editor membaca/menulis melalui `/api/v1/admin/events/:eventId/...`.
-6. Owner/admin dapat membuat, mengubah, menghapus, memublikasikan kategori, dan mengaktifkan Event sesuai aturan service.
-7. Owner/admin/editor dapat mengubah konten Event; viewer hanya membaca.
+5. Editor membaca/menulis satu workspace draf melalui `/api/v1/admin/events/:eventId/...`.
+6. Admin dapat membuka preview aman, memublikasikan seluruh draf Event, atau membatalkan draf ke snapshot terakhir.
+7. Owner/admin dapat membuat, mengubah, menghapus, memublikasikan kategori, dan mengaktifkan Event sesuai aturan service.
+8. Owner/admin/editor dapat mengubah dan memublikasikan konten Event; viewer hanya membaca dan preview.
 
 `sessionStorage` hanya menyimpan autentikasi dan konteks pilihan. Konten tetap berasal dari API/PostgreSQL.
 

@@ -64,6 +64,14 @@
           <h1 id="routeTitle">Pengaturan Event</h1>
         </div>
         <div class="admin-topbar__actions">
+          <div
+            class="event-publication-status"
+            id="eventPublicationStatus"
+            role="status"
+            aria-live="polite"
+          >
+            <strong>Status konten</strong><span>Memuat...</span>
+          </div>
           <button
             class="btn btn--outline btn--sm"
             type="button"
@@ -75,14 +83,26 @@
             type="button"
             id="routeSaveButton"
           >
-            <i data-lucide="save"></i> Simpan perubahan</button
-          ><a
+            <i data-lucide="save"></i> Simpan draf</button
+          ><button
             class="btn btn--outline btn--sm"
             id="routePublicLink"
-            href="../public-site/"
-            target="_blank"
-            ><i data-lucide="external-link"></i> Lihat halaman</a
+            type="button"
           >
+            <i data-lucide="external-link"></i> Lihat preview</button
+          ><button
+            class="btn btn--primary btn--sm"
+            id="routePublishButton"
+            type="button"
+          >
+            Publikasikan perubahan</button
+          ><button
+            class="btn btn--outline btn--sm"
+            id="routeDiscardButton"
+            type="button"
+          >
+            Batalkan draf
+          </button>
         </div>
       </header>
       <div id="adminRouteView" class="admin-route-view">
@@ -135,7 +155,10 @@
                       ></textarea>
                     </div>
                     <div class="admin-field admin-field--wide">
-                      <small>Slug, subdomain, dan penyelenggara dikelola pada level Kategori Lomba.</small>
+                      <small
+                        >Slug, subdomain, dan penyelenggara dikelola pada level
+                        Kategori Lomba.</small
+                      >
                     </div>
                   </div>
                 </section>
@@ -167,7 +190,13 @@
                           ><small>PNG, JPG, atau WebP</small></span
                         ><i data-lucide="upload-cloud"></i>
                       </button>
-                      <button type="button" class="btn btn--outline btn--danger btn--sm" id="logoDeleteButton" style="width: 100%; margin-top: 8px;" hidden>
+                      <button
+                        type="button"
+                        class="btn btn--outline btn--danger btn--sm"
+                        id="logoDeleteButton"
+                        style="width: 100%; margin-top: 8px"
+                        hidden
+                      >
                         <i data-lucide="trash-2"></i> Hapus Logo
                       </button>
                     </div>
