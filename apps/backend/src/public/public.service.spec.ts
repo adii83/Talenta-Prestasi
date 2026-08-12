@@ -40,6 +40,40 @@ describe('PublicService publication resolution', () => {
     );
   });
 
+  it('hides the batch suffix until a later batch has been activated', async () => {
+    const batchedSnapshot = {
+      ...snapshot,
+      bootstrap: {
+        ...snapshot.bootstrap,
+        currentEvent: {
+          slug: '2026-gelombang-1',
+          name: 'Octal 2026 · Gelombang 1',
+        },
+      },
+    };
+    const db = {
+      query: jest.fn().mockResolvedValue([
+        {
+          eventId: 'event-1',
+          categoryId: 'category-1',
+          snapshot: batchedSnapshot,
+          baseName: 'Octal',
+          periodYear: 2026,
+          batchNumber: 1,
+          batchLabel: 'Gelombang',
+          showBatch: false,
+        },
+      ]),
+    };
+    const service = new PublicService(db as never, {} as never, {} as never);
+
+    const result = await service.bootstrapBySlug('octal');
+
+    expect(result.data.currentEvent).toEqual(
+      expect.objectContaining({ name: 'Octal 2026' }),
+    );
+  });
+
   it('uses the exact preview Event and current membership', async () => {
     const db = {
       query: jest.fn().mockResolvedValue([
@@ -86,6 +120,12 @@ describe('PublicService publication resolution', () => {
                 event: { slug: '2026', name: 'Octal 2026' },
               },
             },
+            eventSlug: '2026-gelombang-1',
+            baseName: 'Octal',
+            periodYear: 2026,
+            batchNumber: 1,
+            batchLabel: 'Gelombang',
+            showBatch: true,
           },
         ]),
     };
@@ -98,8 +138,14 @@ describe('PublicService publication resolution', () => {
     const result = await service.archives('octal');
 
     expect(result.data.events).toEqual([
-      expect.objectContaining({ slug: '2026' }),
+      expect.objectContaining({
+        slug: '2026-gelombang-1',
+        name: 'Octal 2026 · Gelombang 1',
+      }),
     ]);
     expect(db.query.mock.calls[1][0]).toContain('event.is_active=false');
+    expect(db.query.mock.calls[1][0]).toContain(
+      'event.activated_at IS NOT NULL',
+    );
   });
 });

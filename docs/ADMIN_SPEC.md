@@ -30,9 +30,9 @@ Slug kategori ditentukan saat pembuatan, unik per Organization, dan tidak diedit
 
 ### Daftar Event
 
-Event dibuat di dalam kategori dengan nama; backend menghasilkan slug periode yang unik. Kartu menampilkan status Aktif atau Arsip. Tindakan:
+Event dibuat di dalam kategori dengan nama ajang read-only, tahun eksplisit, dan batch/gelombang opsional. Backend mengalokasikan nomor batch serta slug teknis. Dashboard menonjolkan satu Event aktif dan menampilkan Event lain sebagai Persiapan atau Arsip, lengkap dengan badge operasional, workspace, dan publikasi. Tindakan:
 
-- buat Event baru;
+- buat Event tahunan atau batch baru;
 - jadikan Event aktif;
 - kelola editor Event;
 - hapus Event melalui konfirmasi.
@@ -45,8 +45,9 @@ Setiap Event memiliki satu workspace draf untuk seluruh modul. Menekan **Simpan 
 
 Tindakan utama:
 
-- **Simpan draf** menyimpan perubahan workspace ke PostgreSQL;
+- **Urungkan edit** memuat ulang modul aktif dari workspace terakhir yang tersimpan tanpa menulis database atau memulihkan template;
 - **Lihat preview** membuka Public Site asli dengan token read-only 15 menit;
+- **Simpan draf** menyimpan perubahan workspace ke PostgreSQL;
 - **Publikasikan perubahan** mengganti seluruh snapshot publik Event secara atomik;
 - **Batalkan draf** mengembalikan workspace ke snapshot terakhir dan dinonaktifkan untuk Event yang belum pernah dipublikasikan.
 

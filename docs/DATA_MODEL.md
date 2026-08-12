@@ -53,12 +53,15 @@ UNIQUE (organization_id, slug) WHERE deleted_at IS NULL
 
 ## EventSite sebagai Event/Periode
 
-`event_sites` mewakili periode lomba dan menyimpan:
+`event_sites` mewakili satu penyelenggaraan dan menyimpan:
 
 - `category_id` dan `organization_id`;
-- nama serta slug periode;
-- `is_active`, status operasional, deskripsi;
-- mascot asset, fallback icon, timestamps, dan `deleted_at`.
+- nama ajang turunan dari Kategori dan slug teknis;
+- `period_year`, `batch_number`, `batch_label`, serta `batch_note` internal;
+- `activated_at` untuk membedakan Event persiapan dari arsip;
+- `is_active`, status operasional, deskripsi, mascot, timestamps, dan `deleted_at`.
+
+Event tanpa batch unik per Kategori+tahun selama belum soft-delete. Nomor batch unik tanpa mengecualikan soft-delete sehingga nomor yang pernah dipakai tidak didaur ulang.
 
 Constraint penting:
 

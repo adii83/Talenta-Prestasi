@@ -6,8 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { randomUUID } from 'crypto';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CompetitionCategory } from '../entities/competition-category.entity';
 import { EventSite } from '../entities/event-site.entity';
 
@@ -16,9 +15,15 @@ interface NewCategory {
   slug: string;
 }
 
-interface NewEvent {
-  name: string;
+interface EventPeriodInput {
+  periodYear: number;
+  batchEnabled: boolean;
+  batchLabel?: string;
+  batchNote?: string;
+  confirmBatchConversion?: boolean;
 }
+
+interface NewEvent extends EventPeriodInput {}
 
 interface CategoryUpdate {
   name: string;
@@ -26,7 +31,6 @@ interface CategoryUpdate {
 }
 
 interface EventUpdate {
-  name: string;
   description?: string;
   fallbackIcon?: string;
   mascotAssetId?: string;
@@ -149,6 +153,11 @@ export class AdminService {
          RETURNING id,name,organizer_name AS "organizerName",slug`,
         [categoryId, input.name.trim(), input.organizerName.trim()],
       );
+      await manager.query(
+        `UPDATE event_sites SET name=$2,updated_at=now()
+         WHERE category_id=$1 AND deleted_at IS NULL`,
+        [categoryId, input.name.trim()],
+      );
       return { data: rows[0], errors: [] };
     });
   }
@@ -161,35 +170,61 @@ export class AdminService {
         userId,
         ['owner', 'admin'],
       );
-      const slug = `${new Date().getFullYear()}`;
-      const existing = await manager.query<{ id: string }[]>(
-        `SELECT id FROM event_sites WHERE category_id=$1 AND slug=$2 AND deleted_at IS NULL`,
-        [categoryId, slug],
+      return this.createPeriodEvent(manager, category, userId, input);
+    });
+  }
+
+  async setEventPeriodIdentity(
+    eventId: string,
+    userId: string,
+    input: EventPeriodInput,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      const event = await this.authorizedEvent(manager, eventId, userId, [
+        'owner',
+        'admin',
+      ]);
+      const rows = await manager.query<Array<{ periodYear: number | null }>>(
+        `SELECT period_year AS "periodYear" FROM event_sites WHERE id=$1`,
+        [eventId],
       );
-      const finalSlug = existing[0] ? `${slug}-${randomUUID().slice(0, 6)}` : slug;
-      const event = await manager.save(
-        manager.create(EventSite, {
-          categoryId,
-          organizationId: category.organizationId,
-          name: input.name.trim(),
-          slug: finalSlug,
-          isActive: false,
-          status: 'active',
-        }),
-      );
+      if (rows[0]?.periodYear !== null)
+        throw new ConflictException('Identitas periode Event sudah ditetapkan');
       await manager.query(
-        `INSERT INTO site_settings(event_site_id) VALUES($1)`,
-        [event.id],
+        `SELECT id FROM competition_categories WHERE id=$1 FOR UPDATE`,
+        [event.categoryId],
       );
-      await manager.query(
-        `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
-         VALUES($1,$2,'create','event_site',$1,$3)`,
-        [event.id, userId, JSON.stringify({ name: event.name, slug: finalSlug })],
+      const identities = await this.periodEvents(
+        manager,
+        event.categoryId,
+        input.periodYear,
       );
-      return {
-        data: { id: event.id, name: event.name, slug: finalSlug, isActive: false },
-        errors: [],
-      };
+      const otherEvents = identities.filter((item) => item.id !== eventId);
+      if (otherEvents.length)
+        throw this.batchConversionConflict(otherEvents[0], input.periodYear);
+      const label = input.batchEnabled
+        ? this.batchLabel(input.batchLabel)
+        : null;
+      const batchNumber = input.batchEnabled
+        ? this.nextBatchNumber(identities)
+        : null;
+      const slug = this.periodSlug(input.periodYear, label, batchNumber);
+      const updated = await manager.query<Array<Record<string, unknown>>>(
+        `UPDATE event_sites
+         SET period_year=$2,batch_number=$3,batch_label=$4,batch_note=$5,slug=$6,updated_at=now()
+         WHERE id=$1
+         RETURNING id,name,slug,period_year AS "periodYear",batch_number AS "batchNumber",
+                   batch_label AS "batchLabel",batch_note AS "batchNote",is_active AS "isActive"`,
+        [
+          eventId,
+          input.periodYear,
+          batchNumber,
+          label,
+          input.batchNote?.trim() ?? '',
+          slug,
+        ],
+      );
+      return { data: updated[0], errors: [] };
     });
   }
 
@@ -218,12 +253,11 @@ export class AdminService {
         }[]
       >(
         `UPDATE event_sites
-         SET name=$2,description=$3,fallback_icon=$4,mascot_asset_id=$5,updated_at=now()
+         SET description=$2,fallback_icon=$3,mascot_asset_id=$4,updated_at=now()
          WHERE id=$1
          RETURNING id,name,slug,description,fallback_icon AS "fallbackIcon",mascot_asset_id AS "mascotAssetId"`,
         [
           eventId,
-          input.name.trim(),
           input.description?.trim() ?? '',
           input.fallbackIcon?.trim() || 'graduation-cap',
           input.mascotAssetId ?? null,
@@ -254,13 +288,28 @@ export class AdminService {
         throw new BadRequestException(
           'Publikasikan isi Event sebelum menjadikannya aktif pada kategori published',
         );
-      // deactivate all others in same category
+      const identity = await manager.query<Array<{ periodYear: number | null }>>(
+        `SELECT period_year AS "periodYear" FROM event_sites WHERE id=$1`,
+        [eventId],
+      );
+      if (!identity[0]?.periodYear)
+        throw new BadRequestException(
+          'Tetapkan identitas periode sebelum mengaktifkan Event',
+        );
       await manager.query(
-        `UPDATE event_sites SET is_active=false,updated_at=now() WHERE category_id=$1 AND is_active=true AND deleted_at IS NULL`,
+        `SELECT id FROM event_sites
+         WHERE category_id=$1 AND deleted_at IS NULL FOR UPDATE`,
         [event.categoryId],
       );
       await manager.query(
-        `UPDATE event_sites SET is_active=true,updated_at=now() WHERE id=$1`,
+        `UPDATE event_sites SET is_active=false,updated_at=now()
+         WHERE category_id=$1 AND is_active=true AND deleted_at IS NULL`,
+        [event.categoryId],
+      );
+      await manager.query(
+        `UPDATE event_sites
+         SET is_active=true,activated_at=COALESCE(activated_at,now()),updated_at=now()
+         WHERE id=$1`,
         [eventId],
       );
       await manager.query(
@@ -285,25 +334,20 @@ export class AdminService {
 
   async categoryEvents(categoryId: string, userId: string) {
     await this.authorizedCategoryRead(categoryId, userId);
-    const rows = await this.dataSource.query<
-      {
-        id: string;
-        name: string;
-        slug: string;
-        isActive: boolean;
-        status: string;
-        createdAt: Date;
-      }[]
-    >(
-      `SELECT event.id,event.name,event.slug,event.is_active AS "isActive",event.status,
-              event.created_at AS "createdAt",publication.version AS "publishedVersion",
+    const rows = await this.dataSource.query(
+      `SELECT event.id,event.name,event.slug,event.period_year AS "periodYear",
+              event.batch_number AS "batchNumber",event.batch_label AS "batchLabel",
+              event.batch_note AS "batchNote",event.period_year IS NULL AS "needsPeriodConfirmation",
+              event.is_active AS "isActive",event.activated_at IS NOT NULL AND event.is_active=false AS "isArchive",
+              event.status,event.created_at AS "createdAt",publication.version AS "publishedVersion",
               publication.published_at AS "publishedAt",
               CASE WHEN publication.event_site_id IS NULL THEN 'unpublished'
                    ELSE 'published' END AS "publicationState"
        FROM event_sites event
        LEFT JOIN event_publications publication ON publication.event_site_id=event.id
        WHERE event.category_id=$1 AND event.deleted_at IS NULL
-       ORDER BY event.is_active DESC,event.created_at DESC`,
+       ORDER BY event.is_active DESC,event.period_year DESC NULLS LAST,
+                event.batch_number DESC NULLS LAST,event.created_at DESC`,
       [categoryId],
     );
     return { data: rows, errors: [] };
@@ -452,7 +496,6 @@ export class AdminService {
     eventId: string,
     userId: string,
     input: {
-      eventName: string;
       eventDescription?: string;
       primaryColor: string;
       logoAssetId?: string;
@@ -474,10 +517,9 @@ export class AdminService {
         if (!owned[0]) throw new BadRequestException('Invalid logo asset');
       }
       await manager.query(
-        `UPDATE event_sites SET name=$2,description=$3,mascot_asset_id=$4,updated_at=now() WHERE id=$1`,
+        `UPDATE event_sites SET description=$2,mascot_asset_id=$3,updated_at=now() WHERE id=$1`,
         [
           eventId,
-          input.eventName.trim(),
           input.eventDescription?.trim() ?? '',
           input.logoAssetId ?? null,
         ],
@@ -716,6 +758,161 @@ export class AdminService {
 
   // --- helpers ---
 
+  private async createPeriodEvent(
+    manager: EntityManager,
+    category: { id: string; organizationId: string; name: string },
+    userId: string,
+    input: EventPeriodInput,
+  ) {
+    const identities = await this.periodEvents(
+      manager,
+      category.id,
+      input.periodYear,
+    );
+    const live = identities.filter((item) => !item.deletedAt);
+    const unbatched = live.find((item) => item.batchNumber === null);
+    let batchNumber: number | null = null;
+    let label: string | null = null;
+    if (unbatched) {
+      if (!input.batchEnabled || !input.confirmBatchConversion)
+        throw this.batchConversionConflict(unbatched, input.periodYear);
+      label = this.batchLabel(input.batchLabel);
+      await manager.query(
+        `UPDATE event_sites
+         SET batch_number=1,batch_label=$2,slug=$3,updated_at=now()
+         WHERE id=$1`,
+        [
+          unbatched.id,
+          label,
+          this.periodSlug(input.periodYear, label, 1),
+        ],
+      );
+      batchNumber = this.nextBatchNumber(identities, 1);
+    } else if (input.batchEnabled || identities.some((item) => item.batchNumber)) {
+      label =
+        identities.find((item) => item.batchLabel)?.batchLabel ??
+        this.batchLabel(input.batchLabel);
+      batchNumber = this.nextBatchNumber(identities);
+    } else if (live.length) {
+      throw new ConflictException('Event periode tersebut sudah tersedia');
+    }
+    const slug = this.periodSlug(input.periodYear, label, batchNumber);
+    const event = await manager.save(
+      manager.create(EventSite, {
+        categoryId: category.id,
+        organizationId: category.organizationId,
+        name: category.name,
+        slug,
+        periodYear: input.periodYear,
+        batchNumber,
+        batchLabel: label,
+        batchNote: input.batchNote?.trim() ?? '',
+        isActive: false,
+        status: 'active',
+      }),
+    );
+    await manager.query(`INSERT INTO site_settings(event_site_id) VALUES($1)`, [
+      event.id,
+    ]);
+    await manager.query(
+      `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
+       VALUES($1,$2,'create','event_site',$1,$3)`,
+      [
+        event.id,
+        userId,
+        JSON.stringify({
+          periodYear: input.periodYear,
+          batchNumber,
+          batchLabel: label,
+        }),
+      ],
+    );
+    return {
+      data: {
+        id: event.id,
+        name: event.name,
+        slug,
+        periodYear: input.periodYear,
+        batchNumber,
+        batchLabel: label,
+        batchNote: event.batchNote,
+        isActive: false,
+      },
+      errors: [],
+    };
+  }
+
+  private periodEvents(
+    manager: { query: DataSource['query'] },
+    categoryId: string,
+    periodYear: number,
+  ) {
+    return manager.query<
+      Array<{
+        id: string;
+        name: string;
+        batchNumber: number | null;
+        batchLabel: string | null;
+        deletedAt: Date | null;
+      }>
+    >(
+      `SELECT id,name,batch_number AS "batchNumber",batch_label AS "batchLabel",deleted_at AS "deletedAt"
+       FROM event_sites
+       WHERE category_id=$1 AND period_year=$2
+       ORDER BY batch_number NULLS FIRST,created_at,id
+       FOR UPDATE`,
+      [categoryId, periodYear],
+    );
+  }
+
+  private nextBatchNumber(
+    events: Array<{ batchNumber: number | null }>,
+    minimum = 0,
+  ) {
+    return Math.max(minimum, ...events.map((item) => item.batchNumber ?? 0)) + 1;
+  }
+
+  private batchLabel(value?: string) {
+    const label = value?.trim() || 'Gelombang';
+    if (label.length > 40)
+      throw new BadRequestException('Istilah publik maksimal 40 karakter');
+    return label;
+  }
+
+  private periodSlug(
+    periodYear: number,
+    batchLabel: string | null,
+    batchNumber: number | null,
+  ) {
+    if (!batchLabel || !batchNumber) return String(periodYear);
+    const label = batchLabel
+      .normalize('NFKD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 60);
+    return `${periodYear}-${label || 'batch'}-${batchNumber}`;
+  }
+
+  private batchConversionConflict(
+    existing: { id: string; name: string },
+    periodYear: number,
+  ) {
+    return new ConflictException({
+      statusCode: 409,
+      message:
+        'Event tahun ini sudah ada. Konfirmasi konversi ke beberapa gelombang.',
+      code: 'EVENT_YEAR_REQUIRES_BATCH_CONVERSION',
+      existingEvent: {
+        id: existing.id,
+        name: existing.name,
+        periodYear,
+        nextBatchNumber: 2,
+      },
+    });
+  }
+
   private publicBaseDomain() {
     return this.config
       .get<string>('PUBLIC_BASE_DOMAIN', 'nexaplaymetadata.online')
@@ -751,9 +948,9 @@ export class AdminService {
     roles: string[],
   ) {
     const rows = await manager.query<
-      { id: string; organizationId: string; slug: string }[]
+      { id: string; organizationId: string; name: string; slug: string }[]
     >(
-      `SELECT c.id,c.organization_id AS "organizationId",c.slug
+      `SELECT c.id,c.organization_id AS "organizationId",c.name,c.slug
        FROM competition_categories c
        INNER JOIN organization_memberships m ON m.organization_id=c.organization_id
        WHERE c.id=$1 AND m.user_id=$2 AND m.role=ANY($3::text[])

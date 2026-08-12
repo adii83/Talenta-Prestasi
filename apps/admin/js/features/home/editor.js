@@ -108,8 +108,8 @@ async function hydrateHome() {
   try {
     const loaded = await TalentaHomeApi.load();
     const fresh = loadState();
-    Object.keys(state).forEach(type => {
-      if (typeof state[type] === 'object' && state[type] !== null) {
+    Object.keys(state).forEach((type) => {
+      if (typeof state[type] === "object" && state[type] !== null) {
         Object.assign(state[type], fresh[type] || {}, loaded[type] || {});
       }
     });
@@ -211,24 +211,19 @@ function bind() {
     await saveHome();
     if (submit) submit.disabled = false;
   };
+  const revertHome = () => location.reload();
   window.TalentaHomeEditor = Object.freeze({ save: saveHome });
+  window.TalentaEditor = Object.freeze({ save: saveHome, revert: revertHome });
   document.getElementById("resetHome").onclick = async () => {
     const confirmed = await adminConfirm({
-      title: "Reset seluruh Beranda?",
+      title: "Urungkan edit Beranda?",
       message:
-        "Hero, Highlight Pemenang, Jadwal, Biaya, Benefit, dan Mitra akan dikembalikan ke template awal.",
-      confirmLabel: "Ya, reset Beranda",
+        "Perubahan Beranda yang belum disimpan akan dibuang dan draf tersimpan akan dimuat kembali.",
+      confirmLabel: "Urungkan edit",
       variant: "danger",
-      icon: "rotate-ccw",
+      icon: "undo-2",
     });
-    if (!confirmed) return;
-    const baseline = resetHomeAdminState();
-    try {
-      if (window.TalentaHomeApi) await window.TalentaHomeApi.save(baseline);
-    } catch (e) {
-      console.warn("Gagal mereset pengaturan di database", e);
-    }
-    location.reload();
+    if (confirmed) revertHome();
   };
   bindPreview("[data-preview]", "homePreviewFrame", "home-preview-frame");
   bindPreview(
@@ -240,7 +235,10 @@ function bind() {
 
   window.addEventListener("storage", (e) => {
     if (e.key === "talenta_home_editor_v1") {
-      toast("Peringatan: Data Beranda baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.", true);
+      toast(
+        "Peringatan: Data Beranda baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.",
+        true,
+      );
     }
   });
 }
@@ -392,7 +390,7 @@ function sync() {
     if (el && el.type === "checkbox") el.checked = v;
     else if (el) el.value = v;
   });
-  
+
   const preview = document.getElementById("heroImagePreview");
   const delBtn = document.getElementById("heroImageDelete");
   if (preview) {

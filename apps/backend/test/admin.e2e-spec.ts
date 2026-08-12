@@ -135,13 +135,13 @@ describe('Admin Category → Event flow (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/api/v1/admin/categories/${categoryId}/events`)
       .set(auth(editorToken))
-      .send({ name: 'Event Arsip' })
+      .send({ periodYear: 2025, batchEnabled: false })
       .expect(403);
 
     const archived = await request(app.getHttpServer())
       .post(`/api/v1/admin/categories/${categoryId}/events`)
       .set(auth(ownerToken))
-      .send({ name: 'Event Arsip' })
+      .send({ periodYear: 2025, batchEnabled: false })
       .expect(201);
     archivedEventId = archived.body.data.id;
     archivedEventSlug = archived.body.data.slug;
@@ -149,7 +149,7 @@ describe('Admin Category → Event flow (e2e)', () => {
     const active = await request(app.getHttpServer())
       .post(`/api/v1/admin/categories/${categoryId}/events`)
       .set(auth(ownerToken))
-      .send({ name: 'Event Aktif' })
+      .send({ periodYear: 2026, batchEnabled: false })
       .expect(201);
     activeEventId = active.body.data.id;
 
@@ -197,7 +197,6 @@ describe('Admin Category → Event flow (e2e)', () => {
       .put(`/api/v1/admin/events/${activeEventId}/settings`)
       .set(auth(editorToken))
       .send({
-        eventName: 'Event Aktif Diperbarui',
         eventDescription: 'Deskripsi event aktif',
         primaryColor: '#123456',
         navigation: { home: true },
@@ -294,7 +293,7 @@ describe('Admin Category → Event flow (e2e)', () => {
       .get(`/api/v1/public/sites/${categorySlug}/bootstrap`)
       .expect(200);
     expect(bootstrap.body.data.currentEvent).toEqual(
-      expect.objectContaining({ name: 'Event Aktif Diperbarui' }),
+      expect.objectContaining({ name: 'Category Test 2026' }),
     );
     const archives = await request(app.getHttpServer())
       .get(`/api/v1/public/sites/${categorySlug}/archives`)
@@ -333,12 +332,9 @@ describe('Admin Category → Event flow (e2e)', () => {
       .attach('file', png, { filename: 'logo.png', contentType: 'image/png' })
       .expect(201);
     const assetId = uploaded.body.data.assetId as string;
-    const served = await request(app.getHttpServer())
+    await request(app.getHttpServer())
       .get(`/api/v1/public/media/${assetId}`)
-      .expect(200)
-      .expect('Content-Type', /image\/png/)
-      .expect('X-Content-Type-Options', 'nosniff');
-    expect(served.body).toEqual(png);
+      .expect(404);
   });
 
   afterAll(async () => {

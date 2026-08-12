@@ -57,14 +57,20 @@
     const doc = activeDocument();
     const bar = doc && doc.querySelector(".admin-savebar");
     return {
-      reset: bar && bar.querySelector('button[type="button"]'),
-      submit: bar && bar.querySelector('button[type="submit"]'),
+      save:
+        doc?.defaultView?.TalentaEditor?.save ||
+        (() => bar?.querySelector('button[type="submit"]')?.click()),
+      revert:
+        doc?.defaultView?.TalentaEditor?.revert ||
+        (() => {
+          if (!editor.hidden) frame.contentWindow.location.reload();
+        }),
     };
   }
   function syncActions() {
     const actions = nativeActions();
-    resetButton.disabled = !actions.reset;
-    saveButton.disabled = !actions.submit;
+    resetButton.disabled = !actions.revert;
+    saveButton.disabled = !actions.save;
   }
   function routeName() {
     const p = new URLSearchParams(location.search).get("page");
@@ -270,13 +276,35 @@
         void render(a.dataset.route, true);
       }),
     );
-    resetButton.addEventListener("click", () => nativeActions().reset?.click());
-    saveButton.addEventListener("click", () => {
-      const save = activeDocument()?.defaultView?.TalentaHomeEditor?.save;
-      if (typeof save === "function") save();
-      else nativeActions().submit?.click();
-      dirty = false;
-      setTimeout(refreshPublication, 400);
+    resetButton.addEventListener("click", async () => {
+      if (
+        dirty &&
+        !(await adminConfirm({
+          title: "Buang edit yang belum disimpan?",
+          message:
+            "Modul aktif akan dimuat ulang dari draf terakhir yang tersimpan.",
+          confirmLabel: "Urungkan edit",
+          variant: "danger",
+          icon: "undo-2",
+        }))
+      )
+        return;
+      try {
+        await nativeActions().revert?.();
+        dirty = false;
+        window.showToast?.("Edit yang belum disimpan telah diurungkan.");
+      } catch (error) {
+        window.showToast?.(error.message, true);
+      }
+    });
+    saveButton.addEventListener("click", async () => {
+      try {
+        await nativeActions().save?.();
+        dirty = false;
+        setTimeout(refreshPublication, 400);
+      } catch (error) {
+        window.showToast?.(error.message, true);
+      }
     });
     previewButton.addEventListener("click", openPreview);
     publishButton.addEventListener("click", publishDraft);

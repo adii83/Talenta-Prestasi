@@ -165,7 +165,9 @@ function bind() {
       document.getElementById("downloadDocumentFile").value = "";
     };
   }
-  document.getElementById("downloadEditorForm").onsubmit = async (e) => {
+  const form = document.getElementById("downloadEditorForm");
+  const revertDownload = () => location.reload();
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const submit = e.submitter;
     if (submit) submit.disabled = true;
@@ -179,18 +181,20 @@ function bind() {
       if (submit) submit.disabled = false;
     }
   };
+  window.TalentaEditor = Object.freeze({
+    save: () => form.requestSubmit(),
+    revert: revertDownload,
+  });
   document.getElementById("resetDownload").onclick = async () => {
     const confirmed = await adminConfirm({
-      title: "Reset halaman Unduh?",
+      title: "Urungkan edit halaman Unduh?",
       message:
-        "Pilihan sumber lomba, urutan tab, visibilitas dokumen, dan label custom akan dikembalikan ke template awal.",
-      confirmLabel: "Ya, reset Unduh",
+        "Perubahan halaman Unduh yang belum disimpan akan dibuang dan draf tersimpan akan dimuat kembali.",
+      confirmLabel: "Urungkan edit",
       variant: "danger",
-      icon: "rotate-ccw",
+      icon: "undo-2",
     });
-    if (!confirmed) return;
-    resetDownloadAdminState();
-    location.reload();
+    if (confirmed) revertDownload();
   };
   document.querySelectorAll("[data-download-preview]").forEach(
     (b) =>

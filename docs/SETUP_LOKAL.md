@@ -127,7 +127,7 @@ Aturan keamanan:
 
 ## 6. Jalankan Migration
 
-Migration membuat seluruh schema PostgreSQL sampai versi terbaru, termasuk Category → Event dan snapshot publikasi Event.
+Migration membuat seluruh schema PostgreSQL sampai versi terbaru, termasuk Category → Event, snapshot publikasi, serta identitas tahun/batch Event.
 
 ```bash
 cd apps/backend
@@ -150,6 +150,7 @@ Hasil yang benar menampilkan seluruh migration bertanda `[X]`, termasuk:
 
 ```text
 [X] AddEventDraftPublications1786586400000
+[X] AddEventPeriodIdentity1786672800000
 ```
 
 Jika migration gagal, jangan menjalankan reset atau menghapus database secara acak. Periksa kembali koneksi PostgreSQL dan nilai `DB_*` di `.env`.

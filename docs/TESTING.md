@@ -55,15 +55,18 @@ E2E memerlukan PostgreSQL writable dengan schema migration terbaru. Test membuat
 
 ## Event/Periode
 
-- Buka kategori lalu buat dua Event.
-- Pastikan keduanya memiliki `site_settings` dan slug unik dalam kategori.
-- Aktifkan Event pertama, lalu Event kedua; hanya Event terakhir yang aktif.
-- Event sebelumnya otomatis tampil sebagai Arsip tanpa menghubungkan sumber manual.
-- Ubah nama/deskripsi Event; slug kategori tidak berubah.
-- Hapus Event uji; Event hilang dari list aktif/arsip.
+- Nama ajang pada form read-only mengikuti Kategori; tahun default tahun berjalan.
+- Field batch tersembunyi sampai opsi beberapa penyelenggaraan diaktifkan; nomor dihitung server.
+- Buat Event tahun unik, lalu coba tahun sama: batal konfirmasi tidak mengubah data; setuju mengubah existing menjadi Gelombang 1 dan membuat Gelombang 2.
+- Sebelum Gelombang 2 diaktifkan, nama publik Event existing tetap tanpa suffix.
+- Publikasikan dan aktifkan Gelombang 2; hanya Gelombang 2 aktif dan existing tampil sebagai arsip Gelombang 1.
+- Event nonaktif yang belum pernah aktif tampil sebagai Persiapan dan tidak bocor ke arsip publik.
+- Uji dashboard dengan 1, 2, 5, dan 10 Event; badge harus sesuai backend.
+- Hapus Event uji; Event hilang tanpa mendaur ulang nomor batch.
 
 ## Draf, Preview, dan Publikasi Event
 
+- Ubah form tanpa simpan lalu tekan **Urungkan edit**; modul kembali ke workspace tersimpan, bukan template bawaan, dan database tidak berubah.
 - Edit Event aktif lalu simpan draf; Public API biasa harus tetap mengembalikan snapshot lama.
 - Buka **Lihat preview**; workspace terbaru tampil pada Public Site asli dan fragment token segera hilang dari address bar.
 - Kategori unpublished dan Event nonaktif hanya dapat dipreview dengan token yang sesuai; request biasa menghasilkan `404`.

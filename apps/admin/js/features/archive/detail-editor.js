@@ -271,7 +271,9 @@ function bindForm() {
         requestAnimationFrame(fitArchiveDetailPreview);
       }),
   );
-  document.getElementById("archiveDetailForm").onsubmit = async (e) => {
+  const form = document.getElementById("archiveDetailForm");
+  const revertArchiveDetail = () => location.reload();
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const submit = e.submitter;
     if (submit) submit.disabled = true;
@@ -284,23 +286,20 @@ function bindForm() {
       if (submit) submit.disabled = false;
     }
   };
+  window.TalentaEditor = Object.freeze({
+    save: () => form.requestSubmit(),
+    revert: revertArchiveDetail,
+  });
   document.getElementById("archiveDetailReset").onclick = async () => {
     const confirmed = await adminConfirm({
-      title: "Reset Detail Arsip?",
+      title: "Urungkan edit Detail Arsip?",
       message:
-        "Visibilitas kategori, dokumen, label, metadata, dan heading detail lomba ini akan dikembalikan ke data sumber.",
-      confirmLabel: "Ya, reset detail",
+        "Perubahan Detail Arsip yang belum disimpan akan dibuang dan draf tersimpan akan dimuat kembali.",
+      confirmLabel: "Urungkan edit",
       variant: "danger",
-      icon: "rotate-ccw",
+      icon: "undo-2",
     });
-    if (!confirmed) return;
-    comp.detail = archiveDetailDefaults();
-    comp.skDocument = null;
-    await TalentaArchiveDetailApi.save(comp);
-    saveDetail();
-    syncForm();
-    renderPreview();
-    toast("Detail Arsip dikembalikan dan tersimpan ke database.");
+    if (confirmed) revertArchiveDetail();
   };
 }
 

@@ -18,7 +18,6 @@ async function loadGlobalSettingsApi() {
   const event = TalentaAdminAuth.currentEvent();
   if (!event?.id)
     return {
-      eventName: globalState.identity.eventName,
       eventDescription: globalState.identity.eventDescription,
       logoAssetId: globalState.identity.logoAssetId || null,
       logoUrl: globalState.identity.logo || "",
@@ -98,7 +97,6 @@ async function saveGlobalSettingsApi() {
   return TalentaApi.request(`/admin/events/${event.id}/settings`, {
     method: "PUT",
     body: {
-      eventName: globalState.identity.eventName,
       eventDescription: globalState.identity.eventDescription,
       primaryColor: globalState.theme.primaryColor,
       logoAssetId: globalState.identity.logoAssetId || undefined,
@@ -516,30 +514,32 @@ document.addEventListener("DOMContentLoaded", () => {
       if (submit) submit.disabled = false;
     }
   };
-  resetSettings.onclick = async () => {
-    const confirmed = await adminConfirm({
-      title: "Reset Pengaturan Global?",
-      message:
-        "Identitas, tema, navigasi, kontak, dan WhatsApp akan dikembalikan ke template awal.",
-      confirmLabel: "Ya, reset pengaturan",
-      variant: "danger",
-      icon: "rotate-ccw",
+  async function revertSettings() {
+    const data = await loadGlobalSettingsApi();
+    globalState = normalizeGlobalSettings({
+      ...globalState,
+      identity: {
+        ...globalState.identity,
+        eventName: data.eventName,
+        eventDescription: data.eventDescription,
+        logoAssetId: data.logoAssetId || null,
+        logo: data.logoUrl ? TalentaMedia.url({ url: data.logoUrl }) : "",
+      },
+      theme: { ...globalState.theme, primaryColor: data.primaryColor },
+      navigation: { ...globalState.navigation, ...data.navigation },
+      contact: { ...globalState.contact, ...data.contact },
+      footer: { ...globalState.footer, ...data.footer },
     });
-    if (!confirmed) return;
-    globalState = resetGlobalSettings();
-    try {
-      await saveGlobalSettingsApi();
-      TalentaAdminAuth.updateCurrentEvent({
-        name: globalState.identity.eventName,
-      });
-      fill();
-      renderNavigation();
-      renderPreview();
-      showToast("Pengaturan global berhasil direset.");
-    } catch (error) {
-      showToast(error.message, true);
-    }
-  };
+    fill();
+    renderNavigation();
+    renderPreview();
+  }
+  resetSettings.onclick = () =>
+    revertSettings().catch((error) => showToast(error.message, true));
+  window.TalentaEditor = Object.freeze({
+    revert: revertSettings,
+    save: () => form.requestSubmit(),
+  });
   sidebarToggle.onclick = () =>
     adminSidebar.classList.toggle("admin-sidebar--open");
   renderPreview();

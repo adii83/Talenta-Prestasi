@@ -20,6 +20,7 @@ import {
   IsString,
   IsUUID,
   Matches,
+  Max,
   MaxLength,
   Min,
   MinLength,
@@ -40,9 +41,15 @@ class CreateCategoryDto {
   slug!: string;
 }
 
-class CreateEventDto {
-  @IsString() @MinLength(1) @MaxLength(160) name!: string;
+class EventPeriodIdentityDto {
+  @Type(() => Number) @IsInt() @Min(2000) @Max(2100) periodYear!: number;
+  @IsBoolean() batchEnabled!: boolean;
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(40) batchLabel?: string;
+  @IsOptional() @IsString() @MaxLength(240) batchNote?: string;
+  @IsOptional() @IsBoolean() confirmBatchConversion?: boolean;
 }
+
+class CreateEventDto extends EventPeriodIdentityDto {}
 
 class UpdateCategoryDto {
   @IsString() @MinLength(1) @MaxLength(160) name!: string;
@@ -50,14 +57,12 @@ class UpdateCategoryDto {
 }
 
 class UpdateEventDto {
-  @IsString() @MinLength(1) @MaxLength(160) name!: string;
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
   @IsOptional() @IsString() @MaxLength(60) fallbackIcon?: string;
   @IsOptional() @IsUUID() mascotAssetId?: string;
 }
 
 class EventSettingsDto {
-  @IsString() @MinLength(1) @MaxLength(160) eventName!: string;
   @IsOptional() @IsString() @MaxLength(5000) eventDescription?: string;
   @IsString() @MaxLength(20) primaryColor!: string;
   @IsOptional() @IsUUID() logoAssetId?: string;
@@ -245,6 +250,15 @@ export class AdminController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.adminService.deleteEvent(eventId, user.userId);
+  }
+
+  @Patch('period-identity')
+  periodIdentity(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Body() input: EventPeriodIdentityDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.adminService.setEventPeriodIdentity(eventId, user.userId, input);
   }
 
   @Post('activate')

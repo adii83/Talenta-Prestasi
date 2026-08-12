@@ -15,6 +15,9 @@ interface SiteRow {
   categorySlug: string;
   eventName: string;
   eventSlug: string;
+  periodYear: number | null;
+  batchNumber: number | null;
+  batchLabel: string | null;
   organizerName: string;
   logoAssetId: string | null;
   primaryColor: string;
@@ -147,7 +150,15 @@ export class PublicContentService {
     const settings = this.settingsDto(site);
     const event = {
       slug: site.eventSlug,
-      name: site.eventName,
+      name: eventDisplayName(
+        site.eventName,
+        site.periodYear,
+        site.batchLabel,
+        site.batchNumber,
+      ),
+      periodYear: site.periodYear,
+      batchNumber: site.batchNumber,
+      batchLabel: site.batchLabel,
       description: site.description,
       mascotAssetId: site.mascotAssetId,
       fallbackIcon: site.fallbackIcon,
@@ -184,7 +195,13 @@ export class PublicContentService {
       },
       winners: {
         site: siteDto,
-        event: { slug: site.eventSlug, name: site.eventName },
+        event: {
+          slug: event.slug,
+          name: event.name,
+          periodYear: event.periodYear,
+          batchNumber: event.batchNumber,
+          batchLabel: event.batchLabel,
+        },
         categories: winnerCategories,
         page: winnerPages[0] ?? null,
         settings: winnerSettings[0] ?? {},
@@ -242,9 +259,23 @@ export class PublicContentService {
   }
 }
 
+export function eventDisplayName(
+  baseName: string,
+  periodYear: number | null,
+  batchLabel: string | null,
+  batchNumber: number | null,
+) {
+  if (!periodYear) return baseName;
+  const period = `${baseName} ${periodYear}`;
+  return batchLabel && batchNumber
+    ? `${period} · ${batchLabel} ${batchNumber}`
+    : period;
+}
+
 const SITE_QUERY = `SELECT
   event.id AS "eventId",category.id AS "categoryId",category.name AS "categoryName",
   category.slug AS "categorySlug",event.name AS "eventName",event.slug AS "eventSlug",
+  event.period_year AS "periodYear",event.batch_number AS "batchNumber",event.batch_label AS "batchLabel",
   category.organizer_name AS "organizerName",category.logo_asset_id AS "logoAssetId",
   settings.primary_color AS "primaryColor",settings.navigation,settings.contact,settings.footer,settings.seo,
   event.description,event.mascot_asset_id AS "mascotAssetId",event.fallback_icon AS "fallbackIcon"

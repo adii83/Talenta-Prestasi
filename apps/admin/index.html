@@ -72,37 +72,44 @@
           >
             <strong>Status konten</strong><span>Memuat...</span>
           </div>
-          <button
-            class="btn btn--outline btn--sm"
-            type="button"
-            id="routeResetButton"
-          >
-            Reset</button
-          ><button
-            class="btn btn--primary btn--sm"
-            type="button"
-            id="routeSaveButton"
-          >
-            <i data-lucide="save"></i> Simpan draf</button
-          ><button
-            class="btn btn--outline btn--sm"
-            id="routePublicLink"
-            type="button"
-          >
-            <i data-lucide="external-link"></i> Lihat preview</button
-          ><button
-            class="btn btn--primary btn--sm"
-            id="routePublishButton"
-            type="button"
-          >
-            Publikasikan perubahan</button
-          ><button
-            class="btn btn--outline btn--sm"
-            id="routeDiscardButton"
-            type="button"
-          >
-            Batalkan draf
-          </button>
+          <div class="admin-actionbar__left">
+            <button
+              class="btn btn--outline btn--sm"
+              type="button"
+              id="routeResetButton"
+            >
+              <i data-lucide="undo-2"></i> Urungkan edit</button
+            ><button
+              class="btn btn--outline btn--sm"
+              id="routePublicLink"
+              type="button"
+            >
+              <i data-lucide="external-link"></i> Lihat preview
+            </button>
+          </div>
+          <div class="admin-actionbar__right">
+            <button
+              class="btn btn--primary btn--sm"
+              type="button"
+              id="routeSaveButton"
+            >
+              <i data-lucide="save"></i> Simpan draf</button
+            ><button
+              class="btn btn--outline btn--sm"
+              id="routeDiscardButton"
+              type="button"
+            >
+              Batalkan draf
+            </button>
+            <span class="admin-actionbar__divider" aria-hidden="true"></span>
+            <button
+              class="btn btn--primary btn--sm"
+              id="routePublishButton"
+              type="button"
+            >
+              Publikasikan perubahan
+            </button>
+          </div>
         </div>
       </header>
       <div id="adminRouteView" class="admin-route-view">
@@ -134,14 +141,18 @@
                   </div>
                   <div class="admin-form-grid">
                     <div class="admin-field admin-field--wide">
-                      <label for="eventName">Nama event</label
+                      <label for="eventName">Nama ajang</label
                       ><input
                         class="form-input"
                         id="eventName"
                         name="eventName"
                         value="Olimpiade Sains Nusantara"
-                        required
-                      />
+                        readonly
+                        aria-describedby="eventNameHelp"
+                      /><small id="eventNameHelp"
+                        >Nama mengikuti Kategori dan tidak diubah per
+                        periode.</small
+                      >
                     </div>
                     <div class="admin-field admin-field--wide">
                       <label for="eventDescription"
@@ -526,7 +537,7 @@
                   type="button"
                   id="resetSettings"
                 >
-                  Reset</button
+                  Urungkan edit</button
                 ><button
                   class="btn btn--primary"
                   type="submit"

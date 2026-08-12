@@ -42,14 +42,14 @@ describe('Public Category → active Event visibility (e2e)', () => {
     );
     categoryId = category.rows[0].id;
     const activeEvent = await db.query<{ id: string }>(
-      `INSERT INTO event_sites(category_id,organization_id,name,slug,is_active,description)
-       VALUES($1,$2,'Public Active Event','2026',true,'Active description') RETURNING id`,
+      `INSERT INTO event_sites(category_id,organization_id,name,slug,period_year,activated_at,is_active,description)
+       VALUES($1,$2,'Public Category','2026',2026,now(),true,'Active description') RETURNING id`,
       [categoryId, organizationId],
     );
     activeEventId = activeEvent.rows[0].id;
     const archivedEvent = await db.query<{ id: string }>(
-      `INSERT INTO event_sites(category_id,organization_id,name,slug,is_active,description)
-       VALUES($1,$2,'Public Archived Event','2025',false,'Archive description') RETURNING id`,
+      `INSERT INTO event_sites(category_id,organization_id,name,slug,period_year,activated_at,is_active,description)
+       VALUES($1,$2,'Public Category','2025',2025,now(),false,'Archive description') RETURNING id`,
       [categoryId, organizationId],
     );
     archivedEventId = archivedEvent.rows[0].id;
@@ -132,7 +132,7 @@ describe('Public Category → active Event visibility (e2e)', () => {
     );
     expect(response.body.data.settings.primaryColor).toBe('#123456');
     expect(response.body.data.currentEvent).toEqual(
-      expect.objectContaining({ slug: '2026', name: 'Public Active Event' }),
+      expect.objectContaining({ slug: '2026', name: 'Public Category 2026' }),
     );
   });
 
@@ -148,7 +148,7 @@ describe('Public Category → active Event visibility (e2e)', () => {
       .get(`/api/v1/public/sites/${categorySlug}/archives`)
       .expect(200);
     expect(archives.body.data.events).toEqual([
-      expect.objectContaining({ slug: '2025', name: 'Public Archived Event' }),
+      expect.objectContaining({ slug: '2025', name: 'Public Category 2025' }),
     ]);
     const detail = await request(app.getHttpServer())
       .get(`/api/v1/public/sites/${categorySlug}/archives/2025`)

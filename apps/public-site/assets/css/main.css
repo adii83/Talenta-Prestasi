@@ -6879,9 +6879,9 @@ button.repeat-row__grip:focus-visible,
 }
 .archive-manager-item__head {
   display: grid;
-  grid-template-columns: 24px 58px minmax(0, 1fr) auto;
+  grid-template-columns: 58px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
   margin-bottom: 16px;
 }
 .archive-manager-item__actions {
@@ -6931,17 +6931,24 @@ button.repeat-row__grip:focus-visible,
 .archive-manager-item .icon-upload-row {
   margin-top: 10px;
 }
+.archive-manager-item__identity {
+  min-width: 0;
+}
 .archive-manager-item__head strong,
 .archive-manager-item__head small {
   display: block;
 }
 .archive-manager-item__head strong {
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 1.4;
   color: #1d2939;
+  overflow-wrap: anywhere;
 }
 .archive-manager-item__head small {
-  font-size: 10px;
-  color: #8490a2;
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #718096;
 }
 .repeat-row__actions {
   display: flex;
@@ -7064,7 +7071,8 @@ button.repeat-row__grip:focus-visible,
 }
 @media (max-width: 620px) {
   .archive-manager-item__head {
-    grid-template-columns: 20px 48px minmax(0, 1fr);
+    grid-template-columns: 48px minmax(0, 1fr);
+    gap: 12px;
   }
   .archive-manager-item__actions {
     grid-column: 1 / -1;
@@ -8865,7 +8873,7 @@ button.repeat-row__grip:focus-visible,
   .admin-topbar__actions {
     grid-template-columns: 0.65fr 1.35fr;
   }
-  .admin-topbar__actions #routePublicLink {
+  .admin-topbar__actions > #routePublicLink {
     grid-column: 1/-1;
   }
   .admin-editor-frame {
@@ -8905,6 +8913,68 @@ button.repeat-row__grip:focus-visible,
     height: 42px !important;
     min-height: 42px !important;
     padding-inline: 12px !important;
+  }
+}
+
+/* --- EVENT DRAFT ACTION HIERARCHY --- */
+.admin-router-main > .admin-topbar {
+  height: auto;
+  min-height: 84px;
+  padding-block: 12px;
+}
+.admin-topbar__actions {
+  flex-wrap: wrap;
+}
+.admin-actionbar__left,
+.admin-actionbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-actionbar__divider {
+  width: 1px;
+  height: 30px;
+  margin-inline: 2px;
+  background: var(--color-border, #d5e0eb);
+}
+.admin-actionbar__left .btn,
+.admin-actionbar__right .btn {
+  min-height: 42px;
+  white-space: nowrap;
+}
+#routePublishButton {
+  box-shadow: 0 5px 12px rgb(23 79 143 / 22%);
+}
+@media (max-width: 960px) {
+  .admin-topbar__actions {
+    display: flex;
+    width: 100%;
+    margin-left: 0;
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .event-publication-status {
+    width: 100%;
+  }
+  .admin-actionbar__left,
+  .admin-actionbar__right {
+    display: grid;
+    width: 100%;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .admin-actionbar__left #routePublicLink {
+    grid-column: auto;
+  }
+  .admin-actionbar__right #routePublishButton {
+    grid-column: 1/-1;
+  }
+  .admin-actionbar__divider {
+    display: none;
+  }
+  .admin-actionbar__left .btn,
+  .admin-actionbar__right .btn {
+    width: 100%;
+    min-width: 0 !important;
   }
 }
 

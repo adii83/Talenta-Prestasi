@@ -20,12 +20,13 @@ Organization
 
 ## Area yang Telah Selesai
 
-- Draf terpadu Event, snapshot publik atomik, preview aman 15 menit, dan allowlist media telah diimplementasikan; migration penambah schema sudah diterapkan pada database development utama.
+- Draf terpadu Event, snapshot publik atomik, preview aman 15 menit, dan allowlist media telah diimplementasikan.
+- Identitas periode eksplisit (`period_year`), batch otomatis, aktivasi-time naming, dashboard aktif+arsip, badge status, dan **Urungkan edit** telah diimplementasikan; migration ke-16 sudah diterapkan pada database development lokal.
 - Public Site responsif dan CMS Admin dua tingkat: Daftar Kategori → Daftar Event → Editor Event.
 - NestJS API, PostgreSQL, autentikasi JWT, tenant/RBAC, audit, dan media lokal.
 - CRUD/publikasi Kategori serta CRUD/aktivasi Event.
 - Arsip otomatis dari Event nonaktif dalam kategori yang sama.
-- Integrasi editor Beranda, Unduh, FAQ, Pemenang, Arsip, Pengaturan, dan renderer publik.
+- Integrasi editor Beranda, Unduh, FAQ, Pemenang, Arsip, Pengaturan, dan renderer publik; seluruh editor memiliki kontrak **Urungkan edit** yang memuat workspace tersimpan tanpa reset template.
 - Reset migration Category→Event dan seed lokal idempotent.
 - Database development utama `talenta_prestasi` telah memakai schema baru.
 
@@ -36,19 +37,18 @@ Organization
 
 ## Pekerjaan Aktif
 
-- Siapkan database disposable lalu jalankan suite E2E Jest draf-preview-publish tanpa memengaruhi database development utama.
-- Maintenance dan acceptance visual/UX oleh client.
+- Maintenance dan acceptance visual/UX lanjutan oleh client.
 - Commit, push, release, dan deployment belum dilakukan.
 
 ## Validasi Terakhir
 
-Validasi source dan runtime draf/preview/publikasi terakhir dijalankan pada 11 Agustus 2026.
+Validasi source dan runtime periode Event terakhir dijalankan pada 12 Agustus 2026.
 
-- **Database:** migration ke-15 non-destruktif telah diterapkan pada `talenta_prestasi`; ledger 15/15, tabel `event_publications` serta `event_publication_assets` aktif, data existing tidak direset, dan Event aktif memiliki snapshot versi 1 dengan tiga asset publik terdaftar.
-- **Backend:** build lulus; 9 suite/24 unit test lulus. Suite E2E Jest belum dijalankan karena environment hanya menunjuk database development utama, bukan database disposable.
-- **Frontend:** 13 canonical route dan 45 file JavaScript valid; sinkronisasi tema 6 editor Admin + 6 halaman publik lulus; audit dialog, Category→Event, Unduh, Pemenang, Arsip, FAQ, serta kontrak draf/publikasi lulus.
-- **Browser:** Puppeteer membuktikan login Admin, kategori unpublished tetap `404` untuk pengunjung, preview draf memakai workspace Event yang tepat, fragment token dibersihkan, banner preview tampil, publish membuat snapshot, perubahan berikutnya berstatus draf, dan discard memulihkan workspace clean. Parity Beranda tiga viewport dan smoke tema 12 target juga lulus dari receipt sebelumnya.
-- **Keamanan:** viewer ditolak pada mutasi konten; tenant lain ditolak; media memakai allowlist snapshot/otorisasi preview; resolver publik hanya memilih Event aktif dan operasional.
+- **Database:** migration ke-16 `AddEventPeriodIdentity` diterapkan; ledger 16/16. Seed lokal idempotent menghasilkan tahun 2025/2026 eksplisit, satu Event aktif per Kategori aktif, snapshot publik, dan tidak ada identitas periode duplikat.
+- **Backend:** build lulus; 9 suite/26 unit test dan 3 suite/13 E2E test lulus pada PostgreSQL lokal testing. Warning deprecation `pg` tentang query bersamaan masih muncul dari fixture/seed lama, tetapi tidak menggagalkan suite.
+- **Frontend:** audit UX periode, publikasi Event, Category→Event, 13 canonical route, 45 file JavaScript, dan sinkronisasi tema lulus.
+- **Browser:** Puppeteer membuktikan nama ajang read-only, tahun default, field batch kondisional, batal/setuju konflik, Gelombang 1/2, nama publik existing sebelum aktivasi, transisi aktif+arsip setelah aktivasi, slug detail arsip, **Urungkan edit** pada Pengaturan dan iframe FAQ, **Batalkan draf** lintas workspace, badge status, serta layout 1440×900, 768×1024, dan 390×844 tanpa overflow horizontal. Dua konflik CSS responsive dan overlay slug arsip ditemukan, diperbaiki, lalu diuji ulang.
+- **Keamanan:** viewer/tenant guard lulus E2E; upload yang belum direferensikan snapshot tetap `404`; media publik tetap memakai allowlist dan preview terotorisasi.
 
 ## Riwayat
 

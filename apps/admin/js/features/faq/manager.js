@@ -206,23 +206,20 @@ function faqBindPage() {
         requestAnimationFrame(fitFaqPreview);
       }),
   );
+  const form = document.getElementById("faqEditorForm");
+  const revertFaq = () => location.reload();
   document.getElementById("faqReset").onclick = async () => {
     const confirmed = await adminConfirm({
-      title: "Reset seluruh FAQ?",
+      title: "Urungkan edit FAQ?",
       message:
-        "Heading, kategori, pertanyaan, jawaban, status, dan urutan FAQ akan dikembalikan ke template awal.",
-      confirmLabel: "Ya, reset FAQ",
+        "Perubahan FAQ yang belum disimpan akan dibuang dan draf tersimpan akan dimuat kembali.",
+      confirmLabel: "Urungkan edit",
       variant: "danger",
-      icon: "rotate-ccw",
+      icon: "undo-2",
     });
-    if (!confirmed) return;
-    faqState = resetFaqAdminState();
-    faqSyncPage();
-    faqRenderEditor();
-    faqRenderPreview();
-    faqToast("FAQ dikembalikan ke template awal.");
+    if (confirmed) revertFaq();
   };
-  document.getElementById("faqEditorForm").onsubmit = async (e) => {
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const submit = e.submitter;
     if (submit) submit.disabled = true;
@@ -237,6 +234,10 @@ function faqBindPage() {
       if (submit) submit.disabled = false;
     }
   };
+  window.TalentaEditor = Object.freeze({
+    save: () => form.requestSubmit(),
+    revert: revertFaq,
+  });
 }
 faqBindPage();
 faqSyncPage();

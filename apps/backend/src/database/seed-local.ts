@@ -55,19 +55,22 @@ async function main() {
 
     const activeEvent = await db.query<{ id: string }>(
       `INSERT INTO event_sites(
-         category_id,organization_id,name,slug,is_active,status,description
-       ) VALUES($1,$2,'Talenta Prestasi 2026','2026',false,'active','Event aktif lokal')
+         category_id,organization_id,name,slug,period_year,activated_at,is_active,status,description
+       ) VALUES($1,$2,'Talenta Prestasi Local','2026',2026,now(),false,'active','Event aktif lokal')
        ON CONFLICT(category_id,slug) WHERE deleted_at IS NULL
-       DO UPDATE SET name=EXCLUDED.name,status='active',description=EXCLUDED.description,deleted_at=NULL
+       DO UPDATE SET name=EXCLUDED.name,period_year=EXCLUDED.period_year,
+         activated_at=COALESCE(event_sites.activated_at,now()),status='active',
+         description=EXCLUDED.description,deleted_at=NULL
        RETURNING id`,
       [categoryId, organizationId],
     );
     const archivedEvent = await db.query<{ id: string }>(
       `INSERT INTO event_sites(
-         category_id,organization_id,name,slug,is_active,status,description
-       ) VALUES($1,$2,'Talenta Prestasi 2025','2025',false,'active','Event arsip lokal')
+         category_id,organization_id,name,slug,period_year,activated_at,is_active,status,description
+       ) VALUES($1,$2,'Talenta Prestasi Local','2025',2025,now(),false,'active','Event arsip lokal')
        ON CONFLICT(category_id,slug) WHERE deleted_at IS NULL
-       DO UPDATE SET name=EXCLUDED.name,is_active=false,status='active',
+       DO UPDATE SET name=EXCLUDED.name,period_year=EXCLUDED.period_year,
+         activated_at=COALESCE(event_sites.activated_at,now()),is_active=false,status='active',
          description=EXCLUDED.description,deleted_at=NULL
        RETURNING id`,
       [categoryId, organizationId],
@@ -84,6 +87,13 @@ async function main() {
     );
 
     const hostname = `talenta-prestasi-local.${publicBaseDomain}`;
+    await db.query(
+      `DELETE FROM site_domains domain
+       USING competition_categories category
+       WHERE domain.hostname=$1 AND domain.category_id=category.id
+         AND category.deleted_at IS NOT NULL`,
+      [hostname],
+    );
     const primaryDomain = await db.query(
       `UPDATE site_domains SET hostname=$2,is_primary=true,verified_at=now()
        WHERE category_id=$1 AND is_primary=true`,
@@ -116,10 +126,8 @@ async function main() {
     const publicContent = new PublicContentService(executor as never);
     const workspace = new WorkspaceSnapshotService(executor as never);
     for (const eventId of [activeEvent.rows[0].id, archivedEvent.rows[0].id]) {
-      const [publicSnapshot, workspaceSnapshot] = await Promise.all([
-        publicContent.build(eventId, executor),
-        workspace.capture(eventId, executor),
-      ]);
+      const publicSnapshot = await publicContent.build(eventId, executor);
+      const workspaceSnapshot = await workspace.capture(eventId, executor);
       const checksum = createHash('sha256')
         .update(canonicalJson(workspaceSnapshot))
         .digest('hex');

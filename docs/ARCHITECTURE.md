@@ -34,8 +34,8 @@ Organization
 
 - **Organization** adalah tenant tertinggi.
 - **CompetitionCategory** adalah kategori lomba tetap, misalnya `octal`; kategori memiliki slug/subdomain, identitas penyelenggara, logo/favicon, dan status publikasi.
-- **EventSite** adalah event/periode di dalam kategori, misalnya `Octal 2026`; Event memiliki konten dan pengaturan visual per periode.
-- Hanya satu Event dapat aktif dalam satu kategori. Event lain yang belum dihapus menjadi arsip otomatis.
+- **EventSite** adalah penyelenggaraan pada `period_year` tertentu, dengan `batch_number` otomatis dan `batch_label` opsional bila satu tahun memiliki beberapa gelombang. Nama ajang mengikuti Kategori; slug hanya identifier teknis.
+- Hanya satu Event dapat aktif dalam satu kategori. Event nonaktif yang pernah diaktifkan menjadi arsip; Event masa depan yang belum pernah aktif tetap berstatus persiapan.
 - Tidak ada entity `Competition` dan tidak ada relasi sumber arsip manual.
 
 ## Batas Aplikasi

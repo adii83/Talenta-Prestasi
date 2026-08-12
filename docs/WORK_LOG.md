@@ -199,6 +199,150 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 - **Kendala**: Chrome DevTools MCP tidak dapat terhubung karena browser tidak menyediakan `DevToolsActivePort`; verifikasi browser dilanjutkan dengan Puppeteer. Uji klik memakai token stub tanpa credential agar tidak mengungkap data sensitif; alur token nyata sebelumnya telah tervalidasi pada acceptance draf-preview-publish.
 - **Tindak lanjut**: Tidak ada. Tunnel Cloudflare dijalankan hanya untuk pengujian domain publik, bukan untuk preview lokal.
 
+### 2026-08-12 — Identitas Periode/Batch dan Siklus Draf Admin
+
+- **Tanggal/Judul**: 2026-08-12 — Identitas Periode/Batch dan Siklus Draf Admin
+- **Permintaan**: Mengganti periode berbasis slug acak, menyederhanakan pembuatan Event tahunan/batch, meredesain daftar Event dan badge, serta mengganti Reset template dengan **Urungkan edit**; menerapkan schema ke PostgreSQL lokal testing dan menguji UI seperti pengguna.
+- **Proses/Keputusan**: Menambahkan `period_year`, batch server-allocated, catatan internal, dan `activated_at`; nama ajang Event mengikuti Kategori. Konflik Event kedua mengubah existing menjadi Gelombang 1 dan Event baru Gelombang 2 dalam transaksi setelah konfirmasi. Snapshot konten tetap immutable; resolver meng-overlay identitas operasional ketika batch berikutnya pernah diaktifkan. Dashboard memakai kartu aktif utama, grid arsip/persiapan, dan tiga badge. Action bar memisahkan revert/preview dari save/discard/publish; Pengaturan memuat ulang workspace tersimpan tanpa menyimpan template bawaan.
+- **File**:
+  - `apps/backend/src/database/migrations/1786672800000-AddEventPeriodIdentity.ts`, entity, Admin/Public service/controller, seed, unit test, dan E2E fixture
+  - `apps/admin/index.html`, `apps/admin/js/shell/portal-dashboard.js`, `router.js`, `settings-editor.js`
+  - `apps/public-site/assets/css/main.css`, `scripts/audit-admin-event-period-ux.mjs`, dan `package.json`
+  - dokumentasi aktif, spesifikasi, rencana, `PROGRESS.md`, dan log ini
+- **Validasi**: Migration database lokal lulus 16/16; seed idempotent dijalankan; backend build, 9 suite/26 unit test, 3 suite/13 E2E test, audit UX periode/publikasi/Category→Event, route, JavaScript, tema, serta `git diff --check` lulus. Puppeteer menguji create Event, batal/setuju konflik, publikasi/aktivasi, nama publik sebelum/sesudah aktivasi, detail arsip, Urungkan edit, badge, dan viewport 1440/768/390. Bug topbar terpotong, overlap mobile, dan slug arsip stale diperbaiki lalu diuji ulang.
+- **Kendala**: Ruflo CLI gagal memuat metadata versi npm dan dua subagent read-only gagal autentikasi provider `403`; validasi lokal dilanjutkan. Seed/E2E masih menampilkan deprecation warning `pg` query bersamaan tanpa kegagalan test. Chrome DevTools tidak menemukan `DevToolsActivePort`; Puppeteer digunakan.
+- **Tindak lanjut**: Commit, push, release, dan deployment tetap menunggu instruksi terpisah.
+
+### 2026-08-12 — Penyelarasan Urungkan Edit pada Seluruh Editor
+
+- **Tanggal/Judul**: 2026-08-12 — Penyelarasan Urungkan Edit pada Seluruh Editor
+- **Permintaan**: Menuntaskan perilaku **Urungkan edit** agar konsisten pada Beranda, Unduh, FAQ, Pemenang, Arsip, Detail Arsip, dan Pengaturan tanpa memulihkan template atau menulis database.
+- **Proses/Keputusan**: Setiap editor iframe sekarang mengekspos kontrak `window.TalentaEditor` untuk `save` dan `revert`. Revert memuat ulang modul aktif dari workspace backend tersimpan. Tombol Reset mandiri diganti menjadi **Urungkan edit** dan handler reset template dihapus dari editor. Audit source diperluas untuk mewajibkan kontrak setiap editor dan menolak pemanggilan helper reset template.
+- **File**:
+  - `apps/admin/index.html` dan enam halaman `apps/admin/editors/`
+  - `apps/admin/js/features/home/editor.js`, `downloads/editor.js`, `faq/manager.js`, `winners/manager.js`, `archive/manager.js`, dan `archive/detail-editor.js`
+  - `scripts/audit-admin-event-period-ux.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Audit UX periode dan pemeriksaan sintaks 45 file JavaScript lulus. Browser Puppeteer membuktikan kontrak FAQ iframe tersedia, perubahan form yang belum disimpan kembali ke workspace tersimpan setelah konfirmasi **Urungkan edit**, dan **Batalkan draf** mengembalikan perubahan FAQ tersimpan ke snapshot publik. Viewport 768×1024 tidak memiliki overflow atau tombol action bar yang tumpang tindih.
+- **Kendala**: Chrome DevTools tidak menemukan `DevToolsActivePort`; Puppeteer digunakan. Data tambahan dari acceptance periode sebelumnya tetap berada pada database lokal testing dan tidak dihapus.
+- **Tindak lanjut**: Commit, push, release, dan deployment tetap menunggu instruksi terpisah.
+
+### 2026-08-12 — Perapian Kartu Dashboard Event
+
+- **Tanggal/Judul**: 2026-08-12 — Perapian Kartu Dashboard Event
+- **Permintaan**: Memperbaiki kartu Event aktif yang memanjang ke bawah dan membuat daftar Event terlihat lebih ringkas serta profesional sesuai desain yang disetujui.
+- **Proses/Keputusan**: Akar masalah berada pada container grid utama yang membagi kartu aktif, judul bagian, dan grid arsip sebagai item kolom terpisah. Ketiganya sekarang memakai lebar penuh. Kartu aktif memakai ringkasan horizontal dengan aksi di kanan pada desktop/tablet; kartu lain menghapus tinggi minimum berlebih; badge tetap membungkus mendatar. Pada mobile, ringkasan menumpuk secara terkontrol dan aksi tetap dalam satu baris tanpa overflow.
+- **File**:
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `scripts/audit-admin-event-period-ux.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Audit source menolak layout lama sebelum perbaikan. Audit UX periode, pemeriksaan JavaScript/route/tema, `git diff --check`, serta acceptance browser 1440×900, 768×1024, dan 390×844 dijalankan setelah perubahan.
+
+### 2026-08-12 — Pengembalian Alignment Tombol Kelola Event pada Kartu Event
+
+- **Tanggal/Judul**: 2026-08-12 — Pengembalian Alignment Tombol Kelola Event pada Kartu Event
+- **Permintaan**: Mengembalikan posisi dan letak tombol "Kelola Event" serta opsi pada kartu Event (aktif dan periode sebelumnya) ke posisi semula (centered/stretch alignment), membatasi penyesuaian hanya untuk kartu Kategori Lomba.
+- **Proses/Keputusan**:
+  1. Mengubah `align-items: flex-end` kembali menjadi `align-items: center` pada `.event-card--active` dan `.event-card--compact` di `apps/admin/js/shell/portal-dashboard.js`.
+  2. Mengubah `align-self: flex-end` pada `.event-card__buttons` kembali menjadi `align-self: stretch` sehingga posisi tombol "Kelola Event" dan menu opsi `•••` pada daftar Event kembali presisi dan simetris seperti semula.
+- **File**:
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Menjalankan `npm run test:event-period-ux`, `npm run check:routes`, `npm run check:js`, `npm run check:theme`, dan `npm run test:event-publication` (semua lulus 100%).
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Commit, push, release, dan deployment tetap menunggu instruksi terpisah.
+
+- **Kendala**: Chrome DevTools tidak menemukan `DevToolsActivePort`; acceptance browser menggunakan Puppeteer.
+- **Tindak lanjut**: Commit, push, release, dan deployment tetap menunggu instruksi terpisah.
+
+### 2026-08-12 — Penyesuaian Layout Header Action Buttons Portal Dashboard Admin
+
+- **Tanggal/Judul**: 2026-08-12 — Penyesuaian Layout Header Action Buttons Portal Dashboard Admin
+- **Permintaan**: Memisahkan posisi tombol "← Kembali ke Kategori" dan "+ Buat Event" dari flex container sejajar judul/deskripsi kategori, lalu meletakkannya di bawah blok judul dan deskripsi dengan tetap mempertahankan posisi rata kanan yang rapi.
+- **Proses/Keputusan**: Mengubah `.event-dashboard__intro` di `apps/admin/js/shell/portal-dashboard.js` dari layout flex horizontal (`space-between`, `align-items: end`) menjadi layout flex vertical (`flex-direction: column`, `gap: 16px`), dan mengatur `.event-dashboard__intro-actions` agar menggunakan `justify-content: flex-end` sehingga tombol aksi berada di baris baru di bawah deskripsi dan rata ke sisi kanan.
+- **File**:
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Menjalankan `node scripts/audit-admin-event-period-ux.mjs`, `node scripts/validate-routes.mjs`, `node scripts/check-js.mjs`, `node scripts/audit-theme-sync.mjs`, dan `node scripts/audit-event-publication.mjs` (seluruhnya lulus 100%).
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Commit, push, release, dan deployment tetap menunggu instruksi terpisah.
+
+### 2026-08-12 — Optimasi Proporsi dan Ruang Kosong Kartu Kategori Portal Dashboard
+
+- **Tanggal/Judul**: 2026-08-12 — Optimasi Proporsi dan Ruang Kosong Kartu Kategori Portal Dashboard
+- **Permintaan**: Mengatasi ruang kosong (empty whitespace) vertikal berlebih pada kartu kategori/event yang memiliki perbedaan panjang deskripsi atau teks agar terlihat proporsional, rapi, dan profesional.
+- **Proses/Keputusan**: Mengubah aturan `.event-card` pada file `apps/admin/js/shell/portal-dashboard.js` dengan menghapus constraint `min-height: 170px` yang kaku, menyesuaikan padding menjadi `22px 24px`, serta mengoptimalkan margin bottom pada heading & domain link (`margin-bottom: 10px` & `18px`). Dengan ini, tinggi kartu menyesuaikan isi konten secara natural tanpa menyisakan lubang/jarak kosong yang terlalu besar ketika teks deskripsi singkat, serta menambahkan efek hover halus (`border-color` & `box-shadow`) untuk kesan visual modern.
+- **File**:
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Menjalankan skrip validasi `node scripts/audit-admin-event-period-ux.mjs`, `node scripts/validate-routes.mjs`, `node scripts/check-js.mjs`, `node scripts/audit-theme-sync.mjs`, dan `node scripts/audit-event-publication.mjs` (seluruhnya PASS 100%).
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Commit dan push lokal/remote tidak dilakukan sesuai batasan keamanan tanpa perintah langsung pengguna.
+
+### 2026-08-12 — Redesign Kartu Kategori dan Area Aksi Dashboard
+
+- **Tanggal/Judul**: 2026-08-12 — Redesign Kartu Kategori dan Area Aksi Dashboard
+- **Permintaan**: Menghilangkan ruang kosong tidak seimbang pada kartu kategori dan menjaga tombol "Kembali ke Kategori" serta "Buat Event" tetap proporsional ketika judul kategori panjang.
+- **Proses/Keputusan**: Daftar kategori diubah menjadi satu kolom dengan kartu horizontal adaptif: identitas kategori berada di kiri dan kelompok aksi mandiri berada di kanan. Aksi utama "Kelola Event" tetap terlihat, sedangkan publikasi/nonaktifkan dan hapus dipindahkan ke menu sekunder agar hierarki lebih bersih. Area aksi halaman diberi pemisah, dapat membungkus, dan tombol tidak menyusut atau berebut ruang dengan judul. Pada viewport sempit, kartu dan kelompok aksi kembali bertumpuk agar tidak overflow.
+- **File**:
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: `node scripts/audit-admin-event-period-ux.mjs`, `node scripts/validate-routes.mjs`, `node scripts/check-js.mjs`, `node scripts/audit-theme-sync.mjs`, dan `node scripts/audit-event-publication.mjs` seluruhnya lulus. Inspeksi visual browser belum dijalankan karena Chrome DevTools tidak terhubung.
+- **Kendala**: `git diff --check` awal menemukan trailing whitespace lama pada entri log baris 245; whitespace tersebut dibersihkan. Chrome DevTools tidak menemukan sesi Chrome aktif.
+- **Tindak lanjut**: Commit, push, release, dan deployment tidak dilakukan tanpa instruksi langsung pengguna.
+
+### 2026-08-12 — Pengembalian Kartu Dua Kolom dan Aksi Sejajar Judul
+
+- **Tanggal/Judul**: 2026-08-12 — Pengembalian Kartu Dua Kolom dan Aksi Sejajar Judul
+- **Permintaan**: Mengembalikan kartu Kategori Lomba menjadi dua kartu per baris tanpa badge, serta menempatkan tombol pembuatan dan navigasi di sisi kanan judul tanpa membiarkan tombol menyempit ketika judul panjang.
+- **Proses/Keputusan**: Kartu kategori dikembalikan ke susunan dua kolom dan bentuk vertikal sebelumnya, termasuk tiga aksi langsung tanpa menu tambahan. Badge status pada kartu kategori dihapus. Header memakai baris khusus berisi area judul fleksibel dan kelompok tombol berukuran tetap; judul menggunakan pembungkusan teks sehingga judul yang turun baris, bukan tombol yang menyempit. Deskripsi tetap berada pada baris berikutnya. Pada layar hingga 560px, baris judul dan aksi ditumpuk agar tetap terbaca.
+- **File**:
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: `node scripts/audit-admin-event-period-ux.mjs`, `node scripts/validate-routes.mjs`, `node scripts/check-js.mjs`, `node scripts/audit-theme-sync.mjs`, dan `node scripts/audit-event-publication.mjs` seluruhnya lulus setelah perubahan inti. Pemeriksaan final dijalankan kembali setelah penyelarasan struktur judul.
+- **Kendala**: Inspeksi visual browser tidak dilakukan karena Chrome DevTools tidak terhubung.
+- **Tindak lanjut**: Commit, push, release, dan deployment tidak dilakukan tanpa instruksi langsung pengguna.
+
+### 2026-08-12 — Penyederhanaan Badge Kategori dan Jarak Eksternal Kartu Event
+
+- **Tanggal/Judul**: 2026-08-12 — Penyederhanaan Badge Kategori dan Jarak Eksternal Kartu Event
+- **Permintaan**: Mengembalikan badge pada kartu kategori dengan hanya dua istilah yang mudah dipahami serta memperbaiki jarak antara daftar kartu Event dan bagian di atasnya tanpa mengubah ruang isi kartu.
+- **Proses/Keputusan**: Status kategori yang dipublikasikan ditampilkan sebagai badge "Dipublikasikan"; seluruh status internal selain itu dipetakan secara visual menjadi "Nonaktif" tanpa mengubah nilai atau alur backend. Elemen status dashboard yang kosong tidak lagi memiliki tinggi minimum maupun margin sehingga tidak menciptakan ruang vertikal semu sebelum grid kartu Event. Padding dan jarak konten di dalam kartu tidak diubah.
+- **File**:
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Audit UX, route, sintaks JavaScript, sinkronisasi tema, publikasi Event, dan format diff dijalankan setelah perubahan.
+- **Kendala**: Inspeksi visual browser tidak dilakukan karena Chrome DevTools tidak terhubung.
+- **Tindak lanjut**: Commit, push, release, dan deployment tidak dilakukan tanpa instruksi langsung pengguna.
+
+### 2026-08-13 — Pengembalian Hierarki Visual Kartu Event
+
+- **Tanggal/Judul**: 2026-08-13 — Pengembalian Hierarki Visual Kartu Event
+- **Permintaan**: Mengembalikan kerapian kartu Event seperti tampilan sebelumnya, terutama kedekatan badge dengan tombol "Kelola Event" serta jarak judul, periode, dan catatan.
+- **Proses/Keputusan**: Struktur kartu Event dipisahkan menjadi area konten di kiri dan area samping di kanan. Pada desktop, area samping menempatkan badge di sebelah kiri tombol aksi dalam satu baris dengan jarak 18 px seperti referensi visual, sedangkan area konten menetapkan jarak 6 px antara judul, periode, dan catatan. Aturan ini hanya diterapkan pada kartu Event sehingga kartu Kategori, badge Kategori, dan header aksi tidak berubah. Pada layar sempit, area samping menumpuk di bawah konten dan tetap rata kiri.
+- **File**:
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `scripts/audit-admin-event-period-ux.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Audit UX periode, route, sintaks JavaScript, sinkronisasi tema, dan publikasi Event lulus. Acceptance browser dengan data kartu representatif memastikan badge berada di kiri tombol aksi dengan jarak 18 px pada desktop, jarak antarbagian konten 6 px, dan tidak ada overflow horizontal. Pada viewport 390×844, badge dan aksi menumpuk dengan jarak 10 px. Audit UX diperluas untuk menjaga struktur area konten/samping kartu Event.
+- **Kendala**: Chrome DevTools tetap tidak menemukan `DevToolsActivePort`; acceptance visual menggunakan Puppeteer pada server lokal yang sudah aktif di port 4173.
+- **Tindak lanjut**: Commit, push, release, dan deployment tidak dilakukan tanpa instruksi langsung pengguna.
+
+### 2026-08-13 — Perapian Identitas Kartu Arsip Otomatis
+
+- **Tanggal/Judul**: 2026-08-13 — Perapian Identitas Kartu Arsip Otomatis
+- **Permintaan**: Merapikan nama dan periode pada kartu Arsip agar tidak terasa menyatu dengan ikon serta menghapus keterangan "Event nonaktif" yang redundan karena kartu sudah berstatus Arsip.
+- **Proses/Keputusan**: Ikon, identitas, dan aksi kini memakai tiga kolom yang jelas dengan jarak 16 px pada desktop. Nama dan periode dibungkus dalam blok identitas khusus; metadata memakai `periodYear`, `batchLabel`, dan `batchNumber` dari API sehingga contoh slug `2027-gelombang-1` tampil sebagai "Periode 2027 · Gelombang 1", dengan fallback ke slug untuk data lama. Badge "Arsip otomatis" dipertahankan sebagai satu-satunya penanda status. Empty state dan penjelasan editor menggunakan istilah "Event lama" agar tidak mengulang status teknis.
+- **File**:
+  - `apps/admin/editors/arsip/index.html`
+  - `apps/admin/js/features/archive/manager.js`
+  - `apps/public-site/assets/css/main.css`
+  - `scripts/audit-admin-event-period-ux.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Audit UX periode/Event, route, sintaks 45 file JavaScript, sinkronisasi tema, publikasi Event, dan `git diff --check` lulus. Acceptance Puppeteer pada desktop memastikan jarak ikon–identitas dan identitas–aksi masing-masing 16 px tanpa overflow. Pada viewport 390×844, layout memakai dua kolom 48 px dan `minmax(0, 1fr)`, jarak ikon–identitas 12 px, aksi menumpuk di bawah identitas, serta tidak terjadi overflow horizontal.
+- **Kendala**: Chrome DevTools tidak menemukan `DevToolsActivePort`; acceptance visual dilakukan dengan Puppeteer pada server lokal yang sudah aktif di port 4173.
+- **Tindak lanjut**: Commit, push, release, dan deployment tidak dilakukan tanpa instruksi langsung pengguna.
+
 ### 2026-08-10 — Standarisasi Styling Checkbox `.editor-check` Admin
 
 - **Tanggal/Judul**: 2026-08-10 — Standarisasi Styling Checkbox `.editor-check` Admin

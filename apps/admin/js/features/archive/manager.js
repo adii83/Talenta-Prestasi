@@ -1,7 +1,8 @@
 const effective = getArchiveAdminState();
 let archiveState = { ...structuredClone(effective.page), items: [] };
 let archivePreviewResizeObserver;
-const archiveEmbedded = new URLSearchParams(location.search).get("embedded") === "1";
+const archiveEmbedded =
+  new URLSearchParams(location.search).get("embedded") === "1";
 
 const esc = (value = "") => {
   const node = document.createElement("div");
@@ -12,6 +13,10 @@ const detailUrl = (id) =>
   TalentaPaths.to("admin.archiveDetailEditor", {
     query: { id, embedded: archiveEmbedded ? 1 : undefined },
   });
+const formatArchivePeriod = (item) =>
+  item.periodYear
+    ? `${item.periodYear}${item.batchNumber ? ` · ${item.batchLabel || "Gelombang"} ${item.batchNumber}` : ""}`
+    : item.slug;
 const toast = (message, error = false) => {
   const node = document.getElementById("adminToast");
   node.querySelector("span").textContent = message;
@@ -31,18 +36,23 @@ function sync() {
   };
   Object.entries(values).forEach(([id, value]) => {
     const input = document.getElementById(id);
-    if (input) input.type === "checkbox" ? (input.checked = value) : (input.value = value || "");
+    if (input)
+      input.type === "checkbox"
+        ? (input.checked = value)
+        : (input.value = value || "");
   });
 }
 
 function renderItems() {
   const root = document.getElementById("archiveItems");
   if (!archiveState.items.length) {
-    root.innerHTML = '<div class="public-empty-state"><i data-lucide="archive"></i><p>Belum ada Event sebelumnya. Event nonaktif akan muncul otomatis sebagai arsip.</p></div>';
+    root.innerHTML =
+      '<div class="public-empty-state"><i data-lucide="archive"></i><p>Belum ada Event sebelumnya. Event lama akan muncul otomatis sebagai arsip.</p></div>';
   } else {
     root.innerHTML = archiveState.items
       .map(
-        (item) => `<article class="archive-manager-item"><div class="archive-manager-item__head"><div class="archive-manager-item__icon"><i data-lucide="${esc(item.icon || item.fallbackIcon || "archive")}"></i></div><div><strong>${esc(item.name)}</strong><small>Periode ${esc(item.slug)} · Event nonaktif</small></div><div class="archive-manager-item__actions"><a class="btn btn--outline btn--sm" href="${detailUrl(item.id)}"><i data-lucide="settings-2"></i>Edit Detail</a><span class="event-card__badge event-card__badge--archive">Arsip otomatis</span></div></div><p>${esc(item.description || "Belum ada deskripsi arsip.")}</p></article>`,
+        (item) =>
+          `<article class="archive-manager-item"><div class="archive-manager-item__head"><div class="archive-manager-item__icon"><i data-lucide="${esc(item.icon || item.fallbackIcon || "archive")}"></i></div><div class="archive-manager-item__identity"><strong>${esc(item.name)}</strong><small>Periode ${esc(formatArchivePeriod(item))}</small></div><div class="archive-manager-item__actions"><a class="btn btn--outline btn--sm" href="${detailUrl(item.id)}"><i data-lucide="settings-2"></i>Edit Detail</a><span class="event-card__badge event-card__badge--archive">Arsip otomatis</span></div></div><p>${esc(item.description || "Belum ada deskripsi arsip.")}</p></article>`,
       )
       .join("");
   }
@@ -74,7 +84,8 @@ function renderPreview() {
   applyGlobalThemeTokens(root);
   if (!archiveState.active) {
     root.className = "archive-list-public-preview";
-    root.innerHTML = '<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>Halaman Arsip dinonaktifkan</strong></div>';
+    root.innerHTML =
+      '<div class="preview-disabled"><i data-lucide="eye-off"></i><strong>Halaman Arsip dinonaktifkan</strong></div>';
   } else {
     root.className = "archive-list-public-preview scaled-public-preview";
     root.innerHTML = buildArchiveListMarkup(
@@ -129,16 +140,20 @@ function bind() {
   };
   document.querySelectorAll("[data-archive-preview]").forEach((button) => {
     button.onclick = () => {
-      document.querySelectorAll("[data-archive-preview]").forEach((item) =>
-        item.classList.toggle("preview-switch__btn--active", item === button),
-      );
+      document
+        .querySelectorAll("[data-archive-preview]")
+        .forEach((item) =>
+          item.classList.toggle("preview-switch__btn--active", item === button),
+        );
       const frame = document.getElementById("archivePreviewFrame");
       frame.dataset.previewMode = button.dataset.archivePreview;
       frame.className = `archive-preview-frame archive-preview-frame--${button.dataset.archivePreview}`;
       requestAnimationFrame(fitArchivePreview);
     };
   });
-  document.getElementById("archiveEditorForm").onsubmit = async (event) => {
+  const form = document.getElementById("archiveEditorForm");
+  const revertArchive = () => location.reload();
+  form.onsubmit = async (event) => {
     event.preventDefault();
     const submit = event.submitter;
     if (submit) submit.disabled = true;
@@ -157,11 +172,22 @@ function bind() {
       if (submit) submit.disabled = false;
     }
   };
+  window.TalentaEditor = Object.freeze({
+    save: () => form.requestSubmit(),
+    revert: revertArchive,
+  });
   document.getElementById("archiveReset").onclick = async () => {
-    if (!(await adminConfirm({ title: "Reset tampilan Arsip?", message: "Heading halaman dikembalikan ke template. Daftar Event arsip tidak berubah.", confirmLabel: "Reset tampilan", variant: "danger", icon: "rotate-ccw" }))) return;
-    archiveState = { ...archiveState, ...structuredClone(effective.page) };
-    sync();
-    renderPreview();
+    if (
+      await adminConfirm({
+        title: "Urungkan edit Arsip?",
+        message:
+          "Perubahan tampilan Arsip yang belum disimpan akan dibuang dan draf tersimpan akan dimuat kembali.",
+        confirmLabel: "Urungkan edit",
+        variant: "danger",
+        icon: "undo-2",
+      })
+    )
+      revertArchive();
   };
 }
 
@@ -177,12 +203,19 @@ function setupArchivePreviewSizing() {
 function fitArchivePreview() {
   const frame = document.getElementById("archivePreviewFrame");
   const root = document.getElementById("archivePreview");
-  if (!frame || !root || !root.classList.contains("scaled-public-preview")) return;
+  if (!frame || !root || !root.classList.contains("scaled-public-preview"))
+    return;
   const widths = { desktop: 1425, tablet: 753, mobile: 375 };
   const style = getComputedStyle(frame);
-  const horizontal = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
-  const vertical = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
-  const scale = Math.min(1, Math.max(1, frame.clientWidth - horizontal) / widths[frame.dataset.previewMode || "desktop"]);
+  const horizontal =
+    parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  const vertical =
+    parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+  const scale = Math.min(
+    1,
+    Math.max(1, frame.clientWidth - horizontal) /
+      widths[frame.dataset.previewMode || "desktop"],
+  );
   root.style.setProperty("--public-preview-scale", String(scale));
   frame.style.height = `${Math.ceil(root.offsetHeight * scale + vertical)}px`;
 }

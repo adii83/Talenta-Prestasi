@@ -12,8 +12,11 @@ describe('PublicContentService', () => {
               categoryId: 'category-1',
               categoryName: 'Octal',
               categorySlug: 'octal',
-              eventName: 'Octal 2027',
-              eventSlug: '2027',
+              eventName: 'Octal',
+              eventSlug: '2027-gelombang-2',
+              periodYear: 2027,
+              batchNumber: 2,
+              batchLabel: 'Gelombang',
               organizerName: 'Talenta',
               logoAssetId: null,
               primaryColor: '#123456',
@@ -47,11 +50,20 @@ describe('PublicContentService', () => {
     const snapshot = await new PublicContentService(db as never).build('event-1');
 
     expect(snapshot.schemaVersion).toBe(1);
-    expect(snapshot.bootstrap.currentEvent).toMatchObject({ slug: '2027' });
+    expect(snapshot.bootstrap.currentEvent).toMatchObject({
+      slug: '2027-gelombang-2',
+      name: 'Octal 2027 · Gelombang 2',
+      periodYear: 2027,
+      batchNumber: 2,
+      batchLabel: 'Gelombang',
+    });
     expect(snapshot.home.sections).toEqual([
       expect.objectContaining({ type: 'hero' }),
     ]);
-    expect(snapshot.archiveDetail.event).toMatchObject({ slug: '2027' });
+    expect(snapshot.archiveDetail.event).toMatchObject({
+      slug: '2027-gelombang-2',
+      name: 'Octal 2027 · Gelombang 2',
+    });
     expect(
       db.query.mock.calls.every(([, params]) => params?.[0] === 'event-1'),
     ).toBe(true);

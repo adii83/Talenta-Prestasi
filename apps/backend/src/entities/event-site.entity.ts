@@ -46,6 +46,21 @@ export class EventSite {
   @Column({ length: 100 })
   slug!: string;
 
+  @Column({ name: 'period_year', type: 'int', nullable: true })
+  periodYear!: number | null;
+
+  @Column({ name: 'batch_number', type: 'int', nullable: true })
+  batchNumber!: number | null;
+
+  @Column({ name: 'batch_label', type: 'varchar', length: 40, nullable: true })
+  batchLabel!: string | null;
+
+  @Column({ name: 'batch_note', length: 240, default: '' })
+  batchNote!: string;
+
+  @Column({ name: 'activated_at', type: 'timestamptz', nullable: true })
+  activatedAt!: Date | null;
+
   @Column({ name: 'is_active', default: false })
   isActive!: boolean;
 

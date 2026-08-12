@@ -124,7 +124,10 @@ document.addEventListener("DOMContentLoaded", () => {
       refreshWinnerArchiveSources();
     }
     if (event.key === WINNER_MANAGER_STATE_KEY) {
-      wmToast("Peringatan: Data pemenang baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.", true);
+      wmToast(
+        "Peringatan: Data pemenang baru saja diubah di tab atau perangkat lain. Harap muat ulang halaman untuk menghindari konflik timpa data.",
+        true,
+      );
     }
   });
   bindGlobal();
@@ -143,10 +146,13 @@ function renderActiveComp() {
   const comp = window.TalentaActiveCompetition,
     el = document.getElementById("wmActiveCompetition");
   if (!comp) {
-    el.innerHTML = '';
+    el.innerHTML = "";
     return;
   }
-  const winnersCount = (comp.winnerCategories || []).reduce((acc, cat) => acc + (cat.winners || []).length, 0);
+  const winnersCount = (comp.winnerCategories || []).reduce(
+    (acc, cat) => acc + (cat.winners || []).length,
+    0,
+  );
   el.innerHTML = `<div class="wm-comp-badge"><i data-lucide="${esc(comp.icon || "trophy")}"></i><div><strong>${esc(comp.name)}</strong><small>${esc(comp.shortName)} · ${(comp.winnerCategories || []).length} kategori sumber · ${winnersCount} pemenang sumber</small></div></div>`;
 }
 function syncSk() {
@@ -192,27 +198,31 @@ function bindSk() {
     }
   };
   const delBtn = document.getElementById("wmSkDeleteBtn");
-  if (delBtn) delBtn.onclick = async () => {
-    const confirmed = await adminConfirm({
-      title: "Hapus file SK?",
-      message: "File SK akan dihapus dari lomba saat ini.",
-      confirmLabel: "Ya, hapus",
-      variant: "danger",
-      icon: "file-x-2",
-    });
-    if (!confirmed) return;
-    try {
-      wmState.sk = await TalentaWinnerApi.saveDecree({ ...wmState.sk, documentId: null }, null);
-      wmState.sk.assetId = null;
-      wmState.sk.url = "";
-      wmState.sk.displaySize = "";
-      syncSk();
-      renderPreview();
-      toast("File SK berhasil dihapus.");
-    } catch (error) {
-      toast(error.message, true);
-    }
-  };
+  if (delBtn)
+    delBtn.onclick = async () => {
+      const confirmed = await adminConfirm({
+        title: "Hapus file SK?",
+        message: "File SK akan dihapus dari lomba saat ini.",
+        confirmLabel: "Ya, hapus",
+        variant: "danger",
+        icon: "file-x-2",
+      });
+      if (!confirmed) return;
+      try {
+        wmState.sk = await TalentaWinnerApi.saveDecree(
+          { ...wmState.sk, documentId: null },
+          null,
+        );
+        wmState.sk.assetId = null;
+        wmState.sk.url = "";
+        wmState.sk.displaySize = "";
+        syncSk();
+        renderPreview();
+        toast("File SK berhasil dihapus.");
+      } catch (error) {
+        toast(error.message, true);
+      }
+    };
 }
 function syncDisplay() {
   const availableCount = availableWinnerArchives().length;
@@ -315,25 +325,26 @@ function bindGlobal() {
     document
       .getElementById("adminSidebar")
       .classList.toggle("admin-sidebar--open");
-  document.getElementById("winnerManagerForm").onsubmit = async (e) => {
+  const form = document.getElementById("winnerManagerForm");
+  const revertWinners = () => location.reload();
+  form.onsubmit = async (e) => {
     e.preventDefault();
     const submit = e.submitter;
     if (submit) submit.disabled = true;
     await save();
     if (submit) submit.disabled = false;
   };
+  window.TalentaEditor = Object.freeze({ save, revert: revertWinners });
   document.getElementById("resetWinnerManager").onclick = async () => {
     const confirmed = await adminConfirm({
-      title: "Reset data Pemenang?",
+      title: "Urungkan edit Pemenang?",
       message:
-        "Kategori, data pemenang, SK, pengaturan metadata, dan batas riwayat akan dikembalikan ke template awal.",
-      confirmLabel: "Ya, reset Pemenang",
+        "Perubahan Pemenang yang belum disimpan akan dibuang dan draf tersimpan akan dimuat kembali.",
+      confirmLabel: "Urungkan edit",
       variant: "danger",
-      icon: "rotate-ccw",
+      icon: "undo-2",
     });
-    if (!confirmed) return;
-    resetWinnerAdminState();
-    location.reload();
+    if (confirmed) revertWinners();
   };
   document.getElementById("addWinnerCategory").onclick = () => {
     wmState.categories.push({
