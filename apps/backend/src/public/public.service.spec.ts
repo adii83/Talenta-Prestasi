@@ -143,9 +143,6 @@ describe('PublicService publication resolution', () => {
         name: 'Octal 2026 · Gelombang 1',
       }),
     ]);
-    expect(db.query.mock.calls[1][0]).toContain('event.is_active=false');
-    expect(db.query.mock.calls[1][0]).toContain(
-      'event.activated_at IS NOT NULL',
-    );
+    expect(db.query.mock.calls[1][0]).toContain('event.period_year < current_event.period_year');
   });
 });

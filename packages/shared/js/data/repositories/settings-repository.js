@@ -218,6 +218,12 @@ function publicPageId(path = location.pathname) {
     ["/apps/public-site/arsip/", "archive"],
     ["/apps/public-site/arsip/detail/", "archive"],
     ["/apps/public-site/faq/", "faq"],
+    ["/unduh/", "download"],
+    ["/pemenang/", "winners"],
+    ["/arsip/", "archive"],
+    ["/arsip/detail/", "archive"],
+    ["/faq/", "faq"],
+    ["/", "home"],
   ];
   return (
     fallback.find(([suffix]) => normalizedPath.endsWith(suffix))?.[1] || null

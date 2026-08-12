@@ -37,7 +37,9 @@
           .filter((item) => categoryVisibility.get(item.id) === false)
           .map((item) => item.id),
         hiddenDocumentIds: documents
-          .filter((item) => documentVisibility.get(item.id)?.isVisible === false)
+          .filter(
+            (item) => documentVisibility.get(item.id)?.isVisible === false,
+          )
           .map((item) => item.id),
         documentLabelOverrides: Object.fromEntries(
           detailConfig.documents
@@ -49,7 +51,8 @@
         ...item,
         active: item.isActive,
         type: item.fileType || "PDF",
-        size: item.displaySize || (item.assetId ? "Tersedia" : "Belum ada file"),
+        size:
+          item.displaySize || (item.assetId ? "Tersedia" : "Belum ada file"),
         url: item.assetId ? TalentaMedia.url(item.assetId) : "",
       })),
       winnerCategories: categories.map((category) => ({
@@ -62,7 +65,9 @@
             name: winner.fullName,
             rank: winner.rankLabel,
             exam: winner.examNumber,
-            photo: winner.photoAssetId ? TalentaMedia.url(winner.photoAssetId) : "",
+            photo: winner.photoAssetId
+              ? TalentaMedia.url(winner.photoAssetId)
+              : "",
             active: winner.isActive,
           })),
       })),
@@ -74,7 +79,9 @@
           ? {
               ...document,
               title: settings.decreeTitle || document.title,
-              description: settings.decreeDescription || "Unduh dokumen resmi SK Pemenang.",
+              description:
+                settings.decreeDescription ||
+                "Unduh dokumen resmi SK Pemenang.",
             }
           : null;
       })(),
@@ -94,6 +101,7 @@
     await TalentaApi.request(`/admin/events/${event.id}/detail-settings`, {
       method: "PUT",
       body: {
+        description: event.description || "",
         decreeDocumentId: event.skDocument?.id,
         decreeTitle: event.skDocument?.title,
         decreeDescription: event.skDocument?.description,
@@ -144,5 +152,9 @@
     document.size = `${(asset.byteSize / 1024 / 1024).toFixed(2)} MB`;
     return updated.data;
   }
-  window.TalentaArchiveDetailApi = Object.freeze({ load, save, uploadDocument });
+  window.TalentaArchiveDetailApi = Object.freeze({
+    load,
+    save,
+    uploadDocument,
+  });
 })();

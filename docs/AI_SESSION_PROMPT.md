@@ -30,6 +30,7 @@ Selama tahap orientasi:
 Lakukan orientasi langsung di MAIN SESSION Claude Code.
 
 KHUSUS tahap orientasi awal:
+
 - Jangan spawn Explore agent.
 - Jangan spawn Task agent.
 - Jangan menggunakan subagent/background agent.
@@ -70,6 +71,7 @@ Baca dokumentasi aktif berikut secara berurutan:
 Jangan membaca seluruh `docs/archive/` secara otomatis.
 
 Baca file di `docs/archive/` HANYA jika:
+
 - dokumentasi aktif merujuk kepadanya,
 - diperlukan untuk memahami keputusan lama,
 - terdapat konflik informasi yang membutuhkan konteks historis,
@@ -90,6 +92,7 @@ Periksa kondisi repository menggunakan setidaknya:
 Tujuan pemeriksaan Git adalah memahami pekerjaan yang sedang berlangsung.
 
 WAJIB:
+
 - Pertahankan seluruh perubahan existing.
 - Jangan menganggap perubahan yang belum di-commit sebagai sampah.
 - Jangan menghapus atau overwrite pekerjaan sebelumnya.
@@ -100,6 +103,7 @@ WAJIB:
 - Jangan melakukan stash tanpa instruksi pengguna.
 
 Jika ada perubahan existing:
+
 - pahami terlebih dahulu,
 - anggap perubahan tersebut sebagai pekerjaan yang harus dilanjutkan,
 - jangan membatalkannya hanya karena berbeda dari dokumentasi.
@@ -111,15 +115,18 @@ E. SOURCE OF TRUTH
 Gunakan hierarki sumber kebenaran berikut:
 
 PRIORITAS 1
+
 - Kode implementasi yang saat ini berfungsi.
 - Test suite aktif.
 - Perilaku aplikasi yang dapat diverifikasi.
 
 PRIORITAS 2
+
 - Keputusan arsitektur terbaru.
 - Spesifikasi terbaru yang masih aktif.
 
 PRIORITAS 3
+
 - Dokumentasi aktif:
   - `README.md`
   - `PROGRESS.md`
@@ -132,9 +139,11 @@ PRIORITAS 3
   - dokumentasi aktif lain di `docs/`
 
 PRIORITAS 4
+
 - `docs/archive/*`
 
 Jika terjadi konflik:
+
 - jangan langsung mengubah kode agar sesuai dokumentasi lama,
 - prioritaskan implementasi aktif + test + keputusan terbaru,
 - laporkan konflik jika relevan terhadap tugas.
@@ -164,6 +173,7 @@ Project ini memiliki konfigurasi:
 Konfigurasi tersebut DISENGAJA.
 
 Artinya:
+
 - AgentDB Controller Bridge dinonaktifkan untuk project ini.
 - Status bridge `not-synced` adalah kondisi yang diharapkan.
 - Jangan menganggap `not-synced` sebagai kerusakan.
@@ -175,6 +185,7 @@ AgentDB Bridge dinonaktifkan karena pada environment ini bridge tersebut dapat m
 Walaupun AgentDB Bridge OFF:
 
 Ruflo tetap aktif dan dapat menggunakan:
+
 - Ruflo MCP
 - memory store
 - memory search
@@ -202,6 +213,7 @@ Jika memang membutuhkan pencarian memory:
 Gunakan tool Ruflo `memory_search` secara LANGSUNG dari main session.
 
 JANGAN selama orientasi:
+
 - menggunakan skill `memory-search` otomatis,
 - menggunakan `memory_search_unified`,
 - memanggil AgentDB Bridge,
@@ -214,6 +226,7 @@ JANGAN selama orientasi:
 - melakukan perubahan database memory.
 
 Jika `memory_search` gagal:
+
 - jangan mencoba mengaktifkan AgentDB Bridge,
 - jangan mengubah konfigurasi,
 - lanjutkan orientasi menggunakan repository dan dokumentasi,
@@ -228,33 +241,40 @@ Setelah orientasi selesai, jangan langsung mulai coding.
 Berikan rangkuman singkat dengan struktur:
 
 STATUS REPOSITORY
+
 - Workspace/repository aktif
 - Branch aktif
 - Kondisi working tree
 - Apakah ada perubahan unstaged/staged
 
 STATUS IMPLEMENTASI
+
 - Bagian utama aplikasi yang sudah berjalan
 - Pekerjaan yang sedang aktif
 - Area yang terlihat belum selesai jika memang jelas dari repository
 
 ARSITEKTUR
+
 - Ringkasan arsitektur utama
 - Backend/frontend/database utama
 - Relasi penting antar komponen
 
 TESTING
+
 - Test suite yang tersedia
 - Cara validasi utama berdasarkan dokumentasi/repository
 
 PERUBAHAN EXISTING
+
 - Ringkasan perubahan yang saat ini belum di-commit jika ada
 - Jangan mengubahnya
 
 HAL PENTING
+
 - Risiko, constraint, TODO aktif, atau informasi penting untuk tugas berikutnya
 
 RUFLO
+
 - Cukup laporkan apakah Ruflo MCP tersedia jika memang diperiksa.
 - AgentDB Bridge `not-synced` tidak perlu dilaporkan sebagai error.
 
@@ -324,6 +344,7 @@ Setiap tugas yang MENGUBAH FILE harus dicatat di:
 `docs/WORK_LOG.md`
 
 Catatan harus ringkas tetapi cukup menjelaskan:
+
 - apa yang dikerjakan,
 - file/area utama yang berubah,
 - validasi/test yang dilakukan,
@@ -334,6 +355,7 @@ Perbarui:
 `PROGRESS.md`
 
 HANYA jika status aktif project benar-benar berubah, misalnya:
+
 - fitur utama selesai,
 - milestone berubah,
 - blocker baru ditemukan,
@@ -358,6 +380,7 @@ Jangan pernah menulis ke repository atau dokumentasi:
 - credential lain
 
 Jika menemukan secret existing:
+
 - jangan menyalinnya ke WORK_LOG,
 - jangan menampilkannya secara penuh,
 - jangan memindahkannya ke dokumentasi.

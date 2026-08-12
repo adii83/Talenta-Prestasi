@@ -1359,11 +1359,11 @@ try {
     await navigate(
       client,
       `${origin}/apps/admin/?page=settings`,
-    "#routeResetButton",
-  );
-  const shellDialogAudit = await evaluate(
-    client,
-    `(async () => {
+      "#routeResetButton",
+    );
+    const shellDialogAudit = await evaluate(
+      client,
+      `(async () => {
       const reset = document.querySelector("#routeResetButton");
       reset.focus();
       reset.click();
@@ -1394,24 +1394,28 @@ try {
       };
       return result;
     })()`,
-  );
-  assert.equal(shellDialogAudit.open, true);
-  assert.equal(shellDialogAudit.title, "Reset Pengaturan Global?");
-  assert.match(shellDialogAudit.message, /Identitas, tema, navigasi/);
-  assert.equal(shellDialogAudit.focusedCancel, true);
-  assert.notEqual(shellDialogAudit.backdropBlur, "none");
-  assert.equal(shellDialogAudit.confirmBackground, "rgb(180, 35, 24)");
-  assert.equal(shellDialogAudit.closed, true);
-  assert.equal(
-    shellDialogAudit.focusRestored,
-    true,
-    JSON.stringify(shellDialogAudit),
-  );
+    );
+    assert.equal(shellDialogAudit.open, true);
+    assert.equal(shellDialogAudit.title, "Reset Pengaturan Global?");
+    assert.match(shellDialogAudit.message, /Identitas, tema, navigasi/);
+    assert.equal(shellDialogAudit.focusedCancel, true);
+    assert.notEqual(shellDialogAudit.backdropBlur, "none");
+    assert.equal(shellDialogAudit.confirmBackground, "rgb(180, 35, 24)");
+    assert.equal(shellDialogAudit.closed, true);
+    assert.equal(
+      shellDialogAudit.focusRestored,
+      true,
+      JSON.stringify(shellDialogAudit),
+    );
 
-  await navigate(client, `${origin}/apps/admin/?page=faq`, "#adminEditorFrame");
-  const embeddedDialogAudit = await evaluate(
-    client,
-    `(async () => {
+    await navigate(
+      client,
+      `${origin}/apps/admin/?page=faq`,
+      "#adminEditorFrame",
+    );
+    const embeddedDialogAudit = await evaluate(
+      client,
+      `(async () => {
       const frame = document.querySelector("#adminEditorFrame");
       for (let attempt = 0; attempt < 80; attempt += 1) {
         if (frame.contentDocument?.querySelector("[data-category-delete]")) break;
@@ -1433,18 +1437,18 @@ try {
       const afterConfirm = child.querySelectorAll("[data-category-id]").length;
       return { before, delegatedToShell, afterCancel, afterConfirm };
     })()`,
-  );
-  assert.equal(embeddedDialogAudit.delegatedToShell, true);
-  assert.equal(embeddedDialogAudit.afterCancel, embeddedDialogAudit.before);
-  assert.equal(
-    embeddedDialogAudit.afterConfirm,
-    embeddedDialogAudit.before - 1,
-  );
+    );
+    assert.equal(embeddedDialogAudit.delegatedToShell, true);
+    assert.equal(embeddedDialogAudit.afterCancel, embeddedDialogAudit.before);
+    assert.equal(
+      embeddedDialogAudit.afterConfirm,
+      embeddedDialogAudit.before - 1,
+    );
 
-  await setViewport(client, 390, 844);
-  const mobileDialogAudit = await evaluate(
-    client,
-    `(async () => {
+    await setViewport(client, 390, 844);
+    const mobileDialogAudit = await evaluate(
+      client,
+      `(async () => {
       const resultPromise = adminConfirm({
         title: "Dialog mobile",
         message: "Validasi susunan tombol pada layar sempit.",
@@ -1465,12 +1469,13 @@ try {
       result.resolved = await resultPromise;
       return result;
     })()`,
-  );
-  assert.equal(mobileDialogAudit.open, true);
-  assert.equal(mobileDialogAudit.direction, "column-reverse");
-  assert(
-    Math.abs(mobileDialogAudit.firstWidth - mobileDialogAudit.secondWidth) <= 1,
-  );
+    );
+    assert.equal(mobileDialogAudit.open, true);
+    assert.equal(mobileDialogAudit.direction, "column-reverse");
+    assert(
+      Math.abs(mobileDialogAudit.firstWidth - mobileDialogAudit.secondWidth) <=
+        1,
+    );
     assert.equal(mobileDialogAudit.resolved, false);
   }
 

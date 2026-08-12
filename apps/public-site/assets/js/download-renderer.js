@@ -15,7 +15,11 @@
   function sanitizeUrl(value) {
     if (!value) return "";
     try {
-      const parsed = new URL(value, TalentaConfig.apiBaseUrl);
+      const base =
+        window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+          ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+          : location.origin;
+      const parsed = new URL(value, base);
       return parsed.protocol === "http:" || parsed.protocol === "https:"
         ? parsed.href
         : "";

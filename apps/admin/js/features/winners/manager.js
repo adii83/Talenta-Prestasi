@@ -505,7 +505,7 @@ function renderCategories() {
         "wm-winner-card" + (w.active ? "" : " wm-winner-card--disabled");
       wEl.innerHTML = `
 <div class="wm-winner-card__header">
-<div class="wm-winner-card__photo">${w.photo ? `<img src="${esc(w.photo)}" alt="${esc(w.name)}">` : initials(w.name)}</div>
+<div class="wm-winner-card__photo">${w.photo ? `<img src="${esc(TalentaMedia.url(w.photo))}" alt="${esc(w.name)}">` : initials(w.name)}</div>
 <div class="wm-winner-card__order"><button type="button" data-w-up ${wi === 0 ? "disabled" : ""}><i data-lucide="chevron-up"></i></button><span>${wi + 1}</span><button type="button" data-w-down ${wi === cat.winners.length - 1 ? "disabled" : ""}><i data-lucide="chevron-down"></i></button></div>
 <label class="admin-switch"><input type="checkbox" data-w-toggle ${w.active ? "checked" : ""}><span></span><em>${w.active ? "Aktif" : "Nonaktif"}</em></label>
 <button type="button" class="repeat-row__delete" data-w-delete><i data-lucide="trash-2"></i></button>
@@ -517,7 +517,7 @@ function renderCategories() {
 <div class="admin-field"><label>No. Ujian</label><input class="form-input" data-w="exam" value="${esc(w.exam)}"></div>
 <div class="admin-field"><label>Kabupaten</label><input class="form-input" data-w="regency" value="${esc(w.regency)}"></div>
 <div class="admin-field"><label>Provinsi</label><input class="form-input" data-w="province" value="${esc(w.province)}"></div>
-<div class="admin-field"><label>Foto</label><input type="file" class="form-input" data-w-photo accept="image/png,image/jpeg,image/webp"></div>
+<div class="admin-field"><label>Foto</label>${w.photo ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span class="badge badge--gold">Foto tersimpan</span><button type="button" class="btn btn--outline btn--sm is-danger" data-w-remove-photo><i data-lucide="trash-2"></i> Hapus</button></div>` : ""}<input type="file" class="form-input" data-w-photo accept="image/png,image/jpeg,image/webp"></div>
 </div>`;
       wEl.querySelectorAll("[data-w]").forEach(
         (inp) =>
@@ -587,6 +587,16 @@ function renderCategories() {
           e.target.disabled = false;
         }
       };
+      const removePhotoBtn = wEl.querySelector("[data-w-remove-photo]");
+      if (removePhotoBtn) {
+        removePhotoBtn.onclick = () => {
+          w.photoAssetId = null;
+          w.photo = "";
+          renderCategories();
+          renderPreview();
+          toast("Foto berhasil dihapus.");
+        };
+      }
       wList.appendChild(wEl);
     });
     root.appendChild(el);

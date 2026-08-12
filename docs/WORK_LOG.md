@@ -17,6 +17,94 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-13 — Perbaikan Resolusi Absolut URL `photoAssetId` pada Rendering Detail Arsip
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Resolusi Absolut URL `photoAssetId` pada Rendering Detail Arsip
+- **Permintaan**: Menyelesaikan bug di mana gambar foto pemenang di halaman publik Detail Arsip tetap tidak ter-render saat diakses via Vite port 4173 (`http://localhost:4173/apps/public-site/arsip/detail/...`), meskipun foto pada Pemenang Utama dan Highlight Beranda sudah berfungsi dengan baik.
+- **Proses/Keputusan**: Evaluasi pada `apps/public-site/assets/js/archive-detail.js` mendapati bahwa konversi URL berbasis `TalentaConfig.apiBaseUrl` hanya diberlakukan untuk kondisi `winner.photoUrl` eksis. Apabila API mengembalikan data via `winner.photoAssetId` (kondisi paling umum), URL yang dibentuk sebelumnya hanya berupa string relatif murni (`/api/v1/public/media/...`) yang membuat tag img mencoba mencari gambar di port dev local `4173` (menghasilkan 404). Perbaikan ini menyuntikkan formasi URL Absolut (menggunakan resolusi dari basis config backend) khusus untuk kondisi `photoAssetId` di parser Arsip Detail.
+- **File**:
+  - `apps/public-site/assets/js/archive-detail.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Gambar dapat termuat penuh secara absolute terlepas dari port browser dev server, serasi dengan modul Pemenang dan Beranda.
+
+### 2026-08-13 — Perbaikan Rendering Resolusi URL Foto Pemenang Publik & Detail Arsip pada Dev Server (Vite/Static)
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Rendering Resolusi URL Foto Pemenang Publik & Detail Arsip pada Dev Server (Vite/Static)
+- **Permintaan**: Memperbaiki foto yang tidak muncul/rusak saat public site diakses lewat dev server independen (contoh: `http://localhost:4173/apps/public-site/...` atau `?site=...`) padahal URL API sudah terselesaikan ke server backend (`:3000`).
+- **Proses/Keputusan**: Meskipun renderer template HTML telah dikonversi, pemetaan JSON mentah yang diload melalui API Public NestJS dan diinjeksi ke komponen UI ternyata masih menggunakan resolusi URL string as-is dengan fallback ke origin browser as-is, menyebabkan pemanggilan gambar menuju port dev server `4173` (bukannya port `3000` di NestJS tempat file di-hosting). File UI Javascript, yakni `winner-renderer.js` dan `archive-detail.js`, telah diperbarui untuk menyelaraskan properti path URL `.photo` ke `window.TalentaConfig.apiBaseUrl` backend bila API Base berbentuk URL http, persis seperti penanganan API di Beranda.
+- **File**:
+  - `apps/public-site/assets/js/archive-detail.js`
+  - `apps/public-site/assets/js/winner-renderer.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Gambar dapat termuat penuh secara absolute terlepas dari port browser apa yang digunakan untuk menampilkan UI.
+
+### 2026-08-13 — Perbaikan Dimensi dan Overflow Foto Pemenang (CSS)
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Dimensi dan Overflow Foto Pemenang (CSS)
+- **Permintaan**: Memperbaiki foto pemenang yang masih terlihat tumpang tindih, melebihi lingkaran, atau "gepeng" pada tampilan Preview maupun Publik.
+- **Proses/Keputusan**: Meskipun URL gambar sudah benar, properti CSS pada wrapper foto (`.champion-card__photo` dan `.winner-card__photo`) sebelumnya tidak memiliki pengaturan batas *overflow* serta *object-fit* pada elemen gambarnya. File `main.css` diperbarui untuk menambahkan `overflow: hidden` pada elemen pembungkus dan menetapkan `width: 100%; height: 100%; object-fit: cover;` pada elemen `img` agar foto selalu terpotong melingkar secara proporsional.
+- **File**:
+  - `apps/public-site/assets/css/main.css`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Gambar yang bukan persegi secara otomatis dipotong (crop) dengan anggun sesuai lingkaran wadah.
+
+### 2026-08-13 — Perbaikan Rendering Foto Pemenang pada Modul Pemenang Utama
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Rendering Foto Pemenang pada Modul Pemenang Utama
+- **Permintaan**: Mengatasi sisa gambar corrupt pada preview halaman Pemenang utama di CMS Admin (fungsi `buildWinnerCardMarkup`).
+- **Proses/Keputusan**: Meskipun sebelumnya template kartu pemenang untuk *Beranda* (`home-repository.js`) dan *Detail Arsip* (`archive-repository.js`) telah diperbaiki, halaman **Pemenang** utama dikontrol oleh template dari `winner-repository.js`. Template string pada `buildWinnerCardMarkup` kini diperbarui untuk menyuntikkan `TalentaMedia.url(...)` secara langsung agar resolve URL berhasil dalam konteks iframe lokal Admin.
+- **File**:
+  - `packages/shared/js/data/repositories/winner-repository.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Gambar pemenang dirender dengan URL origin backend yang absolut di lingkungan lokal Admin CMS.
+
+### 2026-08-13 — Perbaikan Lanjutan Rendering Foto Pemenang pada Highlight Beranda & Arsip
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Lanjutan Rendering Foto Pemenang pada Highlight Beranda & Arsip
+- **Permintaan**: Mengatasi laporan bahwa foto pemenang masih rusak/corrupt pada Highlight Beranda (Preview Responsif dan Lihat Preview) meskipun foto di editor pemenang dan halaman publik sudah benar.
+- **Proses/Keputusan**: Pembentukan markup kartu pemenang didorong oleh fungsi repository bersama (`buildHomeWinnerMarkup` & `buildArchiveWinnerCardMarkup`). Meskipun halaman publik otomatis meresolve `/api/v1/...` menggunakan base tag/relative root, iframe Admin memerlukan URL penuh untuk resolusi asset saat rendering string template. 
+  `TalentaMedia.url(...)` kini disisipkan di dalam iterasi map untuk rendering foto pemenang pada `packages/shared/js/data/repositories/home-repository.js` dan `archive-repository.js`, memastikan iframe preview me-render path gambar yang valid mengarah ke backend NestJS.
+- **File**:
+  - `packages/shared/js/data/repositories/home-repository.js`
+  - `packages/shared/js/data/repositories/archive-repository.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: URL markup yang dicetak dalam log dan DOM kini memuat `http://localhost:3000/api/...` secara eksplisit saat dipanggil dalam konteks lokal yang memiliki `TalentaMedia`, sambil tetap fallback gracefully ke path string murni jika dirender oleh runtime NodeJS SSR.
+- **Kendala**: Tidak ada.
+
+### 2026-08-13 — Perbaikan Rendering Foto Pemenang pada Kartu Editor CMS Admin & Resolusi URL Media Relative
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Rendering Foto Pemenang pada Kartu Editor CMS Admin & Resolusi URL Media Relative
+- **Permintaan**: Mencatat penyelesaian masalah simpan tab Unduh serta memperbaiki tampilan foto pemenang di kartu editor CMS Admin yang sebelumnya tampak corrupt/broken padahal di halaman publik tampil sempurna.
+- **Proses/Keputusan**: 
+  1. Pada `apps/admin/js/features/winners/manager.js`, elemen thumbnail foto pemenang di kartu editor (`wm-winner-card__photo`) kini me-resolve `w.photo` melalui `TalentaMedia.url(w.photo)`. Ini memastikan URL asset UUID (`/api/v1/public/media/:id`) terkonversi dengan benar menjadi URL absolut terhadap origin browser saat ini (misal `http://localhost:3000/api/v1/public/media/:id`), bukan URL relatif broken di dalam konteks iframe/editor Admin.
+  2. Pada `apps/admin/js/features/winners/api.js`, properti `photo` pada pemetaan pemenang memprioritaskan `winner.photoUrl` atau pembentukan URL dari `winner.photoAssetId` melalui `TalentaMedia.url(...)`.
+- **File**:
+  - `apps/admin/js/features/winners/manager.js`
+  - `apps/admin/js/features/winners/api.js`
+  - `apps/backend/src/database/migrations/1786672900000-AllowCrossEventDownloadDocuments.ts`
+  - `apps/backend/src/entities/download-document-settings.entity.ts`
+  - `apps/backend/src/admin/admin.service.ts`
+  - `apps/backend/src/database/database.module.ts`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Menjalankan seluruh pengujian unit backend NestJS (`npm --prefix apps/backend test`). 9 test suites / 26 tests pass secara keseluruhan.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Tidak ada.
+
+### 2026-08-13 — Perbaikan Foreign Key Download Document Settings Lintas Event (Cross-Event Archive Documents)
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Foreign Key Download Document Settings Lintas Event (Cross-Event Archive Documents)
+- **Permintaan**: Memperbaiki masalah dokumen dari event arsip/sebelumnya yang menampilkan status "Belum ada dokumen yang ditampilkan untuk lomba ini" pada tampilan publik & preview, serta mencegah Foreign Key constraint violation saat menyimpan draf tab Unduh yang menyertakan sumber arsip.
+- **Proses/Keputusan**: 
+  1. Membuat migration backend `1786672900000-AllowCrossEventDownloadDocuments.ts` untuk melepas constraint Foreign Key composite `(document_id, event_site_id)` pada `download_document_settings` dan menggantinya dengan FK direct `FOREIGN KEY (document_id) REFERENCES event_documents(id) ON DELETE CASCADE`. Hal ini mengizinkan tab Unduh mereferensikan dokumen dari event arsip mana pun dalam kategori lomba tanpa melanggar constraint database.
+  2. Memperbarui entitas TypeORM `DownloadDocumentSettings` (`apps/backend/src/entities/download-document-settings.entity.ts`) agar relasi `@JoinColumn` ke `EventDocument` mengarah langsung ke `document_id`.
+- **File**:
+  - `apps/backend/src/database/migrations/1786672900000-AllowCrossEventDownloadDocuments.ts`
+  - `apps/backend/src/entities/download-document-settings.entity.ts`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Menjalankan seluruh pengujian unit backend NestJS (`npm --prefix apps/backend test`). 9 test suites / 26 tests pass secara keseluruhan.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Mengklik tombol **Publikasikan** di Admin CMS setelah menyimpan draf tab Unduh agar snapshot publik terbarui dengan data dokumen arsip terbaru.
+
 ### 2026-08-09 — Pembuatan Prompt Sesi AI dan Sistem Work Log
 
 - **Tanggal/Judul**: 2026-08-09 — Pembuatan Prompt Sesi AI dan Sistem Work Log
@@ -28,7 +116,40 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
   - `README.md`
 - **Validasi**: Menjalankan pengecekan referensi string Node.js, pengecekan section log Node.js, pengecekan format Prettier (`npx prettier --check`), dan `git diff --check`.
 - **Kendala**: Tidak ada.
+
+### 2026-08-13 — Perbaikan ReferenceError Unduh Editor & Sinkronisasi Tab Sumber Arsip
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan ReferenceError Unduh Editor & Sinkronisasi Tab Sumber Arsip
+- **Permintaan**: Memperbaiki runtime error `ReferenceError: available is not defined` saat refresh halaman Editor Unduh Admin, serta memastikan dokumen & tab dari event arsip terdahulu tersimpan dan dimuat secara persisten tanpa terpotong.
+- **Proses/Keputusan**: Deklarasi `availableList` (`[source, ...archiveSources]`) dipindahkan ke atas sebelum pemetaan `configs` di `apps/admin/js/features/downloads/api.js` agar variabel sudah tersedia saat iterasi tab. Menyelaraskan pencarian `competitionId` dan daftar dokumen per tab pada fungsi `save()` dan `load()`.
+- **File**:
+  - `apps/admin/js/features/downloads/api.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Menjalankan pengujian backend NestJS (`npm --prefix apps/backend test`). 9 test suite / 26 test passed.
+- **Kendala**: Tidak ada.
 - **Tindak lanjut**: Tidak ada
+
+### 2026-08-13 — Perbaikan Komprehensif Sumber Arsip, Dokumen SK Pemenang, & Detail Arsip Publik
+
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Komprehensif Sumber Arsip, Dokumen SK Pemenang, & Detail Arsip Publik
+- **Permintaan**: Menyelesaikan 3 masalah utama: (1) Sumber Arsip dari event sebelumnya selalu minta ditambahkan kembali, (2) Dokumen SK Penetapan Pemenang tidak muncul di publik/preview detail arsip, dan (3) Tampilan halaman detail arsip publik kosong (hanya navbar & footer) saat diakses.
+- **Proses/Keputusan**: 
+  1. Pada `apps/backend/src/admin/admin.service.ts` (`putDownloads`), pengecekan dokumen diperluas dari `event_site_id=$2` menjadi verifikasi kepemilikan kategori lomba (`doc_event.category_id=current_event.category_id`). Hal ini mengizinkan dokumen dari event arsip (seperti event 2026) disimpan dan dimasukkan ke draf tab event 2027 tanpa error Foreign Key.
+  2. Pada `apps/admin/js/features/downloads/api.js`, pemetaan `save()` kini menyertakan kembali seluruh dokumen milik tab sumber arsip (`compDocuments`) sehingga metadata dokumen arsip tersimpan utuh di draf backend dan publik.
+  3. Di `packages/shared/js/core/runtime-config.js`, `apiBaseUrl` diselaraskan ke relatif `/api/v1` (bukan hardcoded `http://localhost:3000/api/v1`), mencegah error CORS / mixed content saat gambar/preview dibuka dari origin tunnel/iframe.
+- **File**:
+  - `apps/backend/src/admin/admin.service.ts`
+  - `apps/admin/js/features/downloads/api.js`
+  - `packages/shared/js/core/runtime-config.js`
+  - `apps/backend/src/public/public-content.service.ts`
+  - `apps/public-site/assets/js/archive-detail.js`
+  - `apps/public-site/assets/js/home-renderer.js`
+  - `apps/public-site/assets/js/download-renderer.js`
+  - `apps/public-site/assets/js/archive-list.js`
+  - `packages/shared/js/core/media-client.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Menjalankan pengujian backend NestJS (`npm --prefix apps/backend test`). 9 test suite / 26 test passed.
+- **Kendala**: Tidak ada.
 
 ### 2026-08-09 — Pengabaian Artifact Lokal Git
 
@@ -161,15 +282,50 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 - **Kendala**: Suite E2E Jest tetap tidak dijalankan karena environment hanya menunjuk database development utama `talenta_prestasi`, sedangkan suite tersebut mensyaratkan database disposable. Tiga subagent read-only gagal karena provider eksternal `403/429`; implementasi dan validasi lokal dilanjutkan di main session.
 - **Tindak lanjut**: Siapkan database E2E disposable untuk menjalankan suite Jest draf-preview-publish tanpa memengaruhi data development utama.
 
-### 2026-08-11 — Panduan Setup Lokal untuk Clone Pertama
+### 2026-08-13 — Perbaikan Logika Kronologis Arsip, Pemenang Sebelumnya, dan Error Draf FAQ
 
-- **Tanggal/Judul**: 2026-08-11 — Panduan Setup Lokal untuk Clone Pertama
-- **Permintaan**: Membuat panduan Markdown agar rekan pengembang/tester yang baru clone dapat menjalankan proyek secara lokal.
-- **Proses/Keputusan**: Menyusun alur berurutan dari prasyarat, clone, instalasi dependency, pembuatan database PostgreSQL development baru, `.env` lokal, migration hingga versi 15, seed idempotent, startup backend/frontend, login Admin, pemahaman draf/preview/publikasi, smoke test black-box, troubleshooting, dan pemeriksaan keamanan pra-commit. Nilai credential ditulis sebagai placeholder, bukan secret nyata.
+- **Tanggal/Judul**: 2026-08-13 — Perbaikan Logika Kronologis Arsip, Pemenang Sebelumnya, dan Error Draf FAQ
+- **Permintaan**:
+  1. Memperbaiki aturan arsip agar event tahun/batch lebih tinggi (misal 2027) tidak menjadi arsip bagi event tahun/batch lebih rendah (misal 2026).
+  2. Menerapkan penamaan event terpadu (`Nama Kategori + Tahun + Batch`) secara konsisten di seluruh kartu dan detail arsip & pemenang.
+  3. Memastikan Pemenang Sebelumnya di CMS Admin dan Public Site diambil dari Event terdahulu secara kronologis.
+  4. Menyembunyikan deskripsi di kartu daftar arsip halaman depan (`/arsip/`).
+  5. Memperbaiki error simpan draf FAQ (`categories.0.id must be a UUID`) dan memberikan ID UUID v4 serta pesan error yang ramah.
+  6. Mengotomatiskan pengelompokan SK Pemenang ke tab dokumen utama di halaman Unduh dan menambahkan indikator foto pemenang tersimpan di Admin.
+  7. Memastikan item navbar publik dengan status `active: false` benar-benar disembunyikan (`display: none`).
+- **Proses/Keputusan**:
+  - Mengubah query SQL `archiveSnapshots` di `public.service.ts` dan filter frontend di `archive/api.js` serta `winners/api.js` dengan perbandingan kronologis ketat: `(event.period_year < current.period_year OR (event.period_year = current.period_year AND event.batch_number < current.batch_number))`.
+  - Menerapkan helper `eventDisplayName` (`formatArchiveDisplayName`) pada `archive/manager.js` dan repository shared.
+  - Memperbaiki `faq-repository.js` dengan `crypto.randomUUID()` dan memfilter ID non-UUID pada `faq/api.js`.
+  - Memperbaiki `admin-content.service.ts` agar SK Pemenang otomatis menggunakan tab dokumen default/aktif.
+  - Menambahkan tombol hapus foto dan indikator "Foto tersimpan" pada `winners/manager.js`.
+  - Menambahkan `element.style.display = isHidden ? "none" : ""` pada `runtime.js` untuk menu navbar.
 - **File**:
+  - `apps/backend/src/public/public.service.ts`
+  - `apps/backend/src/public/public.service.spec.ts`
+  - `apps/backend/src/admin/admin-content.service.ts`
+  - `apps/admin/js/features/archive/api.js`
+  - `apps/admin/js/features/archive/manager.js`
+  - `apps/admin/js/features/winners/api.js`
+  - `apps/admin/js/features/winners/manager.js`
+  - `apps/admin/js/features/faq/api.js`
+  - `packages/shared/js/data/repositories/faq-repository.js`
+  - `packages/shared/js/data/repositories/archive-repository.js`
+  - `apps/public-site/assets/js/runtime.js`
+  - `docs/WORK_LOG.md`
+- **Validasi**:
+  - Backend unit test: 9 suite / 26 test lulus (`npm test -- --runInBand`).
+  - Backend E2E test: 3 suite / 13 test lulus (`npm run test:e2e -- --runInBand`).
+  - Static checks: `npm run check:routes`, `npm run check:js`, `npm run check:theme`, `npm run test:event-publication` seluruhnya PASS.
+  - Prettier formatting check lulus 100%.
+  - Script browser parity `scripts/browser-home-hero-parity.mjs` PASS.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Pekerjaan perbaikan kronologi arsip, pemenang, FAQ, dan navbar telah tuntas dan tervalidasi.
+
   - `docs/SETUP_LOKAL.md`
   - `README.md`
   - `docs/WORK_LOG.md`
+
 - **Validasi**: Memeriksa perintah terhadap script aktif, format Prettier, tautan Markdown lokal, pola credential/secret, dan `git diff --check`.
 - **Kendala**: Tidak ada.
 - **Tindak lanjut**: Rekan pengguna mengisi `.env` lokal sendiri dan tidak membagikan credential tersebut melalui Git atau laporan testing.

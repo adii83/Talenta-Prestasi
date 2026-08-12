@@ -124,6 +124,12 @@ function faqRead() {
   }
 }
 function faqUid(prefix = "faq") {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 function faqString(value, fallback = "") {
@@ -138,9 +144,15 @@ function faqEscape(value = "") {
     .replace(/'/g, "&#039;");
 }
 function faqSafeId(value, fallback, used) {
+  const str = faqString(value).trim();
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (uuidRegex.test(str)) {
+    used.add(str);
+    return str;
+  }
   const base =
-    faqString(value)
-      .trim()
+    str
       .toLowerCase()
       .replace(/[^a-z0-9_-]+/g, "-")
       .replace(/^-+|-+$/g, "") ||

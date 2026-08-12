@@ -35,6 +35,35 @@
     return ordered;
   };
 
+  function formatDownloadEventName(item) {
+    if (!item.periodYear) return item.name || "Ajang Talenta";
+    const period = `${item.name || "Ajang Talenta"} ${item.periodYear}`;
+    return item.batchLabel && item.batchNumber
+      ? `${period} · ${item.batchLabel} ${item.batchNumber}`
+      : item.batchNumber && item.batchNumber > 1
+        ? `${period} · Gelombang ${item.batchNumber}`
+        : period;
+  }
+
+  async function loadArchiveSource(item) {
+    const [documents, config] = await Promise.all([
+      call(`/admin/events/${item.id}/documents`),
+      call(`/admin/events/${item.id}/downloads`).catch(() => ({ tabs: [] })),
+    ]);
+    const chosenTab =
+      config?.tabs?.find((tab) => tab.isDefault) || config?.tabs?.[0] || null;
+    const orderedDocuments = restoreDocumentOrder(
+      documents.map(mapDocument),
+      chosenTab,
+    );
+    return {
+      ...item,
+      name: formatDownloadEventName(item),
+      shortName: formatDownloadEventName(item),
+      documents: orderedDocuments,
+    };
+  }
+
   async function load() {
     const current = event();
     if (!current?.id) {
@@ -54,10 +83,24 @@
         },
       };
     }
-    const [documents, config, page] = await Promise.all([
+    const categoryEvents = current.categoryId
+      ? await call(`/admin/categories/${current.categoryId}/events`)
+      : [];
+    const archivedEvents = categoryEvents.filter((item) => {
+      if (item.id === current.id) return false;
+      const itemYear = item.periodYear || 0;
+      const currentYear = current.periodYear || 0;
+      if (itemYear < currentYear) return true;
+      if (itemYear === currentYear) {
+        return (item.batchNumber || 1) < (current.batchNumber || 1);
+      }
+      return false;
+    });
+    const [documents, config, page, archiveSources] = await Promise.all([
       call(`/admin/events/${current.id}/documents`),
       call(`/admin/events/${current.id}/downloads`),
       call(`/admin/events/${current.id}/pages/download`),
+      Promise.all(archivedEvents.map(loadArchiveSource)),
     ]);
     const chosenTab =
       config.tabs.find((tab) => tab.isDefault) || config.tabs[0] || null;
@@ -67,24 +110,37 @@
     );
     const source = {
       ...current,
-      shortName: current.name,
+      name: formatDownloadEventName(current),
+      shortName: formatDownloadEventName(current),
       documents: orderedDocuments,
     };
-    const configs = config.tabs.slice(0, 1).map((tab) => ({
-      competitionId: current.id,
-      tabId: tab.tabId,
-      customTabName: tab.customTabName,
-      isDefault: tab.isDefault,
-      active: tab.isActive,
-      hiddenDocumentIds: tab.documents
-        .filter((doc) => !doc.isVisible)
-        .map((doc) => doc.documentId),
-      documentLabelOverrides: Object.fromEntries(
-        tab.documents
-          .filter((doc) => doc.labelOverride)
-          .map((doc) => [doc.documentId, doc.labelOverride]),
-      ),
-    }));
+    const availableList = [source, ...archiveSources];
+    const configs = config.tabs.map((tab, index) => {
+      const matchingComp =
+        availableList.find(
+          (c) =>
+            c.name === tab.customTabName ||
+            c.shortName === tab.customTabName ||
+            c.id === tab.tabId,
+        ) ||
+        availableList[index] ||
+        availableList[0];
+      return {
+        competitionId: matchingComp?.id || current.id,
+        tabId: tab.tabId,
+        customTabName: tab.customTabName || matchingComp?.name || "",
+        isDefault: tab.isDefault,
+        active: tab.isActive,
+        hiddenDocumentIds: (tab.documents || [])
+          .filter((doc) => !doc.isVisible)
+          .map((doc) => doc.documentId),
+        documentLabelOverrides: Object.fromEntries(
+          (tab.documents || [])
+            .filter((doc) => doc.labelOverride)
+            .map((doc) => [doc.documentId, doc.labelOverride]),
+        ),
+      };
+    });
     if (!configs.length)
       configs.push({
         competitionId: current.id,
@@ -95,9 +151,9 @@
         documentLabelOverrides: {},
       });
     return {
-      available: [source],
+      available: [source, ...archiveSources],
       currentCompetition: source,
-      archiveSources: [],
+      archiveSources,
       configs,
       page,
     };
@@ -105,17 +161,23 @@
 
   async function save(state) {
     const current = event();
-    const documents = window.TalentaDownloadCompetitions?.[0]?.documents || [];
-    const tabs = state.competitions.map((config) => ({
-      customTabName: config.customTabName || "",
-      isDefault: config.isDefault,
-      isActive: config.active,
-      documents: documents.map((document) => ({
-        documentId: document.id,
-        isVisible: !config.hiddenDocumentIds.includes(document.id),
-        labelOverride: config.documentLabelOverrides[document.id] || "",
-      })),
-    }));
+    const available = window.TalentaDownloadCompetitions || [];
+    const tabs = state.competitions.map((config) => {
+      const comp =
+        available.find((item) => item.id === config.competitionId) ||
+        available[0];
+      const compDocuments = comp?.documents || [];
+      return {
+        customTabName: config.customTabName || comp?.name || "",
+        isDefault: config.isDefault,
+        isActive: config.active,
+        documents: compDocuments.map((document) => ({
+          documentId: document.id,
+          isVisible: !config.hiddenDocumentIds.includes(document.id),
+          labelOverride: config.documentLabelOverrides[document.id] || "",
+        })),
+      };
+    });
     await Promise.all([
       TalentaApi.request(`/admin/events/${current.id}/downloads`, {
         method: "PUT",

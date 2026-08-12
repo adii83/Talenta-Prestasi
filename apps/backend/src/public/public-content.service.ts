@@ -84,7 +84,7 @@ export class PublicContentService {
          JOIN event_sites event ON event.id=tab.event_site_id
          JOIN competition_categories category ON category.id=event.category_id
          LEFT JOIN download_document_settings dds ON dds.download_tab_id=tab.id AND dds.is_visible=true
-         LEFT JOIN event_documents d ON d.id=dds.document_id AND d.event_site_id=tab.event_site_id AND d.is_active=true
+         LEFT JOIN event_documents d ON d.id=dds.document_id AND d.is_active=true
          WHERE tab.event_site_id=$1 AND tab.is_active=true
          GROUP BY tab.id,category.name ORDER BY tab.is_default DESC,tab.sort_order,tab.id`,
         [eventId],
@@ -213,6 +213,7 @@ export class PublicContentService {
         settings: detailSettings[0] ?? null,
         categories: winnerCategories,
         documents,
+        decree: decree[0] ?? null,
       },
     };
   }

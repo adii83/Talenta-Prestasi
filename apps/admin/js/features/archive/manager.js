@@ -52,20 +52,31 @@ function renderItems() {
     root.innerHTML = archiveState.items
       .map(
         (item) =>
-          `<article class="archive-manager-item"><div class="archive-manager-item__head"><div class="archive-manager-item__icon"><i data-lucide="${esc(item.icon || item.fallbackIcon || "archive")}"></i></div><div class="archive-manager-item__identity"><strong>${esc(item.name)}</strong><small>Periode ${esc(formatArchivePeriod(item))}</small></div><div class="archive-manager-item__actions"><a class="btn btn--outline btn--sm" href="${detailUrl(item.id)}"><i data-lucide="settings-2"></i>Edit Detail</a><span class="event-card__badge event-card__badge--archive">Arsip otomatis</span></div></div><p>${esc(item.description || "Belum ada deskripsi arsip.")}</p></article>`,
+          `<article class="archive-manager-item"><div class="archive-manager-item__head"><div class="archive-manager-item__icon"><i data-lucide="${esc(item.icon || item.fallbackIcon || "archive")}"></i></div><div class="archive-manager-item__identity"><strong>${esc(formatArchiveDisplayName(item))}</strong><small>Periode ${esc(formatArchivePeriod(item))}</small></div><div class="archive-manager-item__actions"><a class="btn btn--outline btn--sm" href="${detailUrl(item.id)}"><i data-lucide="settings-2"></i>Edit Detail</a><span class="event-card__badge event-card__badge--archive">Arsip otomatis</span></div></div></article>`,
       )
       .join("");
   }
   lucide.createIcons();
 }
 
+function formatArchiveDisplayName(item) {
+  if (!item.periodYear) return item.name || "Ajang Talenta";
+  const period = `${item.name || "Ajang Talenta"} ${item.periodYear}`;
+  return item.batchLabel && item.batchNumber
+    ? `${period} · ${item.batchLabel} ${item.batchNumber}`
+    : item.batchNumber && item.batchNumber > 1
+      ? `${period} · Gelombang ${item.batchNumber}`
+      : period;
+}
+
 function previewItems() {
-  return archiveState.items.map((item) =>
-    normalizeArchiveCompetition({
+  return archiveState.items.map((item) => {
+    const fullName = formatArchiveDisplayName(item);
+    return normalizeArchiveCompetition({
       id: item.id,
       slug: item.slug,
-      name: item.name,
-      shortName: item.name,
+      name: fullName,
+      shortName: fullName,
       description: item.description || "",
       status: "published",
       active: true,
@@ -75,8 +86,8 @@ function previewItems() {
       iconAlt: item.iconAlt,
       documents: [],
       winnerCategories: [],
-    }),
-  );
+    });
+  });
 }
 
 function renderPreview() {

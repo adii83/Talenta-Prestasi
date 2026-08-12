@@ -17,7 +17,16 @@
     const rows = (
       await TalentaApi.request(`/admin/categories/${event.categoryId}/events`)
     ).data;
-    return rows.filter((item) => !item.isActive && item.id !== event.id);
+    return rows.filter((item) => {
+      if (item.id === event.id) return false;
+      const itemYear = item.periodYear || 0;
+      const currentYear = event.periodYear || 0;
+      if (itemYear < currentYear) return true;
+      if (itemYear === currentYear) {
+        return (item.batchNumber || 1) < (event.batchNumber || 1);
+      }
+      return false;
+    });
   };
   const savePage = (page) => {
     const event = currentEvent();

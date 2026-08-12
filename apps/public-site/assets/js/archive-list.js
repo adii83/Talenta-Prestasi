@@ -5,7 +5,7 @@
 
   const archiveHref = (event) =>
     TalentaPaths.to("publicSite.archiveDetail", {
-      query: { event: event.slug },
+      query: { event: event.slug || event.id },
     });
 
   function render(data) {

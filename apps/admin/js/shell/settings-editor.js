@@ -28,6 +28,23 @@ async function loadGlobalSettingsApi() {
     };
   return (await TalentaApi.request(`/admin/events/${event.id}/settings`)).data;
 }
+async function saveGlobalSettingsApi() {
+  const event = TalentaAdminAuth.currentEvent();
+  if (!event?.id)
+    return { data: { eventName: globalState.identity.eventName } };
+  return await TalentaApi.request(`/admin/events/${event.id}/settings`, {
+    method: "PUT",
+    body: {
+      eventDescription: globalState.identity.eventDescription || "",
+      primaryColor: globalState.theme.primaryColor || "#1e4b8c",
+      logoAssetId: globalState.identity.logoAssetId || undefined,
+      navigation: globalState.navigation,
+      contact: globalState.contact,
+      footer: globalState.footer,
+      seo: globalState.seo || {},
+    },
+  });
+}
 async function loadHomeSettingsApi() {
   const site = TalentaAdminAuth.currentEvent();
   if (!site?.id)

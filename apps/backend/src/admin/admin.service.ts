@@ -454,9 +454,13 @@ export class AdminService {
         id: event.id,
         name: event.name,
         slug: event.slug,
+        description: event.description || '',
         isActive: event.isActive,
         status: event.status,
         categoryId: event.categoryId,
+        periodYear: event.periodYear,
+        batchNumber: event.batchNumber,
+        batchLabel: event.batchLabel,
       },
       errors: [],
     };
@@ -678,13 +682,16 @@ export class AdminService {
           [eventId, tab.customTabName.trim(), tab.isDefault, tab.isActive, tabOrder],
         );
         for (const [docOrder, doc] of tab.documents.entries()) {
-          const docOwned = await manager.query<{ id: string }[]>(
-            `SELECT id FROM event_documents WHERE id=$1 AND event_site_id=$2`,
+          const docOwned = await manager.query<{ id: string; eventSiteId: string }[]>(
+            `SELECT d.id, d.event_site_id AS "eventSiteId" FROM event_documents d
+             JOIN event_sites current_event ON current_event.id=$2
+             JOIN event_sites doc_event ON doc_event.id=d.event_site_id
+             WHERE d.id=$1 AND doc_event.category_id=current_event.category_id`,
             [doc.documentId, eventId],
           );
           if (!docOwned[0])
             throw new BadRequestException(
-              'Download document does not belong to this event',
+              'Download document does not belong to this event category',
             );
           await manager.query(
             `INSERT INTO download_document_settings(download_tab_id,document_id,event_site_id,is_visible,label_override,sort_order) VALUES($1,$2,$3,$4,$5,$6)`,

@@ -15,7 +15,28 @@
     const [faq] = await Promise.all([
       TalentaApi.request(`/admin/events/${current.id}/faq`, {
         method: "PUT",
-        body: { categories: state.categories },
+        body: {
+          categories: state.categories.map((c) => ({
+            ...c,
+            id:
+              c.id &&
+              /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                c.id,
+              )
+                ? c.id
+                : undefined,
+            questions: (c.questions || []).map((q) => ({
+              ...q,
+              id:
+                q.id &&
+                /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+                  q.id,
+                )
+                  ? q.id
+                  : undefined,
+            })),
+          })),
+        },
       }),
       TalentaApi.request(`/admin/events/${current.id}/pages/faq`, {
         method: "PUT",

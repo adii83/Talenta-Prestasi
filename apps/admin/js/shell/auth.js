@@ -35,7 +35,10 @@
   async function loadSession() {
     const session = (await TalentaApi.request("/admin/session")).data;
     const category = stored(CATEGORY_KEY);
-    if (category && !session.categories.some((item) => item.id === category.id)) {
+    if (
+      category &&
+      !session.categories.some((item) => item.id === category.id)
+    ) {
       sessionStorage.removeItem(CATEGORY_KEY);
       sessionStorage.removeItem(EVENT_KEY);
     }
@@ -82,7 +85,10 @@
     form.addEventListener("submit", (event) => {
       event.preventDefault();
       const data = new FormData(form);
-      authenticate(String(data.get("email") || ""), String(data.get("password") || ""));
+      authenticate(
+        String(data.get("email") || ""),
+        String(data.get("password") || ""),
+      );
     });
     if (TalentaApi.token()) await authenticate();
   }
@@ -115,7 +121,10 @@
     updateCurrentEvent: (patch) => {
       const current = stored(EVENT_KEY);
       if (current)
-        sessionStorage.setItem(EVENT_KEY, JSON.stringify({ ...current, ...patch }));
+        sessionStorage.setItem(
+          EVENT_KEY,
+          JSON.stringify({ ...current, ...patch }),
+        );
     },
     updateCurrentSite(patch) {
       this.updateCurrentEvent(patch);

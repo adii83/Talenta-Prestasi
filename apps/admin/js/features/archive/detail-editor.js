@@ -68,7 +68,7 @@ function syncForm() {
     detailActive: comp.active,
     detailName: comp.name,
     detailShortName: comp.shortName || "",
-    detailDescription: comp.description,
+    detailDescription: comp.description || "",
     detailWinnersActive: det.winnersActive,
     detailWinnersEyebrow: det.winnersEyebrow,
     detailWinnersTitle: det.winnersTitle,

@@ -92,9 +92,12 @@
     const domainText =
       category.hostname || `${category.slug}.${TalentaConfig.publicBaseDomain}`;
     domainLink.textContent = domainText;
-    domainLink.href = location.hostname === "localhost" || location.hostname === "127.0.0.1"
-      ? `http://${location.host}/?site=${encodeURIComponent(category.slug)}`
-      : (category.hostname ? `https://${category.hostname}` : `https://${category.slug}.${TalentaConfig.publicBaseDomain}`);
+    domainLink.href =
+      location.hostname === "localhost" || location.hostname === "127.0.0.1"
+        ? `http://${location.host}/?site=${encodeURIComponent(category.slug)}`
+        : category.hostname
+          ? `https://${category.hostname}`
+          : `https://${category.slug}.${TalentaConfig.publicBaseDomain}`;
     domainLink.target = "_blank";
     const buttons = card.querySelector(".event-card__buttons");
     buttons.append(

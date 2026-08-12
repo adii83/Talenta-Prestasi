@@ -38,8 +38,14 @@
   function assetUrl(value = "", fallback = "") {
     const source = String(value || fallback).trim();
     if (/^(?:data:|blob:|https?:\/\/)/i.test(source)) return source;
-    if (source.startsWith("/api/"))
-      return new URL(source, TalentaConfig.apiBaseUrl).href;
+    if (source.startsWith("/api/")) {
+      const base =
+        window.TalentaConfig?.apiBaseUrl &&
+        window.TalentaConfig.apiBaseUrl.startsWith("http")
+          ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+          : location.origin;
+      return new URL(source, base).href;
+    }
     const match = source.match(
       /(?:template|public-site)\/assets\/images\/([^/?#]+)$/i,
     );
@@ -180,24 +186,35 @@
   void TalentaPublic.load("home").catch((error) =>
     console.error("Home API tidak tersedia; baseline ditampilkan.", error),
   );
-  void TalentaApi.request(`/public/sites/${TalentaConfig.categorySlug}/winners`, {
-    auth: false,
-  })
-    .then((response) => {
-      apiWinnerCategories = response.data.categories.map((category) => ({
+  void TalentaPublic.load("winners")
+    .then((data) => {
+      apiWinnerCategories = (data.categories || []).map((category) => ({
         name: category.name,
         icon: category.icon,
-        winners: category.winners.map((winner) => ({
-          name: winner.fullName,
-          rank: winner.rankLabel,
+        winners: (category.winners || []).map((winner) => ({
+          name: winner.fullName || winner.name,
+          rank: winner.rankLabel || winner.rank,
           school: winner.school,
-          exam: winner.examNumber,
+          exam: winner.examNumber || winner.exam,
           regency: winner.regency,
           province: winner.province,
-          photo: "",
+          photo: (() => {
+            if (winner.photoUrl) {
+              const base =
+                window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+                  ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                  : location.origin;
+              return new URL(winner.photoUrl, base).href;
+            }
+            if (winner.photoAssetId) {
+              return `/api/v1/public/media/${winner.photoAssetId}`;
+            }
+            return winner.photo || "";
+          })(),
         })),
       }));
-      renderWinner(getHomeAdminState().winnerHighlight);
+      const currentState = getHomeAdminState();
+      renderWinner(currentState.winnerHighlight);
     })
     .catch((error) =>
       console.error("Winner Highlight API tidak tersedia.", error),

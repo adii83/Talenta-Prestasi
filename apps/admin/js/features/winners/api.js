@@ -13,6 +13,16 @@
   const formatSize = (bytes) =>
     `${(Number(bytes || 0) / 1024 / 1024).toFixed(2)} MB`;
 
+  function formatWinnerEventName(event) {
+    if (!event.periodYear) return event.name || "Ajang Talenta";
+    const period = `${event.name || "Ajang Talenta"} ${event.periodYear}`;
+    return event.batchLabel && event.batchNumber
+      ? `${period} · ${event.batchLabel} ${event.batchNumber}`
+      : event.batchNumber && event.batchNumber > 1
+        ? `${period} · Gelombang ${event.batchNumber}`
+        : period;
+  }
+
   async function loadWinnerData(event) {
     const [categories, winners] = await Promise.all([
       call(`/admin/events/${event.id}/winner-categories`),
@@ -20,6 +30,7 @@
     ]);
     return {
       ...event,
+      name: formatWinnerEventName(event),
       active: true,
       status: event.isActive ? "active" : "archive",
       icon: event.fallbackIcon || "archive",
@@ -34,7 +45,12 @@
             name: winner.fullName,
             rank: winner.rankLabel,
             exam: winner.examNumber,
-            photo: winner.photoAssetId ? TalentaMedia.url(winner.photoAssetId) : "",
+            photoAssetId: winner.photoAssetId,
+            photo:
+              winner.photoUrl ||
+              (winner.photoAssetId
+                ? TalentaMedia.url(winner.photoAssetId)
+                : winner.photo || ""),
             active: winner.isActive,
           })),
       })),
@@ -60,7 +76,16 @@
     const categoryEvents = event.categoryId
       ? await call(`/admin/categories/${event.categoryId}/events`)
       : [];
-    const archivedEvents = categoryEvents.filter((item) => !item.isActive);
+    const archivedEvents = categoryEvents.filter((item) => {
+      if (item.id === event.id) return false;
+      const itemYear = item.periodYear || 0;
+      const currentYear = event.periodYear || 0;
+      if (itemYear < currentYear) return true;
+      if (itemYear === currentYear) {
+        return (item.batchNumber || 1) < (event.batchNumber || 1);
+      }
+      return false;
+    });
     const [currentData, page, archives, decree] = await Promise.all([
       loadWinnerData(event),
       call(`/admin/events/${event.id}/pages/winners`),
@@ -123,14 +148,21 @@
         .filter((item) => originalWinnerIds.has(item.id))
         .map((item) => item.id),
     );
-    for (const id of [...originalWinnerIds].filter((id) => !currentWinners.has(id)))
+    for (const id of [...originalWinnerIds].filter(
+      (id) => !currentWinners.has(id),
+    ))
       await TalentaApi.request(`/admin/events/${eventId}/winners/${id}`, {
         method: "DELETE",
       });
-    for (const id of [...originalCategoryIds].filter((id) => !currentCategories.has(id)))
-      await TalentaApi.request(`/admin/events/${eventId}/winner-categories/${id}`, {
-        method: "DELETE",
-      });
+    for (const id of [...originalCategoryIds].filter(
+      (id) => !currentCategories.has(id),
+    ))
+      await TalentaApi.request(
+        `/admin/events/${eventId}/winner-categories/${id}`,
+        {
+          method: "DELETE",
+        },
+      );
     for (const [categoryIndex, category] of state.categories.entries()) {
       const categoryBody = {
         name: category.name,
@@ -140,15 +172,21 @@
         sortOrder: categoryIndex,
       };
       if (originalCategoryIds.has(category.id))
-        await call(`/admin/events/${eventId}/winner-categories/${category.id}`, {
-          method: "PATCH",
-          body: categoryBody,
-        });
+        await call(
+          `/admin/events/${eventId}/winner-categories/${category.id}`,
+          {
+            method: "PATCH",
+            body: categoryBody,
+          },
+        );
       else {
-        const created = await call(`/admin/events/${eventId}/winner-categories`, {
-          method: "POST",
-          body: categoryBody,
-        });
+        const created = await call(
+          `/admin/events/${eventId}/winner-categories`,
+          {
+            method: "POST",
+            body: categoryBody,
+          },
+        );
         category.id = created.id;
       }
       for (const [winnerIndex, winner] of category.winners.entries()) {

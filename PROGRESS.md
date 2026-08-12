@@ -42,12 +42,12 @@ Organization
 
 ## Validasi Terakhir
 
-Validasi source dan runtime periode Event terakhir dijalankan pada 12 Agustus 2026.
+Validasi source dan runtime periode Event terakhir dijalankan pada 13 Agustus 2026.
 
 - **Database:** migration ke-16 `AddEventPeriodIdentity` diterapkan; ledger 16/16. Seed lokal idempotent menghasilkan tahun 2025/2026 eksplisit, satu Event aktif per Kategori aktif, snapshot publik, dan tidak ada identitas periode duplikat.
-- **Backend:** build lulus; 9 suite/26 unit test dan 3 suite/13 E2E test lulus pada PostgreSQL lokal testing. Warning deprecation `pg` tentang query bersamaan masih muncul dari fixture/seed lama, tetapi tidak menggagalkan suite.
-- **Frontend:** audit UX periode, publikasi Event, Category→Event, 13 canonical route, 45 file JavaScript, dan sinkronisasi tema lulus.
-- **Browser:** Puppeteer membuktikan nama ajang read-only, tahun default, field batch kondisional, batal/setuju konflik, Gelombang 1/2, nama publik existing sebelum aktivasi, transisi aktif+arsip setelah aktivasi, slug detail arsip, **Urungkan edit** pada Pengaturan dan iframe FAQ, **Batalkan draf** lintas workspace, badge status, serta layout 1440×900, 768×1024, dan 390×844 tanpa overflow horizontal. Dua konflik CSS responsive dan overlay slug arsip ditemukan, diperbaiki, lalu diuji ulang.
+- **Backend:** build lulus; 9 suite/26 unit test dan 3 suite/13 E2E test lulus 100% pada PostgreSQL lokal testing (`npm test` & `npm run test:e2e`).
+- **Frontend:** perbaikan kronologis arsip (tahun/batch lebih tua saja), penamaan terpadu event tahun+batch, perbaikan UUID draf FAQ, pengelompokan otomatis SK Pemenang ke tab dokumen utama, indikator foto pemenang tersimpan, serta penyembunyian navbar disabled `display: none` tervalidasi.
+- **Browser:** Puppeteer dan script parity `scripts/browser-home-hero-parity.mjs` membuktikan seluruh section Beranda identik dengan Public Site pada desktop 1440px, tablet 768px, dan mobile 390px.
 - **Keamanan:** viewer/tenant guard lulus E2E; upload yang belum direferensikan snapshot tetap `404`; media publik tetap memakai allowlist dan preview terotorisasi.
 
 ## Riwayat

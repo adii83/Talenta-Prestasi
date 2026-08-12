@@ -20,9 +20,6 @@ export class DownloadDocumentSettings {
   ])
   downloadTab!: DownloadTab;
   @ManyToOne(() => EventDocument, { onDelete: 'CASCADE' })
-  @JoinColumn([
-    { name: 'document_id', referencedColumnName: 'id' },
-    { name: 'event_site_id', referencedColumnName: 'eventSiteId' },
-  ])
+  @JoinColumn({ name: 'document_id', referencedColumnName: 'id' })
   document!: EventDocument;
 }

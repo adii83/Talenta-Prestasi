@@ -21,7 +21,13 @@ let winnerCategoriesData =
   typeof getPublicWinnerState === "function"
     ? getPublicWinnerState().manager.categories
     : [];
-let winnerDisplayData = { showPhoto: true, showSchool: true, showExam: true, showRegency: true, showProvince: true };
+let winnerDisplayData = {
+  showPhoto: true,
+  showSchool: true,
+  showExam: true,
+  showRegency: true,
+  showProvince: true,
+};
 
 async function fetchRealWinnerData() {
   const site = window.parent?.TalentaAdminAuth?.currentSite?.();
@@ -33,16 +39,21 @@ async function fetchRealWinnerData() {
       TalentaApi.request(`/admin/events/${site.id}/winners`),
     ]);
     winnerDisplayData = pagesReq.data.metadataVisibility || winnerDisplayData;
-    winnerCategoriesData = catReq.data.filter(c => c.isActive).map(c => ({
-      ...c,
-      winners: winReq.data.filter(w => w.categoryId === c.id && w.isActive).map(w => ({
-        ...w,
-        name: w.fullName,
-        rank: w.rankLabel,
-        exam: w.examNumber,
-        photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : ""
+    winnerCategoriesData = catReq.data
+      .filter((c) => c.isActive)
+      .map((c) => ({
+        ...c,
+        winners: winReq.data
+          .filter((w) => w.categoryId === c.id && w.isActive)
+          .map((w) => ({
+            ...w,
+            name: w.fullName,
+            rank: w.rankLabel,
+            exam: w.examNumber,
+            photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : "",
+          })),
       }))
-    })).filter(c => c.winners.length > 0);
+      .filter((c) => c.winners.length > 0);
   } catch (e) {
     console.warn("Gagal memuat data pemenang untuk pratinjau", e);
   }

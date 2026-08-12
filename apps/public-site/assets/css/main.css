@@ -943,6 +943,13 @@ textarea {
   color: var(--c-primary);
   margin-bottom: var(--sp-2);
   border: 3px solid var(--c-border);
+  overflow: hidden;
+}
+
+.winner-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .winner-card__photo--gold {
@@ -2186,6 +2193,13 @@ textarea {
   justify-content: center;
   margin: 0 auto var(--sp-2);
   border: 3px solid var(--c-accent);
+  overflow: hidden;
+}
+
+.champion-card__photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .champion-card__rank {

@@ -109,7 +109,8 @@ export class PublicService {
   ) {
     const resolved = await this.resolve(categorySlug, previewToken);
     const rows = await this.db.query<ArchiveSnapshot[]>(
-      `SELECT publication.public_snapshot AS snapshot,event.slug AS "eventSlug",event.name AS "baseName",
+      `SELECT publication.public_snapshot AS snapshot,event.id AS "eventId",
+              event.slug AS "eventSlug",event.name AS "baseName",
               event.period_year AS "periodYear",event.batch_number AS "batchNumber",
               event.batch_label AS "batchLabel",
               EXISTS(
@@ -117,20 +118,31 @@ export class PublicService {
                 WHERE sibling.category_id=event.category_id
                   AND sibling.period_year=event.period_year
                   AND sibling.batch_number>1
-                  AND sibling.activated_at IS NOT NULL
               ) AS "showBatch"
        FROM event_sites event
-       JOIN event_publications publication ON publication.event_site_id=event.id
-       WHERE event.category_id=$1 AND event.slug=$2 AND event.is_active=false
-         AND event.activated_at IS NOT NULL AND event.deleted_at IS NULL`,
-      [resolved.categoryId, eventSlug],
+       LEFT JOIN event_publications publication ON publication.event_site_id=event.id
+       JOIN event_sites current_event ON current_event.id=$3
+       WHERE event.category_id=$1 AND (event.slug=$2 OR event.id::text=$2) AND event.deleted_at IS NULL
+         AND (
+           event.period_year < current_event.period_year
+           OR (
+             event.period_year = current_event.period_year
+             AND COALESCE(event.batch_number, 1) < COALESCE(current_event.batch_number, 1)
+           )
+         )`,
+      [resolved.categoryId, eventSlug, resolved.eventId],
     );
-    if (!rows[0]) throw new NotFoundException('Published archive not found');
+    if (!rows[0]) throw new NotFoundException('Archive event not found');
+    let snapshot = rows[0].snapshot;
+    if (!snapshot) {
+      const eventTargetId = (rows[0] as unknown as { eventId: string }).eventId;
+      snapshot = await this.content.build(eventTargetId);
+    }
     return response(
       {
         site: (resolved.snapshot.bootstrap as { site?: unknown }).site,
-        ...rows[0].snapshot.archiveDetail,
-        event: archiveSummary(rows[0]),
+        ...snapshot.archiveDetail,
+        event: archiveSummary({ ...rows[0], snapshot }),
       },
       resolved.preview,
     );
@@ -255,13 +267,19 @@ export class PublicService {
                 WHERE sibling.category_id=event.category_id
                   AND sibling.period_year=event.period_year
                   AND sibling.batch_number>1
-                  AND sibling.activated_at IS NOT NULL
               ) AS "showBatch"
        FROM event_sites event
        JOIN event_publications publication ON publication.event_site_id=event.id
-       WHERE event.category_id=$1 AND event.id<>$2 AND event.is_active=false
-         AND event.activated_at IS NOT NULL AND event.deleted_at IS NULL
-       ORDER BY publication.published_at DESC,event.id`,
+       JOIN event_sites current_event ON current_event.id=$2
+       WHERE event.category_id=$1 AND event.id<>$2 AND event.deleted_at IS NULL
+         AND (
+           event.period_year < current_event.period_year
+           OR (
+             event.period_year = current_event.period_year
+             AND COALESCE(event.batch_number, 1) < COALESCE(current_event.batch_number, 1)
+           )
+         )
+       ORDER BY event.period_year DESC, COALESCE(event.batch_number, 1) DESC, publication.published_at DESC, event.id`,
       [categoryId, activeEventId],
     );
   }

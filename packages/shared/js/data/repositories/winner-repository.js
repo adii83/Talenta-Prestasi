@@ -335,14 +335,16 @@ function buildWinnerMetaMarkup(winner, page) {
 }
 
 function buildWinnerCardMarkup(winner, page) {
-  return `<article class="champion-card">${page.showPhoto ? `<div class="champion-card__photo">${winner.photo ? `<img src="${winnerEscape(winnerSafeUrl(winner.photo))}" alt="Foto ${winnerEscape(winner.name)}" />` : winnerEscape(winnerInitials(winner.name))}</div>` : ""}<p class="champion-card__rank t-mono">${winnerEscape(winner.rank)}</p><p class="champion-card__name">${winnerEscape(winner.name || "—")}</p>${page.showSchool ? `<p class="champion-card__school">${winnerEscape(winner.school)}</p>` : ""}<div class="champion-card__meta">${buildWinnerMetaMarkup(winner, page)}</div></article>`;
+  const photoUrl = typeof TalentaMedia !== 'undefined' && winner.photo ? TalentaMedia.url(winner.photo) : winner.photo;
+  return `<article class="champion-card">${page.showPhoto ? `<div class="champion-card__photo">${winner.photo ? `<img src="${winnerEscape(winnerSafeUrl(photoUrl))}" alt="Foto ${winnerEscape(winner.name)}" />` : winnerEscape(winnerInitials(winner.name))}</div>` : ""}<p class="champion-card__rank t-mono">${winnerEscape(winner.rank)}</p><p class="champion-card__name">${winnerEscape(winner.name || "—")}</p>${page.showSchool ? `<p class="champion-card__school">${winnerEscape(winner.school)}</p>` : ""}<div class="champion-card__meta">${buildWinnerMetaMarkup(winner, page)}</div></article>`;
 }
 
 function buildWinnerArchiveMarkup(page, archives, options = {}) {
   if (!page.archiveActive || !archives.length) return "";
   const archiveHref =
     typeof options.archiveHref === "function" ? options.archiveHref : () => "#";
-  return `<div class="archive-winners"><h3 class="archive-winners__title">${winnerEscape(page.archiveTitle)}</h3><div class="grid grid--3">${archives.map((competition) => `<a href="${winnerEscape(winnerSafeUrl(archiveHref(competition)))}" class="lomba-card"><div class="lomba-card__thumb">${competition.iconMode === "upload" && competition.uploadedIcon ? `<img class="archive-card__uploaded-icon" src="${winnerEscape(winnerSafeUrl(competition.uploadedIcon))}" alt="${winnerEscape(competition.iconAlt || "Logo atau maskot lomba")}">` : `<i data-lucide="${winnerEscape(competition.icon || "archive")}" style="width:48px;height:48px;stroke-width:1"></i>`}</div><div class="lomba-card__body"><h3 class="lomba-card__title">${winnerEscape(competition.name)}</h3><p class="lomba-card__desc">${winnerEscape(competition.description || "")}</p><span class="lomba-card__action">${winnerEscape(page.archiveAction)} <i data-lucide="arrow-right" style="width:14px;height:14px"></i></span></div></a>`).join("")}</div></div>`;
+  const actionLabel = page.archiveAction || "Lihat Pemenang";
+  return `<div class="archive-winners"><h3 class="archive-winners__title">${winnerEscape(page.archiveTitle)}</h3><div class="grid grid--3">${archives.map((competition) => `<a href="${winnerEscape(winnerSafeUrl(archiveHref(competition)))}" class="lomba-card"><div class="lomba-card__thumb">${competition.iconMode === "upload" && competition.uploadedIcon ? `<img class="archive-card__uploaded-icon" src="${winnerEscape(winnerSafeUrl(competition.uploadedIcon))}" alt="${winnerEscape(competition.iconAlt || "Logo atau maskot lomba")}">` : `<i data-lucide="${winnerEscape(competition.icon || "archive")}" style="width:48px;height:48px;stroke-width:1"></i>`}</div><div class="lomba-card__body"><h3 class="lomba-card__title">${winnerEscape(competition.name)}</h3><span class="lomba-card__action">${winnerEscape(actionLabel)} <i data-lucide="arrow-right" style="width:14px;height:14px"></i></span></div></a>`).join("")}</div></div>`;
 }
 
 function buildWinnerPageMarkup(source, options = {}) {

@@ -1,7 +1,9 @@
 function partnerAssetUrl(value = "") {
   const source = String(value).trim();
   if (!source || /^(?:data:|blob:|https?:\/\/)/i.test(source)) return source;
-  const file = source.match(/(?:template|public-site)\/assets\/images\/([^/?#]+)$/i)?.[1];
+  const file = source.match(
+    /(?:template|public-site)\/assets\/images\/([^/?#]+)$/i,
+  )?.[1];
   if (!file || typeof TalentaPaths === "undefined") return source;
   return new URL(`assets/images/${file}`, TalentaPaths.to("publicSite.home"))
     .href;

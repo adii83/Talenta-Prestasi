@@ -37,9 +37,20 @@
     return response.data;
   }
   function url(asset) {
+    if (!asset) return "";
+    if (typeof asset === "string" && asset.startsWith("http")) return asset;
     const path =
-      typeof asset === "string" ? `/api/v1/public/media/${asset}` : asset?.url;
-    return path ? new URL(path, TalentaConfig.apiBaseUrl).href : "";
+      typeof asset === "string"
+        ? asset.startsWith("/api/")
+          ? asset
+          : `/api/v1/public/media/${asset}`
+        : asset?.url;
+    const base =
+      window.TalentaConfig?.apiBaseUrl &&
+      window.TalentaConfig.apiBaseUrl.startsWith("http")
+        ? window.TalentaConfig.apiBaseUrl
+        : location.origin;
+    return path ? new URL(path, base).href : "";
   }
   window.TalentaMedia = Object.freeze({ upload, url, LIMITS });
 })();

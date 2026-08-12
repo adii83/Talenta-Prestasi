@@ -15,34 +15,60 @@
     return {
       manager: {
         competitionId: data.event?.slug || "",
-        categories: data.categories.map((category) => ({
+        categories: (data.categories || []).map((category) => ({
           name: category.name,
           icon: category.icon,
-          winners: category.winners.map((winner) => ({
-            name: winner.fullName,
-            rank: winner.rankLabel,
-            school: winner.school,
-            exam: winner.examNumber,
-            regency: winner.regency,
-            province: winner.province,
-            photo: winner.photoUrl
-              ? new URL(winner.photoUrl, TalentaConfig.apiBaseUrl).href
-              : "",
-          })),
+          winners: (category.winners || []).map((winner) => {
+            let photo = winner.photo || "";
+            if (winner.photoUrl) {
+              const base =
+                window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+                  ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                  : location.origin;
+              photo = new URL(winner.photoUrl, base).href;
+            } else if (winner.photoAssetId) {
+              photo = `/api/v1/public/media/${winner.photoAssetId}`;
+            }
+            return {
+              name: winner.fullName || winner.name || "",
+              rank: winner.rankLabel || winner.rank || "",
+              school: winner.school || "",
+              exam: winner.examNumber || winner.exam || "",
+              regency: winner.regency || "",
+              province: winner.province || "",
+              photo,
+            };
+          }),
         })),
         sk: data.decree
           ? {
               ...data.decree,
-              url: data.decree.url
-                ? new URL(data.decree.url, TalentaConfig.apiBaseUrl).href
-                : "",
+              title: data.decree.title || "SK Penetapan Pemenang",
+              description: data.decree.description || "",
+              url: (() => {
+                let url = "";
+                if (data.decree.url) {
+                  const base =
+                    window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+                      ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                      : location.origin;
+                  url = new URL(data.decree.url, base).href;
+                } else if (data.decree.assetId) {
+                  const base =
+                    window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+                      ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                      : location.origin;
+                  url = new URL(`/api/v1/public/media/${data.decree.assetId}`, base).href;
+                }
+                return url;
+              })(),
             }
           : null,
       },
       page: {
         ...baseline.page,
         active: data.page?.isActive ?? data.settings?.isActive ?? true,
-        eyebrow: data.page?.eyebrow || baseline.page.eyebrow,
+        eyebrow: data.page?.eyebrow || data.event?.name || baseline.page.eyebrow,
         title: data.page?.title || baseline.page.title,
         description: data.page?.description || baseline.page.description,
         alignment: data.page?.alignment || baseline.page.alignment,
@@ -54,10 +80,14 @@
         showProvince: visibility.showProvince ?? baseline.page.showProvince,
         archiveActive:
           data.settings?.archiveActive ?? baseline.page.archiveActive,
+        archiveTitle: data.settings?.archiveTitle || baseline.page.archiveTitle,
+        archiveAction: data.settings?.archiveAction || baseline.page.archiveAction,
+        archiveLimit: data.settings?.archiveLimit ?? baseline.page.archiveLimit,
       },
-      archives: data.archives.map((event) => ({
+      archives: (data.archives || []).map((event) => ({
         ...event,
-        id: event.slug,
+        id: event.slug || event.id,
+        name: event.name || event.title || "",
       })),
     };
   }

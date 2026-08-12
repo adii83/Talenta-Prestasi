@@ -22,40 +22,81 @@
       categories: data.categories.map((category) => ({
         name: category.name,
         icon: category.icon,
-        winners: category.winners.map((winner) => ({
-          name: winner.fullName,
-          rank: winner.rankLabel,
-          school: winner.school,
-          exam: winner.examNumber,
-          regency: winner.regency,
-          province: winner.province,
-          photo: winner.photoUrl
-            ? new URL(winner.photoUrl, TalentaConfig.apiBaseUrl).href
-            : "",
-        })),
+        winners: category.winners.map((winner) => {
+          let photo = "";
+          if (winner.photoUrl) {
+            const base =
+              window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+                ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                : location.origin;
+            photo = new URL(winner.photoUrl, base).href;
+          } else if (winner.photoAssetId) {
+            const base =
+              window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+                ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                : location.origin;
+            photo = new URL(`/api/v1/public/media/${winner.photoAssetId}`, base).href;
+          }
+          return {
+            name: winner.fullName,
+            rank: winner.rankLabel,
+            school: winner.school,
+            exam: winner.examNumber,
+            regency: winner.regency,
+            province: winner.province,
+            photo,
+          };
+        }),
       })),
-      documents: data.documents.map((document) => ({
-        id: document.id,
-        title: document.title,
-        category: document.category,
-        type: document.fileType || "PDF",
-        size: document.displaySize || "-",
-        url: document.url
-          ? new URL(document.url, TalentaConfig.apiBaseUrl).href
-          : "",
-      })),
+      documents: data.documents.map((document) => {
+        let url = "";
+        if (document.url) {
+          const base =
+            window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+              ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+              : location.origin;
+          url = new URL(document.url, base).href;
+        }
+        return {
+          id: document.id,
+          title: document.title,
+          category: document.category,
+          type: document.fileType || "PDF",
+          size: document.displaySize || "-",
+          url,
+        };
+      }),
       sk: (() => {
-        const document = data.documents.find(
+        if (data.decree && (data.decree.url || data.decree.assetId)) {
+          const decreeUrl = data.decree.url
+            ? data.decree.url
+            : `/api/v1/public/media/${data.decree.assetId}`;
+          const base =
+            window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+              ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+              : location.origin;
+          return {
+            title: data.decree.title || data.settings?.decreeTitle || "SK Penetapan Pemenang",
+            description:
+              data.decree.description ||
+              data.settings?.decreeDescription ||
+              "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+            url: new URL(decreeUrl, base).href,
+            type: data.decree.fileType || "PDF",
+            size: data.decree.displaySize || "-",
+          };
+        }
+        const document = (data.documents || []).find(
           (item) => item.id === data.settings?.decreeDocumentId,
         );
         if (!document) return null;
         return {
-          title: data.settings?.decreeTitle || document.title,
+          title: data.settings?.decreeTitle || document.title || "SK Penetapan Pemenang",
           description:
             data.settings?.decreeDescription ||
             "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
           url: document.url
-            ? new URL(document.url, TalentaConfig.apiBaseUrl).href
+            ? new URL(document.url, location.origin).href
             : "",
           type: document.fileType || "PDF",
           size: document.displaySize || "-",
@@ -65,7 +106,13 @@
   }
 
   function render(data) {
-    if (!data) return;
+    if (!data || !data.event) {
+      if (!fallback) {
+        root.innerHTML = `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="file-question"></i><h1 class="t-h2">Detail arsip tidak tersedia</h1><p>Event arsip belum dipublikasikan atau tidak ditemukan.</p><a class="btn btn--outline" href="${TalentaPaths.to("publicSite.archive")}">Kembali ke Arsip</a></div></div></section>`;
+        lucide.createIcons();
+      }
+      return;
+    }
     const source = apiState(data);
     document.title = `${source.competition.name} — Arsip Ajang Talenta`;
     const descriptionMeta = document.querySelector('meta[name="description"]');
@@ -133,7 +180,10 @@
     render(event.detail),
   );
   void TalentaPublic.load("archiveDetail", slug).catch((error) => {
-    console.error("Archive Detail API tidak tersedia; fallback ditampilkan.", error);
+    console.error(
+      "Archive Detail API tidak tersedia; fallback ditampilkan.",
+      error,
+    );
     if (!fallback) {
       root.innerHTML = `<section class="section"><div class="container"><div class="public-empty-state"><i data-lucide="file-question"></i><h1 class="t-h2">Detail arsip tidak tersedia</h1><p>Event arsip tidak ditemukan.</p><a class="btn btn--outline" href="${TalentaPaths.to("publicSite.archive")}">Kembali ke Arsip</a></div></div></section>`;
       lucide.createIcons();

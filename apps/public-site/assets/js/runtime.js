@@ -14,7 +14,9 @@
         if (!href || href.startsWith("#")) return;
         const linkedPage = publicPageId(new URL(href, location.href).pathname);
         if (!linkedPage || linkedPage === "home") return;
-        element.hidden = settings.navigation[linkedPage] === false;
+        const isHidden = settings.navigation[linkedPage] === false;
+        element.hidden = isHidden;
+        element.style.setProperty("display", isHidden ? "none" : "", "important");
         element.dataset.globalPage = linkedPage;
       });
     document.querySelectorAll(".bottom-nav").forEach((navigation) => {

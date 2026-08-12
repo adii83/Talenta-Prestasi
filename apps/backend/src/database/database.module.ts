@@ -16,6 +16,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         database: config.get('DB_DATABASE', 'talenta_prestasi'),
         entities: [__dirname + '/../**/*.entity{.ts,.js}'],
         migrations: [__dirname + '/migrations/[0-9]*{.ts,.js}'],
+        migrationsRun: true,
         synchronize: false,
       }),
     }),

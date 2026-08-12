@@ -80,6 +80,7 @@ export class AdminContentService {
     eventId: string,
     userId: string,
     input: {
+      description?: string;
       decreeDocumentId?: string;
       decreeTitle?: string;
       decreeDescription?: string;
@@ -97,6 +98,12 @@ export class AdminContentService {
   ) {
     await this.eventAccess(eventId, userId, true);
     await this.db.transaction(async (manager) => {
+      if (typeof input.description === 'string') {
+        await manager.query(
+          `UPDATE event_sites SET description=$2, updated_at=now() WHERE id=$1`,
+          [eventId, input.description.trim()],
+        );
+      }
       if (input.decreeDocumentId) {
         const decree = await manager.query(
           `SELECT id FROM event_documents WHERE id=$1 AND event_site_id=$2`,
@@ -274,23 +281,27 @@ export class AdminContentService {
         [eventId, documentId ?? null, title, description],
       );
       if (documentId) {
-        const downloadRows = await manager.query(
-          `INSERT INTO download_tabs(event_site_id,custom_tab_name,is_default,is_active,sort_order)
-           VALUES($1,'',
-                  NOT EXISTS (SELECT 1 FROM download_tabs existing WHERE existing.event_site_id=$1 AND existing.is_default=true),
-                  true,COALESCE((SELECT MAX(sort_order)+1 FROM download_tabs existing WHERE existing.event_site_id=$1),0))
-           ON CONFLICT DO NOTHING
-           RETURNING id`,
-          [eventId],
-        );
-        const tabId =
-          downloadRows[0]?.id ??
-          (
-            await manager.query(
-              `SELECT id FROM download_tabs WHERE event_site_id=$1 AND is_default=true LIMIT 1`,
-              [eventId],
-            )
-          )[0]?.id;
+        const defaultTab = (
+          await manager.query(
+            `SELECT id FROM download_tabs WHERE event_site_id=$1 AND is_default=true AND is_active=true LIMIT 1`,
+            [eventId],
+          )
+        )[0] ?? (
+          await manager.query(
+            `SELECT id FROM download_tabs WHERE event_site_id=$1 AND is_active=true ORDER BY sort_order,id LIMIT 1`,
+            [eventId],
+          )
+        )[0];
+        let tabId = defaultTab?.id;
+        if (!tabId) {
+          const newTabs = await manager.query(
+            `INSERT INTO download_tabs(event_site_id,custom_tab_name,is_default,is_active,sort_order)
+             VALUES($1,'',true,true,0)
+             RETURNING id`,
+            [eventId],
+          );
+          tabId = newTabs[0]?.id;
+        }
         if (tabId)
           await manager.query(
             `INSERT INTO download_document_settings(download_tab_id,document_id,event_site_id,is_visible,label_override,sort_order)
