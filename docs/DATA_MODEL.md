@@ -59,7 +59,8 @@ UNIQUE (organization_id, slug) WHERE deleted_at IS NULL
 - nama ajang turunan dari Kategori dan slug teknis;
 - `period_year`, `batch_number`, `batch_label`, serta `batch_note` internal;
 - `activated_at` untuk membedakan Event persiapan dari arsip;
-- `is_active`, status operasional, deskripsi, mascot, timestamps, dan `deleted_at`.
+- `is_active`, status operasional, deskripsi, maskot, timestamps, dan `deleted_at`;
+- `logo_asset_id`, referensi nullable ke `media_assets` untuk logo Event pada navbar sekaligus favicon.
 
 Event tanpa batch unik per Kategori+tahun selama belum soft-delete. Nomor batch unik tanpa mengecualikan soft-delete sehingga nomor yang pernah dipakai tidak didaur ulang.
 
@@ -72,17 +73,19 @@ UNIQUE (category_id) WHERE is_active=true AND deleted_at IS NULL
 
 Constraint kedua memastikan hanya satu Event aktif per kategori. Event nonaktif lain dalam kategori yang sama menjadi arsip otomatis; tidak ada tabel `event_site_archive_sources`.
 
+Logo Event berbeda dari `mascot_asset_id` dan dari `competition_categories.logo_asset_id`/`favicon_asset_id` legacy. Foreign key `event_sites.logo_asset_id` memakai `ON DELETE SET NULL`.
+
 ## Settings dan Beranda
 
-`site_settings` adalah konfigurasi satu-ke-satu Event untuk warna, navigasi, kontak, footer, dan SEO.
+`site_settings` adalah konfigurasi satu-ke-satu Event untuk warna, navigasi, kontak, footer, dan SEO. Kolom `navbar_logo_size` bertipe `smallint`, `NOT NULL`, memiliki default 36, dan dibatasi constraint `CHECK (navbar_logo_size BETWEEN 24 AND 44)`. Satu nilai ini berlaku pada navbar desktop, tablet, dan mobile.
 
 `home_sections` unik berdasarkan `(event_site_id, section_type)`. Item Hero, jadwal, harga, fasilitas, benefit, dan partner mengacu ke section masing-masing.
 
-`page_settings` unik berdasarkan `(event_site_id, page_type)`. `winner_page_settings` menyimpan opsi halaman Pemenang dan `event_detail_settings` menyimpan opsi Detail Arsip/SK pada level Event.
+`page_settings` unik berdasarkan `(event_site_id, page_type)`. `winner_page_settings` menyimpan opsi halaman Pemenang dan `event_detail_settings` menyimpan opsi Detail Arsip/SK pada level Event. Kolom nullable `event_detail_settings.archive_display_name` menyimpan nama presentasi khusus Arsip. Nilai `NULL` berarti belum dikustom sehingga nama dihitung dari nama canonical Event beserta periode/batch; nilai tersimpan dipakai verbatim pada kartu dan detail Arsip tanpa mengubah `event_sites.name`.
 
 ## Dokumen, Pemenang, dan SK
 
-`event_documents` dimiliki Event. Constraint `(id, event_site_id)` dipakai oleh foreign key gabungan agar dokumen tidak dapat direferensikan oleh Event lain.
+`event_documents` dimiliki Event. Constraint `(id, event_site_id)` mempertahankan identitas ownership untuk relasi yang wajib tetap dalam Event yang sama, termasuk SK dan pengaturan Detail Arsip. Referensi dari tab Unduh mengikuti aturan khusus lintas Event dalam Kategori Lomba yang sama.
 
 `winner_categories` dan `winners` dimiliki Event. Pemenang mereferensikan kategori dengan pasangan `(category_id, event_site_id)`.
 
@@ -92,7 +95,7 @@ SK Pemenang disimpan sebagai Event Document dan direferensikan oleh `event_detai
 
 `download_tabs` dimiliki Event dan menyimpan label tab, status default/aktif, serta urutan. Hanya satu tab default diperbolehkan per Event.
 
-`download_document_settings` menghubungkan tab dengan Event Document melalui `event_site_id`; foreign key gabungan memastikan tab dan dokumen berasal dari Event yang sama. Tabel ini hanya menyimpan visibilitas, label override, dan urutan.
+`download_document_settings` menghubungkan tab milik Event dengan Event Document. Foreign key gabungan `(download_tab_id, event_site_id)` menjaga setting tetap berada pada Event pemilik tab, sedangkan foreign key langsung `document_id` memungkinkan referensi dokumen milik Event lain. Service memverifikasi bahwa Event pemilik tab dan Event pemilik dokumen berada dalam Kategori Lomba yang sama; referensi lintas kategori atau tenant ditolak. Tabel ini hanya menyimpan visibilitas, label override, dan urutan.
 
 ## FAQ
 
@@ -102,11 +105,15 @@ SK Pemenang disimpan sebagai Event Document dan direferensikan oleh `event_detai
 
 `media_assets` dimiliki Organization dan menyimpan storage key, nama asli, MIME, ukuran, checksum SHA-256, dimensi opsional, alt text, status, creator, dan waktu pembuatan. File fisik berada di storage lokal; URL publik hanya mengekspos UUID asset.
 
+Logo dapat menunjuk PNG, JPEG, atau WebP aktif maksimal 5 MB. Upload disimpan apa adanya, termasuk transparansi; tidak ada remove-background atau pemrosesan gambar. Binary Admin dibaca melalui `GET /api/v1/admin/events/:eventId/media/:assetId` dengan JWT dan verifikasi tenant/Event, lalu browser membuat Blob/Object URL. Object URL tidak dipersistensikan ke `localStorage`. Media publik hanya tersedia melalui token preview yang sah atau `event_publication_assets`.
+
 ## Draf dan Snapshot Publik Event
 
-Tabel relasional Event dan kontennya menjadi workspace draf Admin. `event_publications` menyimpan tepat satu snapshot publik aktif per Event, snapshot workspace saat publish, checksum workspace, nomor versi, waktu, dan pengguna publisher. `event_publication_assets` menjadi allowlist media yang direferensikan snapshot publik.
+Tabel relasional Event dan kontennya menjadi workspace draf Admin. `event_publications` menyimpan tepat satu snapshot publik aktif per Event, snapshot workspace saat publish, checksum workspace, nomor versi, waktu, dan pengguna publisher. `event_publication_assets` menjadi allowlist media yang direferensikan snapshot publik, termasuk UUID `logoAssetId` Event.
 
 Publish Event membangun DTO lengkap dan mengganti snapshot serta allowlist media dalam satu transaksi. Menyimpan draf berikutnya tidak mengubah snapshot. Batalkan draf memulihkan row workspace dari snapshot workspace terakhir dalam urutan foreign key yang aman.
+
+Snapshot workspace lama yang tidak memiliki key `logo_asset_id` tidak mengosongkan logo Event saat restore; snapshot settings lama tanpa `navbar_logo_size` memakai 36. Migration logo melakukan backfill workspace dari `COALESCE(event_sites.mascot_asset_id, competition_categories.logo_asset_id)`, tetapi tidak menulis ulang public snapshot existing. Snapshot baru dengan `logo_asset_id: null` tetap bermakna menghapus logo.
 
 ## Publikasi, Aktivasi, dan Arsip
 
@@ -151,5 +158,6 @@ Admin API utama:
 - `POST /admin/events/:eventId/preview-token|publish|discard-draft`
 - `/admin/events/:eventId/settings|home|faq|downloads|documents|winner-categories|winners|decree|detail-settings|pages/...`
 - `POST /admin/events/:eventId/media`
+- `GET /admin/events/:eventId/media/:assetId`
 
 DTO publik tidak mengekspos password hash, storage key, path fisik, atau ownership internal.

@@ -43,6 +43,18 @@ function toast(msg = "Detail tersimpan.") {
   t.classList.add("admin-toast--show");
   setTimeout(() => t.classList.remove("admin-toast--show"), 2200);
 }
+function formatArchiveDisplayName(item) {
+  if (!item.periodYear) return item.name || "Ajang Talenta";
+  const period = `${item.name || "Ajang Talenta"} ${item.periodYear}`;
+  return item.batchLabel && item.batchNumber
+    ? `${period} · ${item.batchLabel} ${item.batchNumber}`
+    : item.batchNumber && item.batchNumber > 1
+      ? `${period} · Gelombang ${item.batchNumber}`
+      : period;
+}
+function archiveDisplayName(item) {
+  return item.archiveDisplayName || formatArchiveDisplayName(item);
+}
 function initials(name) {
   return (name || "?")
     .split(/\s+/)
@@ -55,20 +67,62 @@ function initials(name) {
 function syncForm() {
   if (!comp) return;
   const det = comp.detail;
-  document.getElementById("detailTopTitle").textContent =
-    comp.name || "Detail Arsip";
-  document.getElementById("detailContextTitle").textContent =
-    comp.name || "Detail Arsip";
-  const publicUrl = TalentaPaths.to("publicSite.archiveDetail", {
-    query: { event: comp.slug },
+  const displayName = archiveDisplayName(comp);
+  document.getElementById("detailTopTitle").textContent = displayName;
+  document.getElementById("detailContextTitle").textContent = displayName;
+  const publicUrl = new URL(
+    TalentaPaths.to("publicSite.archiveDetail", {
+      query: { event: comp.slug },
+    }),
+  );
+  const category = window.parent?.TalentaAdminAuth?.currentCategory?.();
+  const isLocal = ["localhost", "127.0.0.1"].includes(location.hostname);
+  if (!isLocal && category?.hostname) {
+    try {
+      const host = new URL(`https://${category.hostname}`);
+      if (
+        host.protocol === "https:" &&
+        host.hostname &&
+        !host.username &&
+        !host.password &&
+        !host.port &&
+        host.pathname === "/" &&
+        !host.search &&
+        !host.hash
+      )
+        publicUrl.href = `https://${host.hostname}/arsip/detail/?event=${encodeURIComponent(comp.slug)}`;
+    } catch (_error) {}
+  } else if (category?.slug) publicUrl.searchParams.set("site", category.slug);
+  const openDetailPreview = async (event) => {
+    event.preventDefault();
+    const link = event.currentTarget;
+    link.setAttribute("aria-disabled", "true");
+    try {
+      const { data } = await TalentaApi.request(
+        `/admin/events/${comp.id}/preview-token`,
+        { method: "POST" },
+      );
+      publicUrl.hash = new URLSearchParams({ preview: data.token }).toString();
+      open(publicUrl.href, "_blank", "noopener");
+    } catch (error) {
+      toast(error.message);
+    } finally {
+      link.removeAttribute("aria-disabled");
+    }
+  };
+  ["detailPublicLink", "detailToolbarPublicLink"].forEach((id) => {
+    const link = document.getElementById(id);
+    link.href = publicUrl.href;
+    link.onclick = openDetailPreview;
   });
-  document.getElementById("detailPublicLink").href = publicUrl;
-  document.getElementById("detailToolbarPublicLink").href = publicUrl;
   const map = {
     detailActive: comp.active,
-    detailName: comp.name,
-    detailShortName: comp.shortName || "",
+    detailName: archiveDisplayName(comp),
     detailDescription: comp.description || "",
+    detailSkTitle: comp.skDocument?.title || "SK Penetapan Pemenang",
+    detailSkDescription:
+      comp.skDocument?.description ||
+      "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
     detailWinnersActive: det.winnersActive,
     detailWinnersEyebrow: det.winnersEyebrow,
     detailWinnersTitle: det.winnersTitle,
@@ -86,6 +140,10 @@ function syncForm() {
     x.checked = det[x.dataset.meta] !== false;
   });
   renderSkSelect();
+  document.getElementById("detailSkTitle").disabled =
+    !comp.skDocument?.documentId;
+  document.getElementById("detailSkDescription").disabled =
+    !comp.skDocument?.documentId;
   renderCategorySummary();
   renderDocumentList();
 }
@@ -183,24 +241,17 @@ function renderDocumentList() {
 function bindForm() {
   if (!comp) return;
   const det = comp.detail;
-  const texts = {
-    detailName: "name",
-    detailShortName: "shortName",
-    detailDescription: "description",
+  document.getElementById("detailName").oninput = (e) => {
+    comp.archiveDisplayName = e.target.value;
+    const displayName = archiveDisplayName(comp);
+    document.getElementById("detailTopTitle").textContent = displayName;
+    document.getElementById("detailContextTitle").textContent = displayName;
+    renderPreview();
   };
-  Object.entries(texts).forEach(
-    ([id, k]) =>
-      (document.getElementById(id).oninput = (e) => {
-        comp[k] = e.target.value;
-        if (k === "name") {
-          document.getElementById("detailTopTitle").textContent =
-            e.target.value;
-          document.getElementById("detailContextTitle").textContent =
-            e.target.value;
-        }
-        renderPreview();
-      }),
-  );
+  document.getElementById("detailDescription").oninput = (e) => {
+    comp.description = e.target.value;
+    renderPreview();
+  };
   document.getElementById("detailActive").onchange = (e) => {
     comp.active = e.target.checked;
     renderPreview();
@@ -237,21 +288,32 @@ function bindForm() {
         renderPreview();
       }),
   );
+  const skTitle = document.getElementById("detailSkTitle");
+  const skDescription = document.getElementById("detailSkDescription");
+  skTitle.oninput = () => {
+    if (!comp.skDocument?.documentId) return;
+    comp.skDocument.title = skTitle.value;
+    renderPreview();
+  };
+  skDescription.oninput = () => {
+    if (!comp.skDocument?.documentId) return;
+    comp.skDocument.description = skDescription.value;
+    renderPreview();
+  };
   document.getElementById("detailSkDocument").onchange = (e) => {
-    if (e.target.value) {
-      if (!comp.skDocument) comp.skDocument = {};
-      comp.skDocument.documentId = e.target.value;
-      const d = (comp.documents || []).find((x) => x.id === e.target.value);
-      if (d) {
-        comp.skDocument.title = d.title;
-        comp.skDocument.description = "Unduh dokumen resmi SK Pemenang.";
-        comp.skDocument.url = d.url || "#";
-        comp.skDocument.type = d.type;
-        comp.skDocument.size = d.size;
-      }
-    } else {
-      comp.skDocument = null;
-    }
+    const d = (comp.documents || []).find((x) => x.id === e.target.value);
+    comp.skDocument = d
+      ? {
+          ...d,
+          documentId: d.id,
+          title: skTitle.value || "SK Penetapan Pemenang",
+          description:
+            skDescription.value ||
+            "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+        }
+      : null;
+    skTitle.disabled = !d;
+    skDescription.disabled = !d;
     renderPreview();
   };
   document.querySelectorAll("[data-detail-preview]").forEach(
@@ -347,7 +409,7 @@ function renderLegacyPreview() {
       /* SK Banner */
       if (det.showSk && comp.skDocument) {
         const sk = comp.skDocument;
-        html += `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${esc(sk.title || "SK Penetapan Pemenang")}</h3><p>${esc(sk.description || "Unduh dokumen resmi SK Pemenang.")}</p></div></div><a href="#" class="btn btn--primary" style="border:1px solid rgba(255,255,255,0.2)"><i data-lucide="download" style="width:16px;height:16px"></i> Unduh PDF</a></div>`;
+        html += `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${esc(sk.title || "SK Penetapan Pemenang")}</h3><p>${esc(sk.description || "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.")}</p></div></div><a href="#" class="btn btn--primary" style="border:1px solid rgba(255,255,255,0.2)"><i data-lucide="download" style="width:16px;height:16px"></i> Unduh SK</a></div>`;
       }
       /* Winner groups */
       if (cats.length) {
@@ -407,7 +469,10 @@ function renderPreview() {
       '<div class="preview-disabled"><strong>Lomba tidak ditemukan</strong></div>';
     return;
   }
-  const normalizedCompetition = normalizeArchiveCompetition(comp);
+  const normalizedCompetition = normalizeArchiveCompetition({
+    ...comp,
+    name: archiveDisplayName(comp),
+  });
   if (
     !normalizedCompetition?.active ||
     normalizedCompetition.detail.active === false

@@ -2,6 +2,55 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
+const homeRendererSource = await readFile(
+  "apps/public-site/assets/js/home-renderer.js",
+  "utf8",
+);
+const winnerRendererSource = await readFile(
+  "apps/public-site/assets/js/winner-renderer.js",
+  "utf8",
+);
+const winnerAdminApiSource = await readFile(
+  "apps/admin/js/features/winners/api.js",
+  "utf8",
+);
+assert.doesNotMatch(
+  homeRendererSource,
+  /photoAssetId\)\s*\{\s*return `\/api\/v1\/public\/media\/\$\{winner\.photoAssetId\}`/,
+  "fallback photoAssetId Highlight Beranda tidak boleh relatif ke dev server",
+);
+assert.doesNotMatch(
+  winnerRendererSource,
+  /photo = `\/api\/v1\/public\/media\/\$\{winner\.photoAssetId\}`/,
+  "fallback photoAssetId halaman Pemenang tidak boleh relatif ke dev server",
+);
+assert.match(
+  winnerAdminApiSource,
+  /TalentaMedia\.adminPreviewUrl\(event\.mascotAssetId,\s*\{\s*siteId: event\.id,?\s*\}\s*\)/,
+  "Preview Admin kartu Arsip Pemenang harus memakai Blob milik Event Arsip.",
+);
+assert.match(
+  winnerAdminApiSource,
+  /iconMode: event\.mascotAssetId \? "upload" : "library"/,
+);
+assert.match(
+  winnerAdminApiSource,
+  /name:\s*event\.archiveDisplayName\s*\|\|\s*formatWinnerEventName\(event\)/,
+);
+assert.match(
+  winnerRendererSource,
+  /icon:\s*event\.fallbackIcon\s*\|\|\s*event\.icon\s*\|\|\s*"archive"/,
+);
+assert.match(
+  winnerRendererSource,
+  /iconMode:\s*event\.mascotAssetId\s*\?\s*"upload"\s*:\s*"library"/,
+);
+assert.match(
+  winnerRendererSource,
+  /TalentaMedia\.url\(event\.mascotAssetId\)/,
+  "Public kartu Arsip Pemenang harus resolve media canonical melalui TalentaMedia.",
+);
+
 const storage = new Map();
 const localStorage = {
   getItem(key) {

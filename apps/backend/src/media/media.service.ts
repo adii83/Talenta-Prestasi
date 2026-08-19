@@ -102,7 +102,19 @@ export class MediaService {
            AND event.organization_id=$4 AND membership.user_id=$5
            AND asset.status='active' AND event.deleted_at IS NULL
            AND (
+             event.logo_asset_id=asset.id OR
              event.mascot_asset_id=asset.id OR
+             EXISTS(
+               SELECT 1 FROM event_sites archive
+               WHERE archive.category_id=event.category_id
+                 AND archive.organization_id=event.organization_id
+                 AND archive.mascot_asset_id=asset.id
+                 AND archive.deleted_at IS NULL
+                 AND (
+                   archive.period_year<event.period_year OR
+                   (archive.period_year=event.period_year AND COALESCE(archive.batch_number,1)<COALESCE(event.batch_number,1))
+                 )
+             ) OR
              EXISTS(SELECT 1 FROM event_documents document WHERE document.event_site_id=event.id AND document.asset_id=asset.id) OR
              EXISTS(SELECT 1 FROM winners winner WHERE winner.event_site_id=event.id AND winner.photo_asset_id=asset.id) OR
              EXISTS(SELECT 1 FROM competition_categories category WHERE category.id=event.category_id AND (category.logo_asset_id=asset.id OR category.favicon_asset_id=asset.id)) OR
@@ -122,19 +134,40 @@ export class MediaService {
     } else {
       const rows = await this.db.query(
         `SELECT asset.id FROM media_assets asset
-         JOIN event_publication_assets link ON link.asset_id=asset.id
-         JOIN event_sites event ON event.id=link.event_site_id
+         JOIN event_sites event ON event.organization_id=asset.organization_id
          JOIN competition_categories category ON category.id=event.category_id
          JOIN organizations org ON org.id=event.organization_id
          WHERE asset.id=$1 AND asset.status='active'
            AND category.publication_status='published' AND category.status='active'
            AND category.deleted_at IS NULL AND event.deleted_at IS NULL
-           AND org.status='active' AND org.deleted_at IS NULL`,
+           AND org.status='active' AND org.deleted_at IS NULL
+           AND (
+             EXISTS(SELECT 1 FROM event_publication_assets link WHERE link.asset_id=asset.id AND link.event_site_id=event.id) OR
+             event.mascot_asset_id=asset.id
+           )`,
         [id],
       );
       allowed = Boolean(rows[0]);
     }
     if (!allowed) throw new NotFoundException('Media not found');
+    return this.readAssetBuffer(id);
+  }
+
+  async adminFile(eventId: string, userId: string, assetId: string) {
+    const rows = await this.db.query(
+      `SELECT asset.id FROM media_assets asset
+       JOIN event_sites event ON event.organization_id=asset.organization_id
+       JOIN organization_memberships membership ON membership.organization_id=event.organization_id
+       WHERE event.id=$1 AND membership.user_id=$2
+         AND asset.id=$3 AND asset.organization_id=event.organization_id
+         AND asset.status='active' AND event.deleted_at IS NULL`,
+      [eventId, userId, assetId],
+    );
+    if (!rows[0]) throw new NotFoundException('Media not found');
+    return this.readAssetBuffer(assetId);
+  }
+
+  private async readAssetBuffer(id: string) {
     const asset = await this.assets.findOneBy({ id, status: 'active' });
     if (!asset) throw new NotFoundException('Media not found');
     return { asset, buffer: await readFile(this.path(asset.storageKey)) };

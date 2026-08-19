@@ -24,6 +24,7 @@ import {
   MaxLength,
   Min,
   MinLength,
+  ValidateIf,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -58,14 +59,37 @@ class UpdateCategoryDto {
 
 class UpdateEventDto {
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
-  @IsOptional() @IsString() @MaxLength(60) fallbackIcon?: string;
-  @IsOptional() @IsUUID() mascotAssetId?: string;
+  @IsOptional()
+  @IsIn([
+    'archive',
+    'award',
+    'book-open',
+    'graduation-cap',
+    'medal',
+    'school',
+    'sparkles',
+    'star',
+    'trophy',
+  ])
+  fallbackIcon?: string;
+  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsUUID()
+  mascotAssetId?: string | null;
 }
 
 class EventSettingsDto {
   @IsOptional() @IsString() @MaxLength(5000) eventDescription?: string;
   @IsString() @MaxLength(20) primaryColor!: string;
-  @IsOptional() @IsUUID() logoAssetId?: string;
+  @IsOptional()
+  @ValidateIf((_object, value) => value !== null)
+  @IsUUID()
+  logoAssetId?: string | null;
+  @Type(() => Number)
+  @IsInt()
+  @Min(24)
+  @Max(44)
+  navbarLogoSize!: number;
   @IsObject() navigation!: Record<string, boolean>;
   @IsObject() contact!: Record<string, string>;
   @IsObject() footer!: Record<string, string>;
@@ -136,7 +160,10 @@ class HomeAggregateDto {
 
 class PublicationActionDto {
   @IsOptional() @IsInt() @Min(1) expectedVersion?: number;
-  @IsOptional() @IsString() @Matches(/^[a-f0-9]{64}$/) expectedChecksum?: string;
+  @IsOptional()
+  @IsString()
+  @Matches(/^[a-f0-9]{64}$/)
+  expectedChecksum?: string;
 }
 
 @Controller('admin')
@@ -258,7 +285,11 @@ export class AdminController {
     @Body() input: EventPeriodIdentityDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.adminService.setEventPeriodIdentity(eventId, user.userId, input);
+    return this.adminService.setEventPeriodIdentity(
+      eventId,
+      user.userId,
+      input,
+    );
   }
 
   @Post('activate')

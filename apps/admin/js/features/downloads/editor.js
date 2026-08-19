@@ -390,14 +390,27 @@ function moveCurrentDocument(fromIndex, toIndex, options = {}) {
 
 function renderCurrentDocuments() {
   const name = document.getElementById("downloadCurrentCompetitionName");
+  const tabName = document.getElementById("downloadCurrentTabName");
   const root = document.getElementById("downloadCurrentDocumentList");
-  if (!name || !root) return;
+  if (!name || !tabName || !root) return;
   if (!currentDownloadCompetition) {
     name.textContent = "Belum ada lomba saat ini.";
+    tabName.value = "";
+    tabName.disabled = true;
     root.innerHTML =
       '<div class="download-empty"><strong>Dokumen belum dapat dikelola.</strong></div>';
     return;
   }
+  const currentConfig = state.competitions.find(
+    (config) => config.competitionId === currentDownloadCompetition.id,
+  );
+  tabName.disabled = !currentConfig;
+  tabName.value =
+    currentConfig?.customTabName || currentDownloadCompetition.name;
+  tabName.oninput = () => {
+    currentConfig.customTabName = tabName.value;
+    renderPreview();
+  };
   name.textContent = `${currentDownloadCompetition.name} · ${currentDownloadCompetition.documents.length} dokumen`;
   const total = currentDownloadCompetition.documents.length;
   root.innerHTML = total

@@ -207,7 +207,7 @@
               return new URL(winner.photoUrl, base).href;
             }
             if (winner.photoAssetId) {
-              return `/api/v1/public/media/${winner.photoAssetId}`;
+              return assetUrl(`/api/v1/public/media/${winner.photoAssetId}`);
             }
             return winner.photo || "";
           })(),

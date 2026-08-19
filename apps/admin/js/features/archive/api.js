@@ -28,6 +28,14 @@
       return false;
     });
   };
+  const saveIdentity = (item) =>
+    TalentaApi.request(`/admin/events/${item.id}`, {
+      method: "PATCH",
+      body: {
+        fallbackIcon: item.fallbackIcon,
+        mascotAssetId: item.mascotAssetId ?? null,
+      },
+    });
   const savePage = (page) => {
     const event = currentEvent();
     return TalentaApi.request(`/admin/events/${event.id}/pages/archive`, {
@@ -46,5 +54,10 @@
       return { ...page, isActive: page.active };
     }
   };
-  window.TalentaArchiveApi = Object.freeze({ list, loadPage, savePage });
+  window.TalentaArchiveApi = Object.freeze({
+    list,
+    loadPage,
+    savePage,
+    saveIdentity,
+  });
 })();

@@ -20,6 +20,14 @@ export class EventDetailSettings {
   @Column({ name: 'decree_document_id', type: 'uuid', nullable: true })
   decreeDocumentId!: string | null;
 
+  @Column({
+    name: 'archive_display_name',
+    type: 'varchar',
+    length: 200,
+    nullable: true,
+  })
+  archiveDisplayName!: string | null;
+
   @Column({ name: 'decree_title', default: 'SK Penetapan Pemenang' })
   decreeTitle!: string;
 

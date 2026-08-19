@@ -33,8 +33,20 @@ interface CategoryUpdate {
 interface EventUpdate {
   description?: string;
   fallbackIcon?: string;
-  mascotAssetId?: string;
+  mascotAssetId?: string | null;
 }
+
+const EVENT_FALLBACK_ICONS = new Set([
+  'archive',
+  'award',
+  'book-open',
+  'graduation-cap',
+  'medal',
+  'school',
+  'sparkles',
+  'star',
+  'trophy',
+]);
 
 @Injectable()
 export class AdminService {
@@ -130,7 +142,10 @@ export class AdminService {
           status: 'active',
         }),
       );
-      return { data: { id: category.id, name: category.name, slug }, errors: [] };
+      return {
+        data: { id: category.id, name: category.name, slug },
+        errors: [],
+      };
     });
   }
 
@@ -234,11 +249,25 @@ export class AdminService {
         'owner',
         'admin',
       ]);
+      const hasDescription = input.description !== undefined;
+      const hasFallbackIcon = input.fallbackIcon !== undefined;
+      const hasMascotAssetId = input.mascotAssetId !== undefined;
+      const fallbackIcon = input.fallbackIcon?.trim() || null;
+      if (
+        hasFallbackIcon &&
+        (!fallbackIcon || !EVENT_FALLBACK_ICONS.has(fallbackIcon))
+      )
+        throw new BadRequestException('Invalid fallback icon');
       if (input.mascotAssetId) {
         const assets = await manager.query<{ id: string }[]>(
-          `SELECT id FROM media_assets
-           WHERE id=$1 AND organization_id=$2 AND status='active'`,
-          [input.mascotAssetId, event.organizationId],
+          `SELECT asset.id FROM media_assets asset
+           WHERE asset.id=$1 AND asset.organization_id=$2 AND asset.status='active'
+             AND asset.mime_type=ANY($3::text[])`,
+          [
+            input.mascotAssetId,
+            event.organizationId,
+            ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'],
+          ],
         );
         if (!assets[0]) throw new BadRequestException('Invalid mascot asset');
       }
@@ -253,13 +282,19 @@ export class AdminService {
         }[]
       >(
         `UPDATE event_sites
-         SET description=$2,fallback_icon=$3,mascot_asset_id=$4,updated_at=now()
+         SET description=CASE WHEN $2 THEN $3 ELSE description END,
+             fallback_icon=CASE WHEN $4 THEN $5 ELSE fallback_icon END,
+             mascot_asset_id=CASE WHEN $6 THEN $7::uuid ELSE mascot_asset_id END,
+             updated_at=now()
          WHERE id=$1
          RETURNING id,name,slug,description,fallback_icon AS "fallbackIcon",mascot_asset_id AS "mascotAssetId"`,
         [
           eventId,
-          input.description?.trim() ?? '',
-          input.fallbackIcon?.trim() || 'graduation-cap',
+          hasDescription,
+          hasDescription ? input.description?.trim() : null,
+          hasFallbackIcon,
+          fallbackIcon,
+          hasMascotAssetId,
           input.mascotAssetId ?? null,
         ],
       );
@@ -288,10 +323,11 @@ export class AdminService {
         throw new BadRequestException(
           'Publikasikan isi Event sebelum menjadikannya aktif pada kategori published',
         );
-      const identity = await manager.query<Array<{ periodYear: number | null }>>(
-        `SELECT period_year AS "periodYear" FROM event_sites WHERE id=$1`,
-        [eventId],
-      );
+      const identity = await manager.query<
+        Array<{ periodYear: number | null }>
+      >(`SELECT period_year AS "periodYear" FROM event_sites WHERE id=$1`, [
+        eventId,
+      ]);
       if (!identity[0]?.periodYear)
         throw new BadRequestException(
           'Tetapkan identitas periode sebelum mengaktifkan Event',
@@ -335,7 +371,10 @@ export class AdminService {
   async categoryEvents(categoryId: string, userId: string) {
     await this.authorizedCategoryRead(categoryId, userId);
     const rows = await this.dataSource.query(
-      `SELECT event.id,event.name,event.slug,event.period_year AS "periodYear",
+      `SELECT event.id,event.name,event.slug,event.description,
+              event.fallback_icon AS "fallbackIcon",event.mascot_asset_id AS "mascotAssetId",
+              detail.archive_display_name AS "archiveDisplayName",
+              event.period_year AS "periodYear",
               event.batch_number AS "batchNumber",event.batch_label AS "batchLabel",
               event.batch_note AS "batchNote",event.period_year IS NULL AS "needsPeriodConfirmation",
               event.is_active AS "isActive",event.activated_at IS NOT NULL AND event.is_active=false AS "isArchive",
@@ -345,6 +384,7 @@ export class AdminService {
                    ELSE 'published' END AS "publicationState"
        FROM event_sites event
        LEFT JOIN event_publications publication ON publication.event_site_id=event.id
+       LEFT JOIN event_detail_settings detail ON detail.event_site_id=event.id
        WHERE event.category_id=$1 AND event.deleted_at IS NULL
        ORDER BY event.is_active DESC,event.period_year DESC NULLS LAST,
                 event.batch_number DESC NULLS LAST,event.created_at DESC`,
@@ -369,12 +409,10 @@ export class AdminService {
 
   async publishCategory(categoryId: string, userId: string) {
     return this.dataSource.transaction(async (manager) => {
-      const cat = await this.authorizedCategory(
-        manager,
-        categoryId,
-        userId,
-        ['owner', 'admin'],
-      );
+      const cat = await this.authorizedCategory(manager, categoryId, userId, [
+        'owner',
+        'admin',
+      ]);
       const readiness = await manager.query<Array<{ id: string }>>(
         `SELECT event.id FROM event_sites event
          JOIN event_publications publication ON publication.event_site_id=event.id
@@ -455,6 +493,8 @@ export class AdminService {
         name: event.name,
         slug: event.slug,
         description: event.description || '',
+        fallbackIcon: event.fallbackIcon,
+        mascotAssetId: event.mascotAssetId,
         isActive: event.isActive,
         status: event.status,
         categoryId: event.categoryId,
@@ -473,19 +513,25 @@ export class AdminService {
     const rows = await this.dataSource.query<
       Array<{
         primaryColor: string;
+        navbarLogoSize: number;
         navigation: Record<string, boolean>;
         contact: Record<string, string>;
         footer: Record<string, string>;
         seo: Record<string, string>;
       }>
     >(
-      `SELECT primary_color AS "primaryColor",navigation,contact,footer,seo FROM site_settings WHERE event_site_id=$1`,
+      `SELECT primary_color AS "primaryColor",navbar_logo_size AS "navbarLogoSize",navigation,contact,footer,seo FROM site_settings WHERE event_site_id=$1`,
       [eventId],
     );
     return {
       data: {
         eventName: event.name,
         eventDescription: event.description,
+        logoAssetId: event.logoAssetId ?? null,
+        logoUrl: event.logoAssetId
+          ? `/api/v1/admin/events/${eventId}/media/${event.logoAssetId}`
+          : null,
+        navbarLogoSize: rows[0]?.navbarLogoSize ?? 36,
         primaryColor: rows[0]?.primaryColor ?? '#1e4b8c',
         navigation: rows[0]?.navigation ?? {},
         contact: rows[0]?.contact ?? {},
@@ -502,7 +548,8 @@ export class AdminService {
     input: {
       eventDescription?: string;
       primaryColor: string;
-      logoAssetId?: string;
+      logoAssetId?: string | null;
+      navbarLogoSize?: number;
       navigation: Record<string, boolean>;
       contact: Record<string, string>;
       footer: Record<string, string>;
@@ -514,14 +561,19 @@ export class AdminService {
       if (input.logoAssetId) {
         const owned = await manager.query<Array<{ id: string }>>(
           `SELECT asset.id FROM media_assets asset
-           JOIN event_sites e ON e.organization_id=asset.organization_id
-           WHERE asset.id=$1 AND e.id=$2 AND asset.status='active'`,
-          [input.logoAssetId, eventId],
+           JOIN event_sites event ON event.organization_id=asset.organization_id
+           WHERE asset.id=$1 AND event.id=$2 AND asset.status='active'
+             AND asset.mime_type=ANY($3::text[])`,
+          [
+            input.logoAssetId,
+            eventId,
+            ['image/png', 'image/jpeg', 'image/webp'],
+          ],
         );
         if (!owned[0]) throw new BadRequestException('Invalid logo asset');
       }
       await manager.query(
-        `UPDATE event_sites SET description=$2,mascot_asset_id=$3,updated_at=now() WHERE id=$1`,
+        `UPDATE event_sites SET description=$2,logo_asset_id=$3,updated_at=now() WHERE id=$1`,
         [
           eventId,
           input.eventDescription?.trim() ?? '',
@@ -529,12 +581,13 @@ export class AdminService {
         ],
       );
       await manager.query(
-        `INSERT INTO site_settings(event_site_id,primary_color,navigation,contact,footer,seo)
-         VALUES($1,$2,$3,$4,$5,$6)
-         ON CONFLICT(event_site_id) DO UPDATE SET primary_color=EXCLUDED.primary_color,navigation=EXCLUDED.navigation,contact=EXCLUDED.contact,footer=EXCLUDED.footer,seo=EXCLUDED.seo`,
+        `INSERT INTO site_settings(event_site_id,primary_color,navbar_logo_size,navigation,contact,footer,seo)
+         VALUES($1,$2,$3,$4,$5,$6,$7)
+         ON CONFLICT(event_site_id) DO UPDATE SET primary_color=EXCLUDED.primary_color,navbar_logo_size=EXCLUDED.navbar_logo_size,navigation=EXCLUDED.navigation,contact=EXCLUDED.contact,footer=EXCLUDED.footer,seo=EXCLUDED.seo`,
         [
           eventId,
           input.primaryColor,
+          input.navbarLogoSize ?? 36,
           input.navigation,
           input.contact,
           input.footer,
@@ -672,17 +725,24 @@ export class AdminService {
     if (tabs.filter((t) => t.isDefault).length > 1)
       throw new BadRequestException('Only one default download tab is allowed');
     await this.dataSource.transaction(async (manager) => {
-      await manager.query(
-        `DELETE FROM download_tabs WHERE event_site_id=$1`,
-        [eventId],
-      );
+      await manager.query(`DELETE FROM download_tabs WHERE event_site_id=$1`, [
+        eventId,
+      ]);
       for (const [tabOrder, tab] of tabs.entries()) {
         const rowResult = await manager.query<{ id: string }[]>(
           `INSERT INTO download_tabs(event_site_id,custom_tab_name,is_default,is_active,sort_order) VALUES($1,$2,$3,$4,$5) RETURNING id`,
-          [eventId, tab.customTabName.trim(), tab.isDefault, tab.isActive, tabOrder],
+          [
+            eventId,
+            tab.customTabName.trim(),
+            tab.isDefault,
+            tab.isActive,
+            tabOrder,
+          ],
         );
         for (const [docOrder, doc] of tab.documents.entries()) {
-          const docOwned = await manager.query<{ id: string; eventSiteId: string }[]>(
+          const docOwned = await manager.query<
+            { id: string; eventSiteId: string }[]
+          >(
             `SELECT d.id, d.event_site_id AS "eventSiteId" FROM event_documents d
              JOIN event_sites current_event ON current_event.id=$2
              JOIN event_sites doc_event ON doc_event.id=d.event_site_id
@@ -740,9 +800,7 @@ export class AdminService {
     }[],
   ) {
     await this.authorizedEventContentWrite(eventId, userId);
-    if (
-      new Set(sections.map((s) => s.sectionType)).size !== sections.length
-    )
+    if (new Set(sections.map((s) => s.sectionType)).size !== sections.length)
       throw new BadRequestException('Home section types must be unique');
     await this.dataSource.transaction(async (manager) => {
       await manager.query(
@@ -752,7 +810,13 @@ export class AdminService {
       for (const [sortOrder, section] of sections.entries()) {
         await manager.query(
           `INSERT INTO home_sections(event_site_id,section_type,is_active,sort_order,settings) VALUES($1,$2,$3,$4,$5) ON CONFLICT(event_site_id,section_type) DO UPDATE SET is_active=EXCLUDED.is_active,sort_order=EXCLUDED.sort_order,settings=EXCLUDED.settings`,
-          [eventId, section.sectionType, section.isActive, sortOrder, section.settings],
+          [
+            eventId,
+            section.sectionType,
+            section.isActive,
+            sortOrder,
+            section.settings,
+          ],
         );
       }
       await manager.query(
@@ -788,14 +852,13 @@ export class AdminService {
         `UPDATE event_sites
          SET batch_number=1,batch_label=$2,slug=$3,updated_at=now()
          WHERE id=$1`,
-        [
-          unbatched.id,
-          label,
-          this.periodSlug(input.periodYear, label, 1),
-        ],
+        [unbatched.id, label, this.periodSlug(input.periodYear, label, 1)],
       );
       batchNumber = this.nextBatchNumber(identities, 1);
-    } else if (input.batchEnabled || identities.some((item) => item.batchNumber)) {
+    } else if (
+      input.batchEnabled ||
+      identities.some((item) => item.batchNumber)
+    ) {
       label =
         identities.find((item) => item.batchLabel)?.batchLabel ??
         this.batchLabel(input.batchLabel);
@@ -876,7 +939,9 @@ export class AdminService {
     events: Array<{ batchNumber: number | null }>,
     minimum = 0,
   ) {
-    return Math.max(minimum, ...events.map((item) => item.batchNumber ?? 0)) + 1;
+    return (
+      Math.max(minimum, ...events.map((item) => item.batchNumber ?? 0)) + 1
+    );
   }
 
   private batchLabel(value?: string) {

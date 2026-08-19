@@ -89,13 +89,14 @@
                 >
               </div>
               <div class="admin-form-grid">
-                <div class="admin-field">
+                <div class="admin-field admin-field--wide">
                   <label for="detailName">Nama lomba</label
-                  ><input class="form-input" id="detailName" />
-                </div>
-                <div class="admin-field">
-                  <label for="detailShortName">Nama pendek</label
-                  ><input class="form-input" id="detailShortName" />
+                  ><input
+                    class="form-input"
+                    id="detailName"
+                    required
+                    maxlength="200"
+                  />
                 </div>
                 <div class="admin-field admin-field--wide">
                   <label for="detailDescription">Deskripsi Arsip (Banner)</label
@@ -197,6 +198,22 @@
                 <div class="admin-field">
                   <label for="detailSkDocument">Dokumen untuk banner SK</label
                   ><select class="form-input" id="detailSkDocument"></select>
+                </div>
+                <div class="admin-field">
+                  <label for="detailSkTitle">Judul banner SK</label
+                  ><input
+                    class="form-input"
+                    id="detailSkTitle"
+                    placeholder="SK Penetapan Pemenang"
+                  />
+                </div>
+                <div class="admin-field admin-field--wide">
+                  <label for="detailSkDescription">Deskripsi banner SK</label
+                  ><textarea
+                    class="form-input editor-textarea"
+                    id="detailSkDescription"
+                    placeholder="Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah."
+                  ></textarea>
                 </div>
               </div>
               <div

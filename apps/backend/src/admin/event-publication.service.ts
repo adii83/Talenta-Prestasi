@@ -137,6 +137,13 @@ export class EventPublicationService {
            WHERE asset.id=ANY($2::uuid[]) AND asset.organization_id=$3 AND asset.status='active'`,
           [eventId, assets, access.organizationId],
         );
+      await this.publishChangedArchives(
+        manager,
+        access.categoryId,
+        access.organizationId,
+        eventId,
+        userId,
+      );
       await manager.query(
         `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
          VALUES($1,$2,'publish','event_publication',$1,$3)`,
@@ -189,6 +196,51 @@ export class EventPublicationService {
       );
       return { data: { discarded: true }, errors: [] };
     });
+  }
+
+  private async publishChangedArchives(
+    executor: { query: DataSource['query'] },
+    categoryId: string,
+    organizationId: string,
+    activeEventId: string,
+    userId: string,
+  ) {
+    const archives = await executor.query<Array<{ id: string }>>(
+      `SELECT archive.id FROM event_sites archive
+       JOIN event_publications publication ON publication.event_site_id=archive.id
+       JOIN event_sites active ON active.id=$2
+       WHERE archive.category_id=$1 AND archive.deleted_at IS NULL
+         AND (
+           archive.period_year<active.period_year OR
+           (archive.period_year=active.period_year AND COALESCE(archive.batch_number,1)<COALESCE(active.batch_number,1))
+         )
+         AND (
+           publication.public_snapshot #>> '{archiveDetail,event,mascotAssetId}' IS DISTINCT FROM archive.mascot_asset_id::text OR
+           publication.public_snapshot #>> '{archiveDetail,event,fallbackIcon}' IS DISTINCT FROM archive.fallback_icon
+         )`,
+      [categoryId, activeEventId],
+    );
+    for (const archive of archives) {
+      const snapshot = await this.publicContent.build(archive.id, executor);
+      const assets = collectAssetIds(snapshot);
+      await executor.query(
+        `UPDATE event_publications
+         SET version=version+1,public_snapshot=$2,published_at=now(),published_by=$3
+         WHERE event_site_id=$1`,
+        [archive.id, snapshot, userId],
+      );
+      await executor.query(
+        `DELETE FROM event_publication_assets WHERE event_site_id=$1`,
+        [archive.id],
+      );
+      if (assets.length)
+        await executor.query(
+          `INSERT INTO event_publication_assets(event_site_id,asset_id)
+           SELECT $1,asset.id FROM media_assets asset
+           WHERE asset.id=ANY($2::uuid[]) AND asset.organization_id=$3 AND asset.status='active'`,
+          [archive.id, assets, organizationId],
+        );
+    }
   }
 
   private async readAccess(

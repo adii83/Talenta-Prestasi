@@ -33,8 +33,8 @@ Organization
 ```
 
 - **Organization** adalah tenant tertinggi.
-- **CompetitionCategory** adalah kategori lomba tetap, misalnya `octal`; kategori memiliki slug/subdomain, identitas penyelenggara, logo/favicon, dan status publikasi.
-- **EventSite** adalah penyelenggaraan pada `period_year` tertentu, dengan `batch_number` otomatis dan `batch_label` opsional bila satu tahun memiliki beberapa gelombang. Nama ajang mengikuti Kategori; slug hanya identifier teknis.
+- **CompetitionCategory** adalah kategori lomba tetap, misalnya `octal`; kategori memiliki slug/subdomain, identitas penyelenggara, field logo/favicon legacy, dan status publikasi.
+- **EventSite** adalah penyelenggaraan pada `period_year` tertentu, dengan `batch_number` otomatis dan `batch_label` opsional bila satu tahun memiliki beberapa gelombang. Nama ajang mengikuti Kategori; slug hanya identifier teknis. Logo Event disimpan pada `event_sites.logo_asset_id`, terpisah dari maskot Event serta logo/favicon Kategori legacy.
 - Hanya satu Event dapat aktif dalam satu kategori. Event nonaktif yang pernah diaktifkan menjadi arsip; Event masa depan yang belum pernah aktif tetap berstatus persiapan.
 - Tidak ada entity `Competition` dan tidak ada relasi sumber arsip manual.
 
@@ -59,7 +59,9 @@ Browser tidak mengakses PostgreSQL atau path filesystem secara langsung. Admin m
 
 Admin menyimpan seluruh perubahan modul ke satu workspace draf Event. **Publikasikan perubahan** membangun dan mengganti snapshot publik dalam satu transaksi. Preview Admin memakai Public Site asli dan token read-only 15 menit yang terikat ke pengguna, tenant, kategori, dan Event; token login Admin tidak diteruskan ke Public Site.
 
-Endpoint publik menyediakan bootstrap, Beranda, Unduh, FAQ, Pemenang, Arsip, dan Detail Arsip. Media tersedia melalui `/api/v1/public/media/<asset-id>`.
+Snapshot workspace lama yang tidak memiliki `logo_asset_id` mempertahankan logo Event saat dipulihkan dan memakai ukuran default 36 piksel jika `navbar_logo_size` tidak ada. Migration logo mengisi workspace dari maskot Event atau logo Kategori legacy, tetapi tidak menulis ulang snapshot publik existing. Logo baru terlihat publik setelah workspace dipublikasikan lagi.
+
+Endpoint publik menyediakan bootstrap, Beranda, Unduh, FAQ, Pemenang, Arsip, dan Detail Arsip. Media tersedia melalui `/api/v1/public/media/<asset-id>`. Media publik hanya dapat dibaca jika asset berada pada allowlist snapshot publik atau request membawa token preview Event yang sah.
 
 ## Alur CMS Admin
 
@@ -79,13 +81,15 @@ Endpoint publik menyediakan bootstrap, Beranda, Unduh, FAQ, Pemenang, Arsip, dan
 **Level kategori:**
 
 - nama kategori dan slug/subdomain tetap;
-- penyelenggara, logo, favicon;
+- penyelenggara serta field logo/favicon legacy;
 - status operasional dan publikasi;
 - domain publik.
 
 **Level Event:**
 
 - nama, slug periode internal, deskripsi, maskot/fallback icon, dan status aktif;
+- logo Event pada `event_sites.logo_asset_id` untuk navbar sekaligus favicon;
+- ukuran logo navbar pada `site_settings.navbar_logo_size`, satu nilai 24–44 piksel untuk desktop, tablet, dan mobile, default 36;
 - warna, navigasi, kontak, footer, SEO;
 - Beranda, dokumen, tab Unduh, FAQ, kategori pemenang, pemenang, SK, dan page/detail settings.
 
@@ -100,13 +104,15 @@ Membership menghubungkan User ke Organization dengan role `owner`, `admin`, `edi
 - Operasi administratif kategori/Event dibatasi ke owner/admin.
 - Mutasi konten/media menerima owner/admin/editor.
 - Viewer hanya memperoleh akses baca.
-- Foreign key gabungan dan pemeriksaan ownership mencegah dokumen, kategori pemenang, pemenang, tab Unduh, atau media menyeberangi Event/tenant.
+- Foreign key gabungan dan pemeriksaan ownership menjaga kategori pemenang, pemenang, SK, dan media tetap pada scope Event/tenant yang benar. Khusus tab Unduh, dokumen dari Event lain hanya dapat direferensikan jika kedua Event berada dalam Kategori Lomba yang sama; referensi lintas kategori atau tenant ditolak.
 
 Global `ValidationPipe` memakai whitelist, menolak field asing, dan mentransformasi input. `JWT_SECRET` wajib minimal 32 karakter.
 
 ## Media
 
-Upload media Admin memakai `/api/v1/admin/events/:eventId/media`. Backend menerima PNG/JPEG/WebP/SVG maksimal 5 MB dan PDF maksimal 10 MB, memeriksa MIME/signature, menolak pola SVG berbahaya dasar, membuat storage key UUID serta checksum, dan menghapus file jika penyimpanan metadata gagal.
+Upload media Admin memakai `/api/v1/admin/events/:eventId/media`. Backend menerima PNG/JPEG/WebP/SVG maksimal 5 MB dan PDF maksimal 10 MB, memeriksa MIME/signature, menolak pola SVG berbahaya dasar, membuat storage key UUID serta checksum, dan menghapus file jika penyimpanan metadata gagal. Logo Event dibatasi ke PNG/JPEG/WebP maksimal 5 MB.
+
+Preview binary Admin memakai `GET /api/v1/admin/events/:eventId/media/:assetId`. Endpoint ini memerlukan JWT dan membership tenant/Event. Browser mengambil binary sebagai Blob lalu membuat Object URL untuk gambar; Object URL hanya berada dalam state memori, tidak pernah disimpan ke `localStorage`, dan dicabut saat diganti, dihapus, dimuat ulang, atau halaman dilepas. Kebijakan ini berbeda dari media publik yang mensyaratkan token preview atau allowlist snapshot publik.
 
 Root storage default adalah `apps/backend/storage/uploads/` relatif working directory backend dan dapat dioverride dengan `LOCAL_STORAGE_PATH`.
 

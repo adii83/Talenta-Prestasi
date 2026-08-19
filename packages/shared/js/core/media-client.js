@@ -39,12 +39,18 @@
   function url(asset) {
     if (!asset) return "";
     if (typeof asset === "string" && asset.startsWith("http")) return asset;
-    const path =
+    const token = new URLSearchParams(location.search).get("preview_token");
+    let path =
       typeof asset === "string"
         ? asset.startsWith("/api/")
           ? asset
           : `/api/v1/public/media/${asset}`
         : asset?.url;
+    if (token && path && path.startsWith("/api/v1/public/media/")) {
+      const parsed = new URL(path, "http://localhost");
+      parsed.searchParams.set("preview_token", token);
+      path = `${parsed.pathname}${parsed.search}`;
+    }
     const base =
       window.TalentaConfig?.apiBaseUrl &&
       window.TalentaConfig.apiBaseUrl.startsWith("http")
@@ -52,5 +58,26 @@
         : location.origin;
     return path ? new URL(path, base).href : "";
   }
-  window.TalentaMedia = Object.freeze({ upload, url, LIMITS });
+  async function adminPreviewUrl(assetId, { siteId } = {}) {
+    const event =
+      siteId || window.parent?.TalentaAdminAuth?.currentEvent?.()?.id;
+    if (!event || !assetId) return "";
+    const blob = await TalentaApi.request(
+      `/admin/events/${event}/media/${assetId}`,
+      { responseType: "blob" },
+    );
+    return URL.createObjectURL(blob);
+  }
+
+  function revokePreviewUrl(value) {
+    if (String(value || "").startsWith("blob:")) URL.revokeObjectURL(value);
+  }
+
+  window.TalentaMedia = Object.freeze({
+    upload,
+    url,
+    adminPreviewUrl,
+    revokePreviewUrl,
+    LIMITS,
+  });
 })();

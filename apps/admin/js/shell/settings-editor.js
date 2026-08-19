@@ -1,4 +1,30 @@
 const STORAGE_KEY = GLOBAL_SETTINGS_KEY;
+let logoPreviewObjectUrl = "",
+  settingsLoadGeneration = 0;
+
+function replaceLogoPreviewUrl(next = "") {
+  const value = String(next || "");
+  if (logoPreviewObjectUrl && logoPreviewObjectUrl !== value)
+    TalentaMedia.revokePreviewUrl(logoPreviewObjectUrl);
+  logoPreviewObjectUrl = value.startsWith("blob:") ? value : "";
+  globalState.identity.logo = value;
+}
+
+async function hydrateLogoPreview(assetId, generation) {
+  if (!assetId) {
+    if (generation === undefined || generation === settingsLoadGeneration)
+      replaceLogoPreviewUrl("");
+    return generation === undefined || generation === settingsLoadGeneration;
+  }
+  const url = await TalentaMedia.adminPreviewUrl(assetId);
+  if (generation !== undefined && generation !== settingsLoadGeneration) {
+    TalentaMedia.revokePreviewUrl(url);
+    return false;
+  }
+  replaceLogoPreviewUrl(url);
+  return true;
+}
+
 let globalState = getGlobalSettings(),
   globalHomeState = null,
   globalPreviewActive = "home",
@@ -19,8 +45,9 @@ async function loadGlobalSettingsApi() {
   if (!event?.id)
     return {
       eventDescription: globalState.identity.eventDescription,
-      logoAssetId: globalState.identity.logoAssetId || null,
+      logoAssetId: globalState.identity.logoAssetId ?? null,
       logoUrl: globalState.identity.logo || "",
+      navbarLogoSize: globalState.identity.navbarLogoSize,
       primaryColor: globalState.theme.primaryColor,
       navigation: globalState.navigation,
       contact: globalState.contact,
@@ -37,7 +64,8 @@ async function saveGlobalSettingsApi() {
     body: {
       eventDescription: globalState.identity.eventDescription || "",
       primaryColor: globalState.theme.primaryColor || "#1e4b8c",
-      logoAssetId: globalState.identity.logoAssetId || undefined,
+      logoAssetId: globalState.identity.logoAssetId ?? null,
+      navbarLogoSize: globalState.identity.navbarLogoSize,
       navigation: globalState.navigation,
       contact: globalState.contact,
       footer: globalState.footer,
@@ -109,20 +137,6 @@ async function loadHomeSettingsApi() {
 
   return { sections, categories, display };
 }
-async function saveGlobalSettingsApi() {
-  const event = TalentaAdminAuth.currentEvent();
-  return TalentaApi.request(`/admin/events/${event.id}/settings`, {
-    method: "PUT",
-    body: {
-      eventDescription: globalState.identity.eventDescription,
-      primaryColor: globalState.theme.primaryColor,
-      logoAssetId: globalState.identity.logoAssetId || undefined,
-      navigation: globalState.navigation,
-      contact: globalState.contact,
-      footer: globalState.footer,
-    },
-  });
-}
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("eventSettingsForm"),
     byId = (id) => document.getElementById(id);
@@ -160,6 +174,8 @@ document.addEventListener("DOMContentLoaded", () => {
       const e = byId(id);
       if (e) e.value = v || "";
     });
+    navbarLogoSize.value = i.navbarLogoSize;
+    navbarLogoSizeValue.textContent = `${i.navbarLogoSize} px`;
     setLogo(i.logo);
   }
   function renderNavigation() {
@@ -172,6 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-global-navigation]").forEach(
       (input) =>
         (input.onchange = () => {
+          ++settingsLoadGeneration;
           const scrollX = window.scrollX,
             scrollY = window.scrollY;
           globalState.navigation[input.dataset.globalNavigation] =
@@ -196,6 +213,7 @@ document.addEventListener("DOMContentLoaded", () => {
       eventName: eventName.value,
       eventDescription: eventDescription.value,
       logo: globalState.identity.logo || "",
+      navbarLogoSize: Number.parseInt(navbarLogoSize.value, 10),
     };
     globalState.theme = {
       primaryColor: primaryColor.value,
@@ -349,6 +367,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   function renderPreview() {
     readForm();
+    navbarLogoSizeValue.textContent = `${globalState.identity.navbarLogoSize} px`;
     const active = [
         ["home", "Beranda", "home", "index.html"],
         ...navigationItems,
@@ -374,6 +393,10 @@ document.addEventListener("DOMContentLoaded", () => {
             accentColor: "#ffffff",
           },
         });
+        root.style.setProperty(
+          "--navbar-logo-size",
+          `${globalState.identity.navbarLogoSize}px`,
+        );
       });
     themePreview.innerHTML = themeMarkup(active, brand, short);
     byId("globalNavPreview").innerHTML = navMarkup(active);
@@ -454,7 +477,12 @@ document.addEventListener("DOMContentLoaded", () => {
     .querySelectorAll(
       "#eventSettingsForm input:not([type=file]):not([data-global-navigation]),#eventSettingsForm textarea",
     )
-    .forEach((e) => e.addEventListener("input", renderPreview));
+    .forEach((e) =>
+      e.addEventListener("input", () => {
+        ++settingsLoadGeneration;
+        renderPreview();
+      }),
+    );
   bindDevices(
     "[data-global-nav-device]",
     "globalNavPreviewFrame",
@@ -492,31 +520,46 @@ document.addEventListener("DOMContentLoaded", () => {
     const input = e.target;
     const file = input.files[0];
     if (!file) return;
+    const generation = ++settingsLoadGeneration;
     input.disabled = true;
     try {
+      if (!["image/png", "image/jpeg", "image/webp"].includes(file.type))
+        throw new Error("Logo harus berformat PNG, JPEG, atau WebP.");
       const asset = await TalentaMedia.upload(file, {
         altText: `Logo ${globalState.identity.eventName}`,
       });
+      if (generation !== settingsLoadGeneration) return;
       globalState.identity.logoAssetId = asset.assetId;
-      globalState.identity.logo = TalentaMedia.url(asset);
+      try {
+        if (!(await hydrateLogoPreview(asset.assetId, generation))) return;
+      } catch (error) {
+        if (generation !== settingsLoadGeneration) return;
+        replaceLogoPreviewUrl("");
+        setLogo("");
+        renderPreview();
+        throw error;
+      }
       setLogo(globalState.identity.logo);
       renderPreview();
       showToast("Logo berhasil diunggah.");
     } catch (error) {
-      showToast(error.message, true);
+      if (generation === settingsLoadGeneration) showToast(error.message, true);
     } finally {
       input.disabled = false;
+      input.value = "";
     }
   };
   logoDeleteButton.onclick = () => {
-    globalState.identity.logo = "";
-    delete globalState.identity.logoAssetId;
+    ++settingsLoadGeneration;
+    globalState.identity.logoAssetId = null;
+    replaceLogoPreviewUrl("");
     setLogo("");
     renderPreview();
     showToast("Logo berhasil dihapus. Jangan lupa klik simpan.");
   };
   form.onsubmit = async (e) => {
     e.preventDefault();
+    ++settingsLoadGeneration;
     const submit = e.submitter;
     if (submit) submit.disabled = true;
     readForm();
@@ -532,21 +575,38 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   };
   async function revertSettings() {
+    const generation = ++settingsLoadGeneration;
     const data = await loadGlobalSettingsApi();
-    globalState = normalizeGlobalSettings({
+    if (generation !== settingsLoadGeneration) return;
+    const nextState = normalizeGlobalSettings({
       ...globalState,
       identity: {
         ...globalState.identity,
         eventName: data.eventName,
         eventDescription: data.eventDescription,
-        logoAssetId: data.logoAssetId || null,
-        logo: data.logoUrl ? TalentaMedia.url({ url: data.logoUrl }) : "",
+        logoAssetId: data.logoAssetId ?? null,
+        logo: "",
+        navbarLogoSize: data.navbarLogoSize ?? 36,
       },
       theme: { ...globalState.theme, primaryColor: data.primaryColor },
       navigation: { ...globalState.navigation, ...data.navigation },
       contact: { ...globalState.contact, ...data.contact },
       footer: { ...globalState.footer, ...data.footer },
     });
+    try {
+      if (!(await hydrateLogoPreview(data.logoAssetId, generation))) return;
+    } catch (error) {
+      if (generation !== settingsLoadGeneration) return;
+      globalState = saveGlobalSettings(nextState);
+      replaceLogoPreviewUrl("");
+      fill();
+      renderNavigation();
+      renderPreview();
+      throw error;
+    }
+    if (generation !== settingsLoadGeneration) return;
+    nextState.identity.logo = globalState.identity.logo;
+    globalState = saveGlobalSettings(nextState);
     fill();
     renderNavigation();
     renderPreview();
@@ -561,28 +621,54 @@ document.addEventListener("DOMContentLoaded", () => {
     adminSidebar.classList.toggle("admin-sidebar--open");
   renderPreview();
   lucide.createIcons();
+  const initialGeneration = ++settingsLoadGeneration;
   void Promise.all([loadGlobalSettingsApi(), loadHomeSettingsApi()])
-    .then(([data, homeData]) => {
-      if (homeData) globalHomeState = homeData;
-      globalState = normalizeGlobalSettings({
+    .then(async ([data, homeData]) => {
+      if (initialGeneration !== settingsLoadGeneration) return;
+      const nextState = normalizeGlobalSettings({
         ...globalState,
         identity: {
           ...globalState.identity,
           eventName: data.eventName,
           eventDescription: data.eventDescription,
-          logoAssetId: data.logoAssetId || null,
-          logo: data.logoUrl ? TalentaMedia.url({ url: data.logoUrl }) : "",
+          logoAssetId: data.logoAssetId ?? null,
+          logo: "",
+          navbarLogoSize: data.navbarLogoSize ?? 36,
         },
         theme: { ...globalState.theme, primaryColor: data.primaryColor },
         navigation: { ...globalState.navigation, ...data.navigation },
         contact: { ...globalState.contact, ...data.contact },
         footer: { ...globalState.footer, ...data.footer },
       });
+      try {
+        if (!(await hydrateLogoPreview(data.logoAssetId, initialGeneration)))
+          return;
+      } catch (error) {
+        if (initialGeneration !== settingsLoadGeneration) return;
+        globalState = saveGlobalSettings(nextState);
+        replaceLogoPreviewUrl("");
+        fill();
+        renderNavigation();
+        renderPreview();
+        throw error;
+      }
+      if (initialGeneration !== settingsLoadGeneration) return;
+      nextState.identity.logo = globalState.identity.logo;
+      globalState = saveGlobalSettings(nextState);
+      if (homeData) globalHomeState = homeData;
       fill();
       renderNavigation();
       renderPreview();
     })
     .catch((error) => showToast(error.message, true));
+
+  const releaseLogoPreview = () => {
+    if (logoPreviewObjectUrl)
+      TalentaMedia.revokePreviewUrl(logoPreviewObjectUrl);
+    logoPreviewObjectUrl = "";
+  };
+  window.addEventListener("pagehide", releaseLogoPreview);
+  window.addEventListener("beforeunload", releaseLogoPreview);
 
   window.addEventListener("storage", async (e) => {
     if (e.key === "talenta_home_editor_v1") {
@@ -633,7 +719,7 @@ function setLogo(source) {
     ? `<img src="${source}" alt="Pratinjau logo event">`
     : short;
   const delBtn = document.getElementById("logoDeleteButton");
-  if (delBtn) delBtn.hidden = !source;
+  if (delBtn) delBtn.hidden = !globalState?.identity?.logoAssetId;
 }
 function showToast(message, error = false) {
   const toast = document.getElementById("adminToast");

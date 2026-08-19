@@ -20,6 +20,7 @@ interface SiteRow {
   batchLabel: string | null;
   organizerName: string;
   logoAssetId: string | null;
+  navbarLogoSize: number | null;
   primaryColor: string;
   navigation: Record<string, unknown>;
   contact: Record<string, unknown>;
@@ -123,7 +124,8 @@ export class PublicContentService {
         [eventId],
       ),
       executor.query(
-        `SELECT decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",
+        `SELECT archive_display_name AS "archiveDisplayName",
+                decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",
                 decree_description AS "decreeDescription",is_active AS "isActive",
                 winners_active AS "winnersActive",documents_active AS "documentsActive",
                 metadata_visibility AS "metadataVisibility"
@@ -209,7 +211,10 @@ export class PublicContentService {
       },
       archivePage: { site: siteDto, page: archivePages[0] ?? null },
       archiveDetail: {
-        event,
+        event: {
+          ...event,
+          name: detailSettings[0]?.archiveDisplayName || event.name,
+        },
         settings: detailSettings[0] ?? null,
         categories: winnerCategories,
         documents,
@@ -252,6 +257,7 @@ export class PublicContentService {
   private settingsDto(site: SiteRow) {
     return {
       primaryColor: site.primaryColor ?? '#1e4b8c',
+      navbarLogoSize: site.navbarLogoSize ?? 36,
       navigation: site.navigation ?? {},
       contact: site.contact ?? {},
       footer: site.footer ?? {},
@@ -277,8 +283,9 @@ const SITE_QUERY = `SELECT
   event.id AS "eventId",category.id AS "categoryId",category.name AS "categoryName",
   category.slug AS "categorySlug",event.name AS "eventName",event.slug AS "eventSlug",
   event.period_year AS "periodYear",event.batch_number AS "batchNumber",event.batch_label AS "batchLabel",
-  category.organizer_name AS "organizerName",category.logo_asset_id AS "logoAssetId",
-  settings.primary_color AS "primaryColor",settings.navigation,settings.contact,settings.footer,settings.seo,
+  category.organizer_name AS "organizerName",event.logo_asset_id AS "logoAssetId",
+  settings.primary_color AS "primaryColor",settings.navbar_logo_size AS "navbarLogoSize",
+  settings.navigation,settings.contact,settings.footer,settings.seo,
   event.description,event.mascot_asset_id AS "mascotAssetId",event.fallback_icon AS "fallbackIcon"
 FROM event_sites event
 JOIN competition_categories category ON category.id=event.category_id

@@ -46,6 +46,7 @@ const evaluate = (source) => vm.runInContext(source, context);
 const clone = (value) => JSON.parse(JSON.stringify(value));
 const database = clone(evaluate("MOCK_ARCHIVE_DATABASE.competitions"));
 const archived = clone(evaluate("getEffectiveArchivedCompetitions()"));
+const readSource = (path) => readFile(path, "utf8");
 
 const competitionIds = database.map((competition) => competition.id);
 assert.equal(
@@ -146,6 +147,31 @@ assert.equal(resolvedDetail.categories.length, 0);
 assert.equal(resolvedDetail.documents.length, 0);
 assert.equal(resolvedDetail.sk.documentId, document.id);
 
+context.__customSkCompetition = {
+  ...source,
+  skDocument: {
+    documentId: document.id,
+    title: "Judul SK khusus Event",
+    description: "Deskripsi SK khusus Event.",
+  },
+};
+const customSk = clone(
+  evaluate(
+    "resolveArchiveDetailState(normalizeArchiveCompetition(__customSkCompetition)).sk",
+  ),
+);
+assert.equal(customSk.documentId, document.id);
+assert.equal(customSk.title, "Judul SK khusus Event");
+assert.equal(customSk.description, "Deskripsi SK khusus Event.");
+context.__customSkState = clone(
+  evaluate(
+    "resolveArchiveDetailState(normalizeArchiveCompetition(__customSkCompetition))",
+  ),
+);
+const customSkMarkup = evaluate("buildArchiveDetailMarkup(__customSkState)");
+assert.match(customSkMarkup, />Unduh SK<\/a>/);
+assert.doesNotMatch(customSkMarkup, /Unduh PDF/);
+
 const state = clone(evaluate("getArchiveAdminState()"));
 const removedId = archived[0].id;
 state.removedCompetitionIds = [removedId];
@@ -186,6 +212,97 @@ const publicIds = clone(
 );
 assert.ok(!publicIds.includes(draftId));
 assert.ok(!publicIds.includes(disabledDetailId));
+
+const [detailHtml, detailApi, detailEditor, manager, publicList] =
+  await Promise.all([
+    readSource("apps/admin/editors/arsip/detail/index.html"),
+    readSource("apps/admin/js/features/archive/detail-api.js"),
+    readSource("apps/admin/js/features/archive/detail-editor.js"),
+    readSource("apps/admin/js/features/archive/manager.js"),
+    readSource("apps/public-site/assets/js/archive-list.js"),
+  ]);
+assert.doesNotMatch(
+  detailHtml,
+  /id="detailShortName"|>Nama pendek</,
+  "Editor Detail Arsip tidak boleh menampilkan field Nama pendek.",
+);
+assert.match(detailHtml, /id="detailSkTitle"/);
+assert.match(detailHtml, /id="detailSkDescription"/);
+assert.match(
+  detailApi,
+  /documentRole === "winner_decree"/,
+  "Fallback SK hanya boleh memakai winner_decree milik Event yang dimuat.",
+);
+assert.match(detailApi, /documentId: document\.id/);
+assert.match(detailApi, /decreeDocumentId: event\.skDocument\?\.documentId/);
+assert.doesNotMatch(detailApi, /decreeDocumentId: event\.skDocument\?\.id/);
+assert.match(
+  detailApi,
+  /Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah\./,
+);
+assert.match(detailHtml, /id="detailName"[^>]*required/);
+assert.match(detailHtml, /id="detailName"[^>]*maxlength="200"/);
+assert.match(detailApi, /archiveDisplayName: settings\.archiveDisplayName/);
+assert.match(detailApi, /archiveDisplayName: event\.archiveDisplayName/);
+assert.doesNotMatch(
+  detailApi,
+  /body:\s*\{[^}]*name:\s*event\.(?:name|archiveDisplayName)/,
+  "Nama presentasi Arsip tidak boleh dipatch ke identity canonical Event.",
+);
+assert.match(detailEditor, /detailName: archiveDisplayName\(comp\)/);
+assert.match(
+  detailEditor,
+  /window\.parent\?\.TalentaAdminAuth\?\.currentCategory\?\.\(\)/,
+  "Editor Detail Arsip harus membaca konteks kategori dari shell Admin parent.",
+);
+assert.doesNotMatch(
+  detailEditor,
+  /(?<![.\w])TalentaAdminAuth\.currentCategory\(\)/,
+  "Iframe Detail Arsip tidak memiliki global TalentaAdminAuth sendiri.",
+);
+assert.match(detailEditor, /comp\.archiveDisplayName = e\.target\.value/);
+assert.match(
+  detailEditor,
+  /\/admin\/events\/\$\{comp\.id\}\/preview-token/,
+  "Lihat halaman Detail Arsip harus meminta token untuk Event Arsip yang diedit.",
+);
+assert.match(
+  detailEditor,
+  /publicUrl\.hash = new URLSearchParams\(\{ preview: data\.token \}\)/,
+  "Lihat halaman Detail Arsip harus membawa token preview melalui fragment.",
+);
+assert.match(detailEditor, /name: archiveDisplayName\(comp\)/);
+assert.match(
+  manager,
+  /item\.archiveDisplayName\s*\|\|\s*formatArchiveDisplayName\(item\)/,
+);
+assert.match(
+  detailEditor,
+  /detailSkTitle"\)\.disabled =[\s\S]*?!comp\.skDocument\?\.documentId/,
+  "Judul SK harus nonaktif saat Event tidak memiliki SK.",
+);
+assert.match(
+  detailEditor,
+  /detailSkDescription"\)\.disabled =[\s\S]*?!comp\.skDocument\?\.documentId/,
+  "Deskripsi SK harus nonaktif saat Event tidak memiliki SK.",
+);
+assert.doesNotMatch(
+  detailEditor,
+  /const ensureSk =/,
+  "Input judul/deskripsi tidak boleh membuat banner SK tanpa dokumen.",
+);
+assert.match(manager, /TalentaMedia\.adminPreviewUrl\(item\.mascotAssetId/);
+assert.match(manager, /siteId: item\.id/);
+assert.match(
+  manager,
+  /mode\.onchange = \(\) => \{[\s\S]*?if \(mode\.value === "library"\)[\s\S]*?return;[\s\S]*?library\.hidden = true;/,
+  "Mode Upload harus tetap terbuka sebelum pengguna memilih file.",
+);
+assert.match(
+  publicList,
+  /iconMode: event\.mascotAssetId \? "upload" : "library"/,
+);
+assert.match(publicList, /TalentaMedia\.url\(event\.mascotAssetId\)/);
 
 console.log(
   "Audit relasi Arsip lulus: owner lomba, kategori, pemenang, dokumen, SK, tombstone, serta dampak ke Unduh/Pemenang tervalidasi.",

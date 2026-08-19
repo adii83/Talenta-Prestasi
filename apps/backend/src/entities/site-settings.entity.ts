@@ -9,6 +9,9 @@ export class SiteSettings {
   @Column({ name: 'primary_color', default: '#1e4b8c' })
   primaryColor!: string;
 
+  @Column({ name: 'navbar_logo_size', type: 'smallint', default: 36 })
+  navbarLogoSize!: number;
+
   @Column({ type: 'jsonb', default: {} })
   navigation!: Record<string, boolean>;
 

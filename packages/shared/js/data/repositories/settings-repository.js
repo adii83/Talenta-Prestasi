@@ -1,5 +1,16 @@
 ﻿/* Pengaturan global tunggal untuk identitas, tema, navigasi, kontak, WhatsApp, dan footer. */
 const GLOBAL_SETTINGS_KEY = "talenta_event_settings_v1";
+function globalSettingsStorageKey() {
+  try {
+    const auth =
+      window.TalentaAdminAuth ||
+      (window.parent !== window ? window.parent?.TalentaAdminAuth : null);
+    const eventId = auth?.currentEvent?.()?.id;
+    return eventId ? `${GLOBAL_SETTINGS_KEY}:${eventId}` : GLOBAL_SETTINGS_KEY;
+  } catch {
+    return GLOBAL_SETTINGS_KEY;
+  }
+}
 const GLOBAL_SETTINGS_BASELINE = {
   version: 3,
   identity: {
@@ -8,7 +19,9 @@ const GLOBAL_SETTINGS_BASELINE = {
       "Ajang talenta untuk mengembangkan prestasi peserta secara terukur dan transparan.",
     eventSlug: "osn2026",
     organizerName: "Talenta Prestasi Indonesia",
+    logoAssetId: null,
     logo: "",
+    navbarLogoSize: 36,
   },
   theme: { primaryColor: "#1e4b8c", accentColor: "#ffffff" },
   navigation: { download: true, winners: true, archive: true, faq: true },
@@ -87,7 +100,15 @@ function normalizeGlobalSettings(source) {
     const b = GLOBAL_SETTINGS_BASELINE;
     return {
       version: 3,
-      identity: { ...b.identity, ...source.identity },
+      identity: {
+        ...b.identity,
+        ...source.identity,
+        logoAssetId: source.identity?.logoAssetId ?? null,
+        navbarLogoSize: Math.min(
+          44,
+          Math.max(24, Number(source.identity?.navbarLogoSize) || 36),
+        ),
+      },
       theme: {
         primaryColor: source.theme?.primaryColor || b.theme.primaryColor,
         accentColor: "#ffffff",
@@ -134,7 +155,7 @@ function normalizeGlobalSettings(source) {
 function getGlobalSettings() {
   try {
     return normalizeGlobalSettings(
-      JSON.parse(localStorage.getItem(GLOBAL_SETTINGS_KEY) || "null"),
+      JSON.parse(localStorage.getItem(globalSettingsStorageKey()) || "null"),
     );
   } catch (e) {
     console.warn("Pengaturan global rusak; template awal digunakan.", e);
@@ -165,7 +186,8 @@ function subscribeGlobalSettings(callback) {
   const notify = () => callback(getGlobalSettings());
   window.addEventListener("talenta:settings", notify);
   window.addEventListener("storage", (event) => {
-    if (event.key === GLOBAL_SETTINGS_KEY || event.key === null) notify();
+    if (event.key === globalSettingsStorageKey() || event.key === null)
+      notify();
   });
 }
 function saveGlobalSettings(v) {
@@ -173,14 +195,17 @@ function saveGlobalSettings(v) {
   s.contact.whatsappNumber = normalizeWhatsappNumber(
     s.contact.whatsappNumber || s.contact.whatsappDisplay,
   );
-  localStorage.setItem(GLOBAL_SETTINGS_KEY, JSON.stringify(s));
+  const persisted = globalClone(s);
+  if (String(persisted.identity.logo || "").startsWith("blob:"))
+    persisted.identity.logo = "";
+  localStorage.setItem(globalSettingsStorageKey(), JSON.stringify(persisted));
   window.dispatchEvent(
     new CustomEvent("talenta:settings", { detail: globalClone(s) }),
   );
   return globalClone(s);
 }
 function resetGlobalSettings() {
-  localStorage.removeItem(GLOBAL_SETTINGS_KEY);
+  localStorage.removeItem(globalSettingsStorageKey());
   const baseline = getGlobalSettings();
   window.dispatchEvent(
     new CustomEvent("talenta:settings", { detail: globalClone(baseline) }),

@@ -20,38 +20,54 @@
   }
 
   async function request(path, options = {}) {
+    const { responseType, timeoutMs, auth, previewToken, ...fetchOptions } =
+      options;
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
-      options.timeoutMs || TalentaConfig.requestTimeoutMs,
+      timeoutMs || TalentaConfig.requestTimeoutMs,
     );
-    const headers = new Headers(options.headers);
-    if (options.body !== undefined && !(options.body instanceof FormData)) {
+    const headers = new Headers(fetchOptions.headers);
+    if (
+      fetchOptions.body !== undefined &&
+      !(fetchOptions.body instanceof FormData)
+    ) {
       headers.set("Content-Type", "application/json");
     }
-    const accessToken = options.auth === false ? "" : token();
+    const accessToken = auth === false ? "" : token();
     if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
-    if (options.previewToken)
-      headers.set("X-Talenta-Preview", options.previewToken);
+    if (previewToken) headers.set("X-Talenta-Preview", previewToken);
 
     try {
       const response = await fetch(
         `${TalentaConfig.apiBaseUrl}${path.startsWith("/") ? path : `/${path}`}`,
         {
-          ...options,
+          ...fetchOptions,
           headers,
           body:
-            options.body === undefined || options.body instanceof FormData
-              ? options.body
-              : JSON.stringify(options.body),
+            fetchOptions.body === undefined ||
+            fetchOptions.body instanceof FormData
+              ? fetchOptions.body
+              : JSON.stringify(fetchOptions.body),
           signal: controller.signal,
-          credentials: options.credentials || "include",
+          credentials: fetchOptions.credentials || "include",
         },
       );
+      if (response.status === 401 && accessToken) setToken("");
+      if (responseType === "blob" && response.ok) return await response.blob();
       const text = await response.text();
-      const payload = text ? JSON.parse(text) : null;
+      let payload = null;
+      try {
+        payload = text ? JSON.parse(text) : null;
+      } catch {
+        if (!response.ok)
+          throw new ApiError(
+            `Permintaan gagal (${response.status})`,
+            response.status,
+          );
+        throw new ApiError("Respons server tidak valid");
+      }
       if (!response.ok) {
-        if (response.status === 401 && accessToken) setToken("");
         const message = Array.isArray(payload?.message)
           ? payload.message.join(", ")
           : payload?.message || `Permintaan gagal (${response.status})`;

@@ -30,10 +30,17 @@
     ]);
     return {
       ...event,
-      name: formatWinnerEventName(event),
+      name: event.archiveDisplayName || formatWinnerEventName(event),
       active: true,
       status: event.isActive ? "active" : "archive",
       icon: event.fallbackIcon || "archive",
+      iconMode: event.mascotAssetId ? "upload" : "library",
+      uploadedIcon: event.mascotAssetId
+        ? await TalentaMedia.adminPreviewUrl(event.mascotAssetId, {
+            siteId: event.id,
+          })
+        : "",
+      iconAlt: `Logo atau maskot ${event.name || "lomba"}`,
       detail: { active: true },
       winnerCategories: categories.map((category) => ({
         ...category,

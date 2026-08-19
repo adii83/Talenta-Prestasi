@@ -2437,6 +2437,10 @@ textarea {
   .lomba-banner {
     height: 220px;
   }
+  #archiveDetailPublicRoot .lomba-banner {
+    height: auto;
+    min-height: 220px;
+  }
   .lomba-banner__title {
     font-size: 28px;
   }
@@ -2615,8 +2619,27 @@ textarea {
   .lomba-banner {
     height: 200px;
   }
+  #archiveDetailPublicRoot .lomba-banner {
+    height: auto;
+    min-height: 200px;
+  }
   .lomba-banner__title {
     font-size: 24px;
+  }
+  #archiveDetailPublicRoot .lomba-banner__title,
+  #archiveDetailPublicRoot .lomba-banner__desc {
+    overflow-wrap: anywhere;
+  }
+  #archiveDetailPublicRoot .sk-banner__left {
+    min-width: 0;
+  }
+  #archiveDetailPublicRoot .sk-banner__content {
+    min-width: 0;
+    text-align: left;
+  }
+  #archiveDetailPublicRoot .sk-banner > .btn {
+    width: auto;
+    margin-left: auto;
   }
 
   .winner-group__grid {
@@ -2997,7 +3020,51 @@ textarea {
 .admin-logo-preview img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+}
+.admin-logo-size-control {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid #e1e7ef;
+  border-radius: 10px;
+  background: #f7f9fc;
+}
+.admin-logo-size-control label {
+  display: grid;
+  gap: 2px;
+}
+.admin-logo-size-control label strong {
+  color: #172033;
+  font-size: 13px;
+}
+.admin-logo-size-control label small {
+  color: #8490a2;
+  font-size: 11px;
+}
+.admin-logo-size-control__input {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.admin-logo-size-control input[type="range"] {
+  width: 100%;
+  accent-color: var(--c-primary);
+  cursor: pointer;
+}
+.admin-logo-size-control input[type="range"]:focus-visible {
+  outline: 2px solid var(--c-primary);
+  outline-offset: 4px;
+}
+.admin-logo-size-control output {
+  min-width: 48px;
+  color: #172033;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: right;
 }
 .admin-colors {
   display: grid;
@@ -5469,6 +5536,33 @@ body.admin-dialog-open {
   border-radius: 12px;
   background: #f8fafc;
 }
+.download-current-source__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.download-current-source__heading h3 {
+  flex: none;
+  font-size: 15px;
+}
+.download-current-source__heading p {
+  color: #8290a3;
+  font-size: 11px;
+}
+.download-current-source__controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+}
+.download-current-source__tab-field {
+  margin: 0;
+  min-width: 0;
+}
+.download-current-source__controls > .btn {
+  white-space: nowrap;
+}
 .download-archive-sources {
   padding-top: 22px;
   border-top: 1px solid #e2e7ed;
@@ -5754,6 +5848,17 @@ button.repeat-row__grip:focus-visible,
   }
 }
 @media (max-width: 520px) {
+  .download-current-source__heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .download-current-source__controls {
+    grid-template-columns: 1fr;
+  }
+  .download-current-source__controls > .btn {
+    width: 100%;
+  }
   .archive-link-card {
     grid-template-columns: 34px 1fr;
   }
@@ -7155,7 +7260,34 @@ button.repeat-row__grip:focus-visible,
 .archive-detail-preview-frame--mobile
   .archive-detail-public-preview
   .lomba-banner {
-  height: 200px;
+  height: auto;
+  min-height: 200px;
+}
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .lomba-banner__title,
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .lomba-banner__desc {
+  overflow-wrap: anywhere;
+}
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .sk-banner__left {
+  min-width: 0;
+}
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .sk-banner__content {
+  min-width: 0;
+  text-align: left;
+}
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .sk-banner
+  > .btn {
+  width: auto;
+  margin-left: auto;
 }
 .archive-detail-preview-frame--mobile
   .archive-detail-public-preview
@@ -7880,13 +8012,30 @@ button.repeat-row__grip:focus-visible,
 .floating-wa[hidden] {
   display: none !important;
 }
+.navbar__logo:has(img),
+.mobile-header__logo:has(img) {
+  width: var(--navbar-logo-size, 36px);
+  height: var(--navbar-logo-size, 36px);
+  flex: none;
+  background: transparent;
+  border-radius: 0;
+}
 .navbar__logo img,
-.mobile-header__logo img,
+.mobile-header__logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: 0;
+}
+.footer__logo:has(img) {
+  background: transparent;
+  border-radius: 0;
+}
 .footer__logo img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
-  border-radius: inherit;
+  object-fit: contain;
+  border-radius: 0;
 }
 .global-navigation-grid {
   display: grid;
@@ -9211,4 +9360,64 @@ button.repeat-row__grip:focus-visible,
 }
 .admin-embedded .page-editor-content {
   padding-bottom: 42vh !important;
+}
+
+/* Detail Arsip: CTA SK berada di bawah deskripsi khusus mobile saja; tab & desktop tetap sejajar. */
+@media (max-width: 639px) {
+  #archiveDetailPublicRoot .sk-banner,
+  .archive-detail-public-preview .sk-banner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+  #archiveDetailPublicRoot .sk-banner__left,
+  .archive-detail-public-preview .sk-banner__left {
+    grid-column: 1 / -1;
+    width: 100%;
+    min-width: 0;
+  }
+  #archiveDetailPublicRoot .sk-banner__content,
+  .archive-detail-public-preview .sk-banner__content {
+    min-width: 0;
+    text-align: left;
+  }
+  #archiveDetailPublicRoot .sk-banner > .btn,
+  .archive-detail-public-preview .sk-banner > .btn {
+    grid-column: 2;
+    width: fit-content;
+    max-width: 100%;
+    margin-left: 0;
+    justify-self: end;
+  }
+}
+
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .sk-banner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+}
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .sk-banner__left {
+  grid-column: 1 / -1;
+  width: 100%;
+  min-width: 0;
+}
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .sk-banner__content {
+  min-width: 0;
+  text-align: left;
+}
+.archive-detail-preview-frame--mobile
+  .archive-detail-public-preview
+  .sk-banner
+  > .btn {
+  grid-column: 2;
+  width: fit-content;
+  max-width: 100%;
+  margin-left: 0;
+  justify-self: end;
 }

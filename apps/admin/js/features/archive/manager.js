@@ -1,6 +1,17 @@
 const effective = getArchiveAdminState();
 let archiveState = { ...structuredClone(effective.page), items: [] };
 let archivePreviewResizeObserver;
+const ARCHIVE_ICONS = [
+  "archive",
+  "award",
+  "book-open",
+  "graduation-cap",
+  "medal",
+  "school",
+  "sparkles",
+  "star",
+  "trophy",
+];
 const archiveEmbedded =
   new URLSearchParams(location.search).get("embedded") === "1";
 
@@ -43,6 +54,17 @@ function sync() {
   });
 }
 
+function archiveIconMarkup(item) {
+  return item.mascotAssetId && item.uploadedIcon
+    ? `<img class="archive-manager-item__uploaded-icon" src="${esc(item.uploadedIcon)}" alt="${esc(item.iconAlt || `Logo atau maskot ${item.name}`)}">`
+    : `<i data-lucide="${esc(item.fallbackIcon || "archive")}"></i>`;
+}
+
+function archiveIconControl(item) {
+  const mode = item.mascotAssetId ? "upload" : "library";
+  return `<div class="icon-control" data-archive-icon-control><div class="icon-control__preview">${archiveIconMarkup(item)}</div><div class="icon-control__fields"><label>Sumber ikon <small style="display:block;font-weight:normal;color:#64748b;margin-top:2px;">Ikon otomatis terpublish setelah disimpan draf</small></label><select class="form-input" data-icon-mode><option value="library" ${mode === "library" ? "selected" : ""}>Pustaka ikon</option><option value="upload" ${mode === "upload" ? "selected" : ""}>Upload sendiri</option></select><select class="form-input" data-library-icon>${ARCHIVE_ICONS.map((icon) => `<option value="${icon}" ${icon === item.fallbackIcon ? "selected" : ""}>${icon}</option>`).join("")}</select><div class="icon-upload-row" style="align-items:stretch;"><label class="btn btn--outline btn--sm" style="display:inline-flex;align-items:center;">Upload ikon<input type="file" data-icon-upload accept="image/png,image/jpeg,image/webp,image/svg+xml" hidden></label>${item.mascotAssetId ? '<button type="button" class="btn btn--outline btn--sm btn--danger icon-remove" data-icon-remove style="display:inline-flex;align-items:center;height:auto;"><i data-lucide="rotate-ccw"></i> Reset upload</button>' : ""}</div></div></div>`;
+}
+
 function renderItems() {
   const root = document.getElementById("archiveItems");
   if (!archiveState.items.length) {
@@ -52,9 +74,69 @@ function renderItems() {
     root.innerHTML = archiveState.items
       .map(
         (item) =>
-          `<article class="archive-manager-item"><div class="archive-manager-item__head"><div class="archive-manager-item__icon"><i data-lucide="${esc(item.icon || item.fallbackIcon || "archive")}"></i></div><div class="archive-manager-item__identity"><strong>${esc(formatArchiveDisplayName(item))}</strong><small>Periode ${esc(formatArchivePeriod(item))}</small></div><div class="archive-manager-item__actions"><a class="btn btn--outline btn--sm" href="${detailUrl(item.id)}"><i data-lucide="settings-2"></i>Edit Detail</a><span class="event-card__badge event-card__badge--archive">Arsip otomatis</span></div></div></article>`,
+          `<article class="archive-manager-item" data-event-id="${esc(item.id)}"><div class="archive-manager-item__head"><div class="archive-manager-item__icon">${archiveIconMarkup(item)}</div><div class="archive-manager-item__identity"><strong>${esc(item.archiveDisplayName || formatArchiveDisplayName(item))}</strong><small>Periode ${esc(formatArchivePeriod(item))}</small></div><div class="archive-manager-item__actions"><a class="btn btn--outline btn--sm" href="${detailUrl(item.id)}"><i data-lucide="settings-2"></i>Edit Detail</a><span class="event-card__badge event-card__badge--archive">Arsip otomatis</span></div></div>${archiveIconControl(item)}</article>`,
       )
       .join("");
+    root.querySelectorAll("[data-event-id]").forEach((card) => {
+      const item = archiveState.items.find(
+        (candidate) => candidate.id === card.dataset.eventId,
+      );
+      const mode = card.querySelector("[data-icon-mode]");
+      const library = card.querySelector("[data-library-icon]");
+      mode.onchange = () => {
+        if (mode.value === "library") {
+          item.mascotAssetId = null;
+          TalentaMedia.revokePreviewUrl(item.uploadedIcon);
+          item.uploadedIcon = "";
+          renderItems();
+          renderPreview();
+          return;
+        }
+        library.hidden = true;
+      };
+      library.onchange = () => {
+        item.fallbackIcon = library.value;
+        item.mascotAssetId = null;
+        TalentaMedia.revokePreviewUrl(item.uploadedIcon);
+        item.uploadedIcon = "";
+        renderItems();
+        renderPreview();
+      };
+      card.querySelector("[data-icon-upload]").onchange = async (event) => {
+        const input = event.target;
+        if (!input.files[0]) return;
+        input.disabled = true;
+        try {
+          const asset = await TalentaMedia.upload(input.files[0], {
+            siteId: item.id,
+            altText: `Logo atau maskot ${item.name}`,
+          });
+          TalentaMedia.revokePreviewUrl(item.uploadedIcon);
+          item.mascotAssetId = asset.assetId;
+          item.uploadedIcon = await TalentaMedia.adminPreviewUrl(
+            item.mascotAssetId,
+            { siteId: item.id },
+          );
+          renderItems();
+          renderPreview();
+          toast("Ikon Arsip berhasil diunggah.");
+        } catch (error) {
+          toast(error.message, true);
+        } finally {
+          input.disabled = false;
+        }
+      };
+      const remove = card.querySelector("[data-icon-remove]");
+      if (remove)
+        remove.onclick = () => {
+          item.mascotAssetId = null;
+          TalentaMedia.revokePreviewUrl(item.uploadedIcon);
+          item.uploadedIcon = "";
+          renderItems();
+          renderPreview();
+        };
+      library.hidden = mode.value !== "library";
+    });
   }
   lucide.createIcons();
 }
@@ -71,7 +153,7 @@ function formatArchiveDisplayName(item) {
 
 function previewItems() {
   return archiveState.items.map((item) => {
-    const fullName = formatArchiveDisplayName(item);
+    const fullName = item.archiveDisplayName || formatArchiveDisplayName(item);
     return normalizeArchiveCompetition({
       id: item.id,
       slug: item.slug,
@@ -80,10 +162,10 @@ function previewItems() {
       description: item.description || "",
       status: "published",
       active: true,
-      icon: item.icon || item.fallbackIcon || "archive",
-      iconMode: item.iconMode,
-      uploadedIcon: item.uploadedIcon,
-      iconAlt: item.iconAlt,
+      icon: item.fallbackIcon || "archive",
+      iconMode: item.mascotAssetId ? "upload" : "library",
+      uploadedIcon: item.uploadedIcon || "",
+      iconAlt: item.iconAlt || `Logo atau maskot ${item.name}`,
       documents: [],
       winnerCategories: [],
     });
@@ -114,11 +196,23 @@ async function hydrateArchive() {
       TalentaArchiveApi.list(),
       TalentaArchiveApi.loadPage(),
     ]);
+    const hydratedItems = await Promise.all(
+      items.map(async (item) => ({
+        ...item,
+        fallbackIcon: item.fallbackIcon || "archive",
+        uploadedIcon: item.mascotAssetId
+          ? await TalentaMedia.adminPreviewUrl(item.mascotAssetId, {
+              siteId: item.id,
+            })
+          : "",
+        iconAlt: `Logo atau maskot ${item.name}`,
+      })),
+    );
     archiveState = {
       ...archiveState,
       ...(page || {}),
       active: page?.isActive ?? archiveState.active,
-      items,
+      items: hydratedItems,
     };
     sync();
     renderItems();
@@ -169,13 +263,18 @@ function bind() {
     const submit = event.submitter;
     if (submit) submit.disabled = true;
     try {
-      await TalentaArchiveApi.savePage({
-        isActive: archiveState.active,
-        eyebrow: archiveState.eyebrow,
-        title: archiveState.title,
-        description: archiveState.description,
-        alignment: archiveState.alignment,
-      });
+      await Promise.all([
+        TalentaArchiveApi.savePage({
+          isActive: archiveState.active,
+          eyebrow: archiveState.eyebrow,
+          title: archiveState.title,
+          description: archiveState.description,
+          alignment: archiveState.alignment,
+        }),
+        ...archiveState.items.map((item) =>
+          TalentaArchiveApi.saveIdentity(item),
+        ),
+      ]);
       toast("Pengaturan halaman Arsip tersimpan.");
     } catch (error) {
       toast(error.message, true);

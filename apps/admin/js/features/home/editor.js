@@ -104,6 +104,52 @@ function loadState() {
   };
 }
 let state = loadState();
+let heroImagePreviewObjectUrl = "",
+  heroImagePreviewAssetId = "",
+  heroImagePreviewGeneration = 0,
+  heroPreviewResizeObserver;
+
+function heroImageAssetId(value) {
+  return (
+    String(value || "").match(
+      /\/api\/v1\/public\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})(?:[/?#]|$)/i,
+    )?.[1] || ""
+  );
+}
+function replaceHeroImagePreviewUrl(next = "", assetId = "") {
+  const value = String(next || "");
+  if (heroImagePreviewObjectUrl && heroImagePreviewObjectUrl !== value)
+    TalentaMedia.revokePreviewUrl(heroImagePreviewObjectUrl);
+  heroImagePreviewObjectUrl = value.startsWith("blob:") ? value : "";
+  heroImagePreviewAssetId = heroImagePreviewObjectUrl ? assetId : "";
+}
+async function hydrateHeroImagePreview(value = state.hero.image) {
+  const assetId = heroImageAssetId(value);
+  const generation = ++heroImagePreviewGeneration;
+  if (!assetId) {
+    replaceHeroImagePreviewUrl("");
+    return true;
+  }
+  if (assetId !== heroImagePreviewAssetId) replaceHeroImagePreviewUrl("");
+  const url = await TalentaMedia.adminPreviewUrl(assetId);
+  if (generation !== heroImagePreviewGeneration) {
+    TalentaMedia.revokePreviewUrl(url);
+    return false;
+  }
+  replaceHeroImagePreviewUrl(url, assetId);
+  return true;
+}
+function heroImagePreviewSource(value = state.hero.image, fallback = "") {
+  const assetId = heroImageAssetId(value);
+  if (!assetId) return value || fallback;
+  return assetId === heroImagePreviewAssetId
+    ? heroImagePreviewObjectUrl
+    : fallback;
+}
+function releaseHeroImagePreview() {
+  ++heroImagePreviewGeneration;
+  replaceHeroImagePreviewUrl("");
+}
 async function hydrateHome() {
   try {
     const loaded = await TalentaHomeApi.load();
@@ -113,6 +159,12 @@ async function hydrateHome() {
         Object.assign(state[type], fresh[type] || {}, loaded[type] || {});
       }
     });
+    try {
+      await hydrateHeroImagePreview(state.hero.image);
+    } catch (error) {
+      releaseHeroImagePreview();
+      toast(error.message || "Gagal memuat pratinjau maskot", true);
+    }
     sync();
     renderAll();
     document.dispatchEvent(
@@ -122,7 +174,6 @@ async function hydrateHome() {
     toast(error.message, true);
   }
 }
-let heroPreviewResizeObserver;
 const scaledPreviewConfigs = new Map();
 document.addEventListener("DOMContentLoaded", () => {
   const heroEditor = document.getElementById("hero-editor");
@@ -166,8 +217,14 @@ function bind() {
   );
   bindToggle("heroActive", state.hero, renderHero);
   bindToggle("scheduleActive", state.schedule, renderSchedule);
-  bindImage("heroImage", 2, (data) => {
-    state.hero.image = data;
+  bindImage("heroImage", 2, async (asset) => {
+    state.hero.image = asset.url;
+    try {
+      await hydrateHeroImagePreview(asset.url);
+    } catch (error) {
+      releaseHeroImagePreview();
+      toast(error.message || "Gagal memuat pratinjau maskot", true);
+    }
     sync();
     renderHero();
   });
@@ -175,6 +232,7 @@ function bind() {
   if (delBtn) {
     delBtn.onclick = () => {
       state.hero.image = "";
+      releaseHeroImagePreview();
       sync();
       renderHero();
     };
@@ -233,6 +291,8 @@ function bind() {
     "schedulePreview",
   );
 
+  window.addEventListener("pagehide", releaseHeroImagePreview);
+  window.addEventListener("beforeunload", releaseHeroImagePreview);
   window.addEventListener("storage", (e) => {
     if (e.key === "talenta_home_editor_v1") {
       toast(
@@ -276,7 +336,7 @@ function bindImage(id, maxMb, done) {
     input.disabled = true;
     try {
       const asset = await TalentaMedia.upload(file);
-      done(TalentaMedia.url(asset));
+      await done({ ...asset, url: TalentaMedia.url(asset) });
       toast("Gambar berhasil diunggah");
     } catch (error) {
       toast(error.message || "Gagal mengunggah gambar", true);
@@ -394,8 +454,9 @@ function sync() {
   const preview = document.getElementById("heroImagePreview");
   const delBtn = document.getElementById("heroImageDelete");
   if (preview) {
-    if (h.image) {
-      preview.innerHTML = `<img src="${esc(h.image)}" alt="Pratinjau gambar utama">`;
+    const previewSource = heroImagePreviewSource(h.image);
+    if (previewSource) {
+      preview.innerHTML = `<img src="${esc(previewSource)}" alt="Pratinjau maskot Event">`;
     } else {
       preview.innerHTML = `<i data-lucide="image" style="width: 24px; height: 24px; color: var(--c-text-light);"></i>`;
       if (window.lucide) lucide.createIcons();
@@ -539,7 +600,7 @@ function renderHero() {
   applyTheme(root, t);
   if (!h.active) return disabled(root, "Hero");
   root.innerHTML = buildHomeHeroMarkup(h, {
-    resolveAsset: (value, fallback) => value || fallback,
+    resolveAsset: heroImagePreviewSource,
     resolveUrl: () => "#",
     renderIcon: heroPreviewIconMarkup,
     linkAttributes: () => ' data-hero-preview-link="true"',

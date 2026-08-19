@@ -5,7 +5,10 @@ describe('PublicContentService', () => {
   it('builds a complete snapshot for exactly one Event', async () => {
     const db = {
       query: jest.fn((sql: string) => {
-        if (sql.includes('FROM event_sites event') && sql.includes('event.id=$1'))
+        if (
+          sql.includes('FROM event_sites event') &&
+          sql.includes('event.id=$1')
+        )
           return Promise.resolve([
             {
               eventId: 'event-1',
@@ -18,7 +21,8 @@ describe('PublicContentService', () => {
               batchNumber: 2,
               batchLabel: 'Gelombang',
               organizerName: 'Talenta',
-              logoAssetId: null,
+              logoAssetId: '11111111-1111-4111-8111-111111111111',
+              navbarLogoSize: 42,
               primaryColor: '#123456',
               navigation: {},
               contact: {},
@@ -39,17 +43,32 @@ describe('PublicContentService', () => {
         if (sql.includes("page_type='faq'")) return Promise.resolve([]);
         if (sql.includes('FROM winner_categories')) return Promise.resolve([]);
         if (sql.includes("page_type='winners'")) return Promise.resolve([]);
-        if (sql.includes('FROM winner_page_settings')) return Promise.resolve([]);
-        if (sql.includes('FROM event_detail_settings')) return Promise.resolve([]);
+        if (sql.includes('FROM winner_page_settings'))
+          return Promise.resolve([]);
+        if (sql.includes('FROM event_detail_settings'))
+          return Promise.resolve([]);
         if (sql.includes("page_type='archive'")) return Promise.resolve([]);
         if (sql.includes('FROM event_documents')) return Promise.resolve([]);
         throw new Error(`Unexpected query: ${sql}`);
       }),
     };
 
-    const snapshot = await new PublicContentService(db as never).build('event-1');
+    const snapshot = await new PublicContentService(db as never).build(
+      'event-1',
+    );
 
     expect(snapshot.schemaVersion).toBe(1);
+    expect(snapshot.bootstrap.site).toMatchObject({
+      logoAssetId: '11111111-1111-4111-8111-111111111111',
+      logoUrl: '/api/v1/public/media/11111111-1111-4111-8111-111111111111',
+    });
+    expect(snapshot.bootstrap.settings).toMatchObject({ navbarLogoSize: 42 });
+    expect(db.query.mock.calls[0][0]).toContain(
+      'event.logo_asset_id AS "logoAssetId"',
+    );
+    expect(db.query.mock.calls[0][0]).not.toContain(
+      'category.logo_asset_id AS "logoAssetId"',
+    );
     expect(snapshot.bootstrap.currentEvent).toMatchObject({
       slug: '2027-gelombang-2',
       name: 'Octal 2027 · Gelombang 2',
@@ -67,6 +86,73 @@ describe('PublicContentService', () => {
     expect(
       db.query.mock.calls.every(([, params]) => params?.[0] === 'event-1'),
     ).toBe(true);
+  });
+
+  it('uses an archive display name only for the archive snapshot section', async () => {
+    const db = {
+      query: jest.fn((sql: string) => {
+        if (
+          sql.includes('FROM event_sites event') &&
+          sql.includes('event.id=$1')
+        )
+          return Promise.resolve([
+            {
+              eventId: 'event-1',
+              categoryId: 'category-1',
+              categoryName: 'Octal',
+              categorySlug: 'octal',
+              eventName: 'Octal',
+              eventSlug: '2027',
+              periodYear: 2027,
+              batchNumber: null,
+              batchLabel: null,
+              organizerName: 'Talenta',
+              logoAssetId: null,
+              navbarLogoSize: 36,
+              primaryColor: '#123456',
+              navigation: {},
+              contact: {},
+              footer: {},
+              seo: {},
+              description: 'Periode baru',
+              mascotAssetId: null,
+              fallbackIcon: 'star',
+            },
+          ]);
+        if (sql.includes('FROM event_detail_settings'))
+          return Promise.resolve([
+            {
+              archiveDisplayName: 'Nama Arsip Tanpa Tahun',
+              isActive: true,
+            },
+          ]);
+        if (sql.includes('FROM home_sections')) return Promise.resolve([]);
+        if (sql.includes('FROM download_tabs')) return Promise.resolve([]);
+        if (sql.includes("page_type='download'")) return Promise.resolve([]);
+        if (sql.includes('FROM faq_categories')) return Promise.resolve([]);
+        if (sql.includes("page_type='faq'")) return Promise.resolve([]);
+        if (sql.includes('FROM winner_categories')) return Promise.resolve([]);
+        if (sql.includes("page_type='winners'")) return Promise.resolve([]);
+        if (sql.includes('FROM winner_page_settings')) return Promise.resolve([]);
+        if (sql.includes("page_type='archive'")) return Promise.resolve([]);
+        if (sql.includes('FROM event_documents')) return Promise.resolve([]);
+        throw new Error(`Unexpected query: ${sql}`);
+      }),
+    };
+
+    const result = await new PublicContentService(db as never).build('event-1');
+
+    expect(result.bootstrap.currentEvent).toMatchObject({ name: 'Octal 2027' });
+    expect(result.winners.event).toMatchObject({ name: 'Octal 2027' });
+    expect(result.archiveDetail.event).toMatchObject({
+      name: 'Nama Arsip Tanpa Tahun',
+    });
+    const detailQuery = db.query.mock.calls.find(([sql]) =>
+      sql.includes('FROM event_detail_settings'),
+    )?.[0];
+    expect(detailQuery).toContain(
+      'archive_display_name AS "archiveDisplayName"',
+    );
   });
 
   it('rejects restoring a snapshot for another Event', async () => {
@@ -110,11 +196,139 @@ describe('PublicContentService', () => {
       },
     );
 
-    expect(calls.findIndex((sql) => sql.includes('DELETE FROM faq_questions'))).toBeLessThan(
+    expect(
+      calls.findIndex((sql) => sql.includes('DELETE FROM faq_questions')),
+    ).toBeLessThan(
       calls.findIndex((sql) => sql.includes('DELETE FROM faq_categories')),
     );
-    expect(calls.findIndex((sql) => sql.includes('INSERT INTO faq_categories'))).toBeLessThan(
+    expect(
+      calls.findIndex((sql) => sql.includes('INSERT INTO faq_categories')),
+    ).toBeLessThan(
       calls.findIndex((sql) => sql.includes('INSERT INTO faq_questions')),
     );
+  });
+
+  it('captures Event logo with the workspace', async () => {
+    const db = {
+      query: jest.fn((sql: string) =>
+        Promise.resolve(
+          sql.includes('FROM event_sites')
+            ? [
+                {
+                  id: 'event-1',
+                  name: 'Octal',
+                  description: '',
+                  logo_asset_id: 'logo-1',
+                  mascot_asset_id: null,
+                  fallback_icon: 'star',
+                },
+              ]
+            : [{ rows: [] }],
+        ),
+      ),
+    };
+
+    const snapshot = await new WorkspaceSnapshotService(db as never).capture(
+      'event-1',
+    );
+
+    expect(snapshot.rows.event_sites[0].logo_asset_id).toBe('logo-1');
+  });
+
+  it('restores legacy snapshots without clearing the current Event logo', async () => {
+    const calls: Array<{ sql: string; parameters?: unknown[] }> = [];
+    const executor = {
+      query: jest.fn((sql: string, parameters?: unknown[]) => {
+        calls.push({ sql, parameters });
+        return Promise.resolve([]);
+      }),
+    };
+    const service = new WorkspaceSnapshotService({} as never);
+
+    await service.restore(
+      'event-1',
+      {
+        schemaVersion: 1,
+        eventId: 'event-1',
+        rows: {
+          event_sites: [
+            {
+              id: 'event-1',
+              name: 'Octal',
+              description: '',
+              mascot_asset_id: null,
+              fallback_icon: 'star',
+            },
+          ],
+          site_settings: [
+            {
+              event_site_id: 'event-1',
+              primary_color: '#123456',
+              navigation: {},
+              contact: {},
+              footer: {},
+              seo: {},
+            },
+          ],
+        },
+      },
+      executor,
+    );
+
+    const eventUpdate = calls.find(({ sql }) =>
+      sql.includes('UPDATE event_sites'),
+    );
+    expect(eventUpdate?.sql).toContain(
+      'CASE WHEN $6 THEN $7::uuid ELSE logo_asset_id END',
+    );
+    const settingsInsert = calls.find(({ sql }) =>
+      sql.includes('jsonb_populate_recordset'),
+    );
+    expect(settingsInsert?.parameters?.[0]).toContain('"navbar_logo_size":36');
+  });
+
+  it('restores new snapshot with explicit null logo asset id', async () => {
+    const calls: Array<{ sql: string; parameters?: unknown[] }> = [];
+    const executor = {
+      query: jest.fn((sql: string, parameters?: unknown[]) => {
+        calls.push({ sql, parameters });
+        return Promise.resolve([]);
+      }),
+    };
+    const service = new WorkspaceSnapshotService({} as never);
+
+    await service.restore(
+      'event-1',
+      {
+        schemaVersion: 1,
+        eventId: 'event-1',
+        rows: {
+          event_sites: [
+            {
+              id: 'event-1',
+              name: 'Octal',
+              description: '',
+              logo_asset_id: null,
+              mascot_asset_id: null,
+              fallback_icon: 'star',
+            },
+          ],
+        },
+      },
+      executor,
+    );
+
+    const eventUpdate = calls.find(({ sql }) =>
+      sql.includes('UPDATE event_sites'),
+    );
+    expect(eventUpdate?.parameters).toEqual([
+      'event-1',
+      'Octal',
+      '',
+      null,
+      'star',
+      true,
+      null,
+    ]);
   });
 });

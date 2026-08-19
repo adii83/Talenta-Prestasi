@@ -70,6 +70,9 @@ export class EventSite {
   @Column({ name: 'mascot_asset_id', type: 'uuid', nullable: true })
   mascotAssetId!: string | null;
 
+  @Column({ name: 'logo_asset_id', type: 'uuid', nullable: true })
+  logoAssetId!: string | null;
+
   @Column({ name: 'fallback_icon', default: 'graduation-cap' })
   fallbackIcon!: string;
 
@@ -101,6 +104,10 @@ export class EventSite {
   @ManyToOne(() => MediaAsset, { nullable: true })
   @JoinColumn({ name: 'mascot_asset_id' })
   mascotAsset!: MediaAsset | null;
+
+  @ManyToOne(() => MediaAsset, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'logo_asset_id' })
+  logoAsset!: MediaAsset | null;
 
   @OneToOne(() => SiteSettings, (s) => s.eventSite, { cascade: true })
   settings!: SiteSettings;

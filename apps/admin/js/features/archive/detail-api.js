@@ -11,6 +11,11 @@
         call(`/admin/events/${eventId}/detail-settings`),
       ]);
     const settings = detailConfig.settings || {};
+    const decreeDocument =
+      documents.find((item) => item.id === settings.decreeDocumentId) ||
+      documents.find(
+        (item) => item.isActive && item.documentRole === "winner_decree",
+      );
     const categoryVisibility = new Map(
       detailConfig.categories.map((item) => [item.categoryId, item.isVisible]),
     );
@@ -20,7 +25,7 @@
     const metadata = settings.metadataVisibility || {};
     return {
       ...event,
-      shortName: event.name,
+      archiveDisplayName: settings.archiveDisplayName,
       status: event.isActive ? "active" : "archive",
       active: !event.deletedAt,
       detail: {
@@ -71,38 +76,30 @@
             active: winner.isActive,
           })),
       })),
-      skDocument: (() => {
-        const document = documents.find(
-          (item) => item.id === settings.decreeDocumentId,
-        );
-        return document
-          ? {
-              ...document,
-              title: settings.decreeTitle || document.title,
-              description:
-                settings.decreeDescription ||
-                "Unduh dokumen resmi SK Pemenang.",
-            }
-          : null;
-      })(),
+      skDocument: decreeDocument
+        ? {
+            ...decreeDocument,
+            documentId: decreeDocument.id,
+            title: settings.decreeTitle || "SK Penetapan Pemenang",
+            description:
+              settings.decreeDescription ||
+              "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
+          }
+        : null,
     };
   }
 
   async function save(event) {
     await TalentaApi.request(`/admin/events/${event.id}`, {
       method: "PATCH",
-      body: {
-        name: event.name,
-        description: event.description || "",
-        fallbackIcon: event.fallbackIcon || event.icon || "graduation-cap",
-        mascotAssetId: event.mascotAssetId || undefined,
-      },
+      body: { description: event.description || "" },
     });
     await TalentaApi.request(`/admin/events/${event.id}/detail-settings`, {
       method: "PUT",
       body: {
+        archiveDisplayName: event.archiveDisplayName,
         description: event.description || "",
-        decreeDocumentId: event.skDocument?.id,
+        decreeDocumentId: event.skDocument?.documentId,
         decreeTitle: event.skDocument?.title,
         decreeDescription: event.skDocument?.description,
         isActive: event.detail.active,

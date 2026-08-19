@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access -- ponytail: TypeORM query() returns any; replace with typed repositories when CRUD DTO shape diverges from table rows. */
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -61,7 +62,7 @@ export class AdminContentService {
     const settings =
       (
         await this.db.query(
-          `SELECT decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",decree_description AS "decreeDescription",is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM event_detail_settings WHERE event_site_id=$1`,
+          `SELECT archive_display_name AS "archiveDisplayName",decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",decree_description AS "decreeDescription",is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM event_detail_settings WHERE event_site_id=$1`,
           [eventId],
         )
       )[0] ?? null;
@@ -80,6 +81,7 @@ export class AdminContentService {
     eventId: string,
     userId: string,
     input: {
+      archiveDisplayName?: string;
       description?: string;
       decreeDocumentId?: string;
       decreeTitle?: string;
@@ -97,6 +99,11 @@ export class AdminContentService {
     },
   ) {
     await this.eventAccess(eventId, userId, true);
+    if (
+      input.archiveDisplayName !== undefined &&
+      !input.archiveDisplayName.trim()
+    )
+      throw new BadRequestException('Archive display name is required');
     await this.db.transaction(async (manager) => {
       if (typeof input.description === 'string') {
         await manager.query(
@@ -114,10 +121,12 @@ export class AdminContentService {
             'Decree document does not belong to event',
           );
       }
+      const hasArchiveDisplayName = input.archiveDisplayName !== undefined;
       await manager.query(
-        `INSERT INTO event_detail_settings(event_site_id,decree_document_id,decree_title,decree_description,is_active,winners_active,documents_active,metadata_visibility) VALUES($1,$2,$3,$4,$5,$6,$7,$8) ON CONFLICT(event_site_id) DO UPDATE SET decree_document_id=EXCLUDED.decree_document_id,decree_title=EXCLUDED.decree_title,decree_description=EXCLUDED.decree_description,is_active=EXCLUDED.is_active,winners_active=EXCLUDED.winners_active,documents_active=EXCLUDED.documents_active,metadata_visibility=EXCLUDED.metadata_visibility`,
+        `INSERT INTO event_detail_settings(event_site_id,archive_display_name,decree_document_id,decree_title,decree_description,is_active,winners_active,documents_active,metadata_visibility) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(event_site_id) DO UPDATE SET archive_display_name=CASE WHEN $10 THEN EXCLUDED.archive_display_name ELSE event_detail_settings.archive_display_name END,decree_document_id=EXCLUDED.decree_document_id,decree_title=EXCLUDED.decree_title,decree_description=EXCLUDED.decree_description,is_active=EXCLUDED.is_active,winners_active=EXCLUDED.winners_active,documents_active=EXCLUDED.documents_active,metadata_visibility=EXCLUDED.metadata_visibility`,
         [
           eventId,
+          hasArchiveDisplayName ? input.archiveDisplayName?.trim() : null,
           input.decreeDocumentId ?? null,
           input.decreeTitle?.trim() || DEFAULT_DECREE_TITLE,
           input.decreeDescription?.trim() || DEFAULT_DECREE_DESCRIPTION,
@@ -125,6 +134,7 @@ export class AdminContentService {
           input.winnersActive,
           input.documentsActive,
           input.metadataVisibility,
+          hasArchiveDisplayName,
         ],
       );
       await manager.query(

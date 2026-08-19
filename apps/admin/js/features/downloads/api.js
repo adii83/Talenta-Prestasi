@@ -125,10 +125,16 @@
         ) ||
         availableList[index] ||
         availableList[0];
+      const savedTabName = tab.customTabName?.trim() || "";
+      const isLegacyCurrentName =
+        matchingComp?.id === current.id &&
+        (!savedTabName || savedTabName === current.name?.trim());
       return {
         competitionId: matchingComp?.id || current.id,
         tabId: tab.tabId,
-        customTabName: tab.customTabName || matchingComp?.name || "",
+        customTabName: isLegacyCurrentName
+          ? source.name
+          : savedTabName || matchingComp?.name || "",
         isDefault: tab.isDefault,
         active: tab.isActive,
         hiddenDocumentIds: (tab.documents || [])
@@ -144,7 +150,7 @@
     if (!configs.length)
       configs.push({
         competitionId: current.id,
-        customTabName: current.name,
+        customTabName: source.name,
         isDefault: true,
         active: true,
         hiddenDocumentIds: [],

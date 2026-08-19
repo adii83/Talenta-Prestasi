@@ -11,6 +11,7 @@ import {
   UseInterceptors,
   Body,
   Headers,
+  Query,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
@@ -47,16 +48,40 @@ export class MediaController {
     return this.media.upload(eventId, user.userId, file, altText);
   }
 
+  @Get('admin/events/:eventId/media/:assetId')
+  @UseGuards(JwtAuthGuard)
+  @Header('X-Content-Type-Options', 'nosniff')
+  @Header('Cache-Control', 'private, no-store')
+  async adminFile(
+    @Param('eventId', ParseUUIDPipe) eventId: string,
+    @Param('assetId', ParseUUIDPipe) assetId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res() response: Response,
+  ) {
+    const { asset, buffer } = await this.media.adminFile(
+      eventId,
+      user.userId,
+      assetId,
+    );
+    response.setHeader('Content-Type', asset.mimeType);
+    response.setHeader('Content-Length', buffer.length);
+    response.setHeader(
+      'Content-Disposition',
+      `${asset.mimeType === 'application/pdf' ? 'attachment' : 'inline'}; filename*=UTF-8''${encodeURIComponent(asset.originalName)}`,
+    );
+    response.send(buffer);
+  }
+
   @Get('public/media/:assetId')
   @Header('X-Content-Type-Options', 'nosniff')
   async publicFile(
     @Param('assetId', ParseUUIDPipe) id: string,
+    @Query('preview_token') queryToken = '',
     @Headers('x-talenta-preview') headerToken = '',
     @Headers('cookie') cookie = '',
     @Res() response: Response,
   ) {
-    const previewToken =
-      headerToken || this.previewTokens.fromCookie(cookie);
+    const previewToken = queryToken || headerToken || this.previewTokens.fromCookie(cookie);
     const { asset, buffer } = await this.media.file(id, previewToken);
     response.setHeader('Content-Type', asset.mimeType);
     response.setHeader('Content-Length', buffer.length);

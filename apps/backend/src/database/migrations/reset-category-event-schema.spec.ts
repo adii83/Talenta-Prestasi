@@ -1,5 +1,8 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { AddEventDraftPublications1786586400000 } from './1786586400000-AddEventDraftPublications';
 import { AddEventPeriodIdentity1786672800000 } from './1786672800000-AddEventPeriodIdentity';
+import { AddEventLogoSettings1786759200000 } from './1786759200000-AddEventLogoSettings';
 import { ResetCategoryEventSchema1786500000000 } from './1786500000000-ResetCategoryEventSchema';
 
 describe('ResetCategoryEventSchema migration', () => {
@@ -73,5 +76,41 @@ describe('ResetCategoryEventSchema migration', () => {
     expect(source).toContain('uq_event_period_unbatched');
     expect(source).toContain('uq_event_period_batch');
     expect(source).not.toContain('DROP TABLE event_sites');
+  });
+
+  it('adds Event-scoped logo and bounded navbar size without deleting legacy assets', async () => {
+    const queries: string[] = [];
+    const runner = {
+      query: jest.fn((sql: string) => {
+        queries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    };
+
+    await new AddEventLogoSettings1786759200000().up(runner as never);
+
+    const source = queries.join('\n');
+    expect(source).toContain('ADD COLUMN logo_asset_id uuid');
+    expect(source).toContain('ADD COLUMN navbar_logo_size smallint');
+    expect(source).toContain('BETWEEN 24 AND 44');
+    expect(source).toContain('event.mascot_asset_id');
+    expect(source).toContain('category.logo_asset_id');
+    expect(source).not.toContain('DROP COLUMN mascot_asset_id');
+    expect(source).not.toContain('DROP COLUMN logo_asset_id');
+  });
+
+  it('adds a nullable archive display name without resetting Event content', () => {
+    const path = join(
+      __dirname,
+      '1786759300000-AddArchiveDisplayName.ts',
+    );
+    expect(existsSync(path)).toBe(true);
+    const source = readFileSync(path, 'utf8');
+
+    expect(source).toContain('ALTER TABLE event_detail_settings');
+    expect(source).toContain('ADD COLUMN archive_display_name varchar(200)');
+    expect(source).not.toContain('NOT NULL');
+    expect(source).not.toContain('DROP TABLE event_detail_settings');
+    expect(source).not.toContain('DROP SCHEMA');
   });
 });

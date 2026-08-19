@@ -23,7 +23,12 @@
     const competitions = data
       ? data.events.map((event) => ({
           ...event,
-          icon: event.icon || event.fallbackIcon || "archive",
+          icon: event.fallbackIcon || "archive",
+          iconMode: event.mascotAssetId ? "upload" : "library",
+          uploadedIcon: event.mascotAssetId
+            ? TalentaMedia.url(event.mascotAssetId)
+            : "",
+          iconAlt: `Logo atau maskot ${event.name}`,
         }))
       : getPublicArchivedCompetitions();
     if (!page.active) {

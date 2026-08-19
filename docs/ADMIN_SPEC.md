@@ -51,7 +51,7 @@ Tindakan utama:
 - **Publikasikan perubahan** mengganti seluruh snapshot publik Event secara atomik;
 - **Batalkan draf** mengembalikan workspace ke snapshot terakhir dan dinonaktifkan untuk Event yang belum pernah dipublikasikan.
 
-Preview dapat menampilkan kategori unpublished serta Event nonaktif/suspended yang dipilih Admin, tetapi tetap menolak soft delete, lintas tenant, dan token kedaluwarsa. Pengunjung umum tetap memerlukan kategori published, Event aktif/operasional, dan snapshot publik. Publish/unpublish kategori tidak digunakan untuk setiap edit.
+Preview dapat menampilkan kategori unpublished serta Event nonaktif/suspended yang dipilih Admin, tetapi tetap menolak soft delete, lintas tenant, dan token kedaluwarsa. Tautan **Lihat halaman** pada editor Detail Arsip meminta token milik Event Arsip yang sedang diedit agar nama, ikon, serta media workspace Event tersebut tampil tanpa memakai scope Event aktif. Pengunjung umum tetap memerlukan kategori published, Event aktif/operasional, dan snapshot publik. Publish/unpublish kategori tidak digunakan untuk setiap edit.
 
 ## Role dan Tenant
 
@@ -66,9 +66,13 @@ Membership mengikat pengguna ke Organization dengan role `owner`, `admin`, `edit
 
 Pengaturan Event mencakup:
 
-- nama/deskripsi Event, maskot/logo Event, fallback icon, dan warna;
+- nama/deskripsi Event, maskot, fallback icon, dan warna;
+- logo Event yang terpisah dari maskot serta logo/favicon Kategori legacy;
+- satu ukuran logo navbar 24–44 piksel, default 36 piksel, untuk desktop, tablet, dan mobile;
 - navigasi, kontak, footer, dan SEO;
 - settings visual yang berlaku khusus pada periode tersebut.
+
+Logo yang diunggah direkomendasikan berasio 1:1 dengan background transparan. Format yang diterima untuk logo adalah PNG, JPG/JPEG, atau WebP maksimal 5 MB. File disimpan apa adanya; CMS tidak menyediakan remove-background atau pemrosesan gambar otomatis. Asset logo yang sama dipakai sebagai favicon Event.
 
 Slug/subdomain dan identitas penyelenggara berada pada kategori, bukan form Pengaturan Event.
 
@@ -91,7 +95,7 @@ Dokumen dimiliki Event (`event_documents`). Editor Unduh mengatur tab Event (`do
 
 - Satu tab dapat menjadi default.
 - Menyembunyikan referensi tidak menghapus dokumen sumber.
-- Dokumen dari Event lain ditolak backend.
+- Tab Unduh dapat mereferensikan dokumen dari Event lain dalam Kategori Lomba yang sama; dokumen lintas kategori atau tenant ditolak backend.
 - PDF disajikan melalui endpoint public media.
 
 ## Pemenang dan SK
@@ -123,7 +127,9 @@ Upload Admin menggunakan `/api/v1/admin/events/:eventId/media` dan menerima:
 - PNG, JPEG, WebP, SVG maksimal 5 MB;
 - PDF maksimal 10 MB.
 
-Backend memeriksa MIME, ukuran, signature file, pola SVG berbahaya dasar, dan ownership Organization. URL publik berbentuk `/api/v1/public/media/<asset-id>`.
+Backend memeriksa MIME, ukuran, signature file, pola SVG berbahaya dasar, dan ownership Organization. Logo hanya dapat mereferensikan asset PNG, JPEG, atau WebP aktif milik Organization Event.
+
+Preview logo pada editor tidak memasang URL publik langsung. Browser membaca `GET /api/v1/admin/events/:eventId/media/:assetId` menggunakan JWT, menerima Blob, lalu membuat Object URL lokal. Endpoint memverifikasi tenant/Event. Object URL tidak pernah masuk `localStorage`; cache hanya menyimpan ID asset. Website publik dan **Lihat preview** tetap memakai `/api/v1/public/media/<asset-id>` dengan kebijakan allowlist snapshot publik atau token preview.
 
 ## Dialog dan Aksesibilitas
 

@@ -5,6 +5,8 @@ import vm from "node:vm";
 const storage = new Map();
 const context = {
   window: {},
+  location: { hostname: "localhost", search: "" },
+  URLSearchParams,
   sessionStorage: {
     getItem: (key) => storage.get(key) || null,
     setItem: (key, value) => storage.set(key, value),

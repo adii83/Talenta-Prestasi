@@ -80,7 +80,7 @@ export class PublicService {
       {
         ...base,
         archives: archives
-          .map((item) => archiveSummary(item))
+          .map((item) => archiveSummary(item, resolved.preview))
           .slice(0, Number(settings.archiveLimit ?? 3)),
       },
       resolved.preview,
@@ -96,7 +96,9 @@ export class PublicService {
     return response(
       {
         ...resolved.snapshot.archivePage,
-        events: events.map((item) => archiveSummary(item)),
+        events: events.map((item) =>
+          archiveSummary(item, resolved.preview),
+        ),
       },
       resolved.preview,
     );
@@ -108,6 +110,22 @@ export class PublicService {
     previewToken = '',
   ) {
     const resolved = await this.resolve(categorySlug, previewToken);
+    if (
+      resolved.preview &&
+      (eventSlug === resolved.eventId ||
+        eventSlug ===
+          String(
+            (resolved.snapshot.archiveDetail as { event?: { slug?: unknown } })
+              .event?.slug || '',
+          ))
+    )
+      return response(
+        {
+          site: (resolved.snapshot.bootstrap as { site?: unknown }).site,
+          ...resolved.snapshot.archiveDetail,
+        },
+        true,
+      );
     const rows = await this.db.query<ArchiveSnapshot[]>(
       `SELECT publication.public_snapshot AS snapshot,event.id AS "eventId",
               event.slug AS "eventSlug",event.name AS "baseName",
@@ -259,7 +277,8 @@ export class PublicService {
 
   private archiveSnapshots(categoryId: string, activeEventId: string) {
     return this.db.query<ArchiveSnapshot[]>(
-      `SELECT publication.public_snapshot AS snapshot,event.slug AS "eventSlug",event.name AS "baseName",
+      `SELECT publication.public_snapshot AS snapshot,event.id AS "eventId",event.slug AS "eventSlug",event.name AS "baseName",
+              event.mascot_asset_id AS "mascotAssetId",event.fallback_icon AS "fallbackIcon",
               event.period_year AS "periodYear",event.batch_number AS "batchNumber",
               event.batch_label AS "batchLabel",
               EXISTS(
@@ -317,29 +336,44 @@ function publicSnapshotSection(
 
 interface ArchiveSnapshot {
   snapshot: PublicEventSnapshot;
+  eventId: string;
   eventSlug: string;
   baseName: string;
+  mascotAssetId?: string | null;
+  fallbackIcon?: string;
   periodYear: number | null;
   batchNumber: number | null;
   batchLabel: string | null;
   showBatch: boolean;
 }
 
-function archiveSummary(item: ArchiveSnapshot) {
-  const event = (item.snapshot.archiveDetail as { event: Record<string, unknown> })
-    .event;
-  return {
-    ...event,
-    slug: item.eventSlug,
-    name:
-      item.showBatch
+function archiveSummary(item: ArchiveSnapshot, preview = false) {
+  const detail = item.snapshot.archiveDetail as {
+    event: Record<string, unknown>;
+    settings?: { archiveDisplayName?: unknown } | null;
+  };
+  const archiveDisplayName = detail.settings?.archiveDisplayName;
+  const name =
+    typeof archiveDisplayName === 'string' && archiveDisplayName.trim()
+      ? archiveDisplayName
+      : item.showBatch
         ? eventDisplayName(
             item.baseName,
             item.periodYear,
             item.batchLabel,
             item.batchNumber,
           )
-        : eventDisplayName(item.baseName, item.periodYear, null, null),
+        : eventDisplayName(item.baseName, item.periodYear, null, null);
+  return {
+    ...detail.event,
+    mascotAssetId: preview
+      ? item.mascotAssetId ?? (detail.event.mascotAssetId as string | null) ?? null
+      : (detail.event.mascotAssetId as string | null) ?? item.mascotAssetId ?? null,
+    fallbackIcon: preview
+      ? item.fallbackIcon || (detail.event.fallbackIcon as string) || 'archive'
+      : (detail.event.fallbackIcon as string) || item.fallbackIcon || 'archive',
+    slug: item.eventSlug,
+    name,
     periodYear: item.periodYear,
     batchNumber: item.batchNumber,
     batchLabel: item.batchLabel,

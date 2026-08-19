@@ -6,6 +6,7 @@ const read = (path) => readFileSync(path, "utf8");
 const settingsRepositoryPath =
   "packages/shared/js/data/repositories/settings-repository.js";
 const settingsRepository = read(settingsRepositoryPath);
+const settingsEditor = read("apps/admin/js/shell/settings-editor.js");
 
 const editorContracts = [
   [
@@ -81,6 +82,99 @@ assert(
   !read("apps/admin/index.html").includes('id="accentColor"'),
   "Pengaturan Global tidak boleh lagi menampilkan pemilih Warna Sorotan",
 );
+assert.match(
+  settingsEditor,
+  /globalState\s*=\s*saveGlobalSettings\(globalState\)/,
+  "settings Event tersimpan harus memperbarui cache preview Event terpilih",
+);
+assert.equal(
+  settingsEditor.match(/globalState\s*=\s*saveGlobalSettings\(nextState\)/g)
+    ?.length,
+  4,
+  "settings Event dari API dan hasil Urungkan edit harus mengisi cache preview Event terpilih pada sukses dan fallback",
+);
+const uploadLogoHandler = settingsEditor.slice(
+  settingsEditor.indexOf("eventLogo.onchange"),
+  settingsEditor.indexOf("logoDeleteButton.onclick"),
+);
+assert.match(
+  uploadLogoHandler,
+  /const generation = \+\+settingsLoadGeneration;[\s\S]*TalentaMedia\.upload\([\s\S]*if \(generation !== settingsLoadGeneration\) return;[\s\S]*globalState\.identity\.logoAssetId = asset\.assetId;[\s\S]*hydrateLogoPreview\(asset\.assetId, generation\)/,
+  "upload logo harus memakai generation dan berhenti sebelum mengubah state ketika stale",
+);
+assert.match(
+  uploadLogoHandler,
+  /catch \(error\) \{\s*if \(generation !== settingsLoadGeneration\) return;\s*replaceLogoPreviewUrl\(""\)/s,
+  "gagal hidrasi upload yang stale tidak boleh menghapus preview terbaru",
+);
+assert.match(
+  uploadLogoHandler,
+  /catch \(error\) \{\s*if \(generation === settingsLoadGeneration\)\s*showToast\(error\.message, true\);\s*\}/s,
+  "error upload yang stale tidak boleh menampilkan toast",
+);
+const uploadAssetIdIndex = uploadLogoHandler.indexOf(
+  "globalState.identity.logoAssetId = asset.assetId",
+);
+const uploadHydrateIndex = uploadLogoHandler.indexOf("hydrateLogoPreview(");
+const uploadFallbackIndex = uploadLogoHandler.indexOf(
+  'replaceLogoPreviewUrl("")',
+  uploadHydrateIndex,
+);
+const uploadRenderIndex = uploadLogoHandler.indexOf(
+  "renderPreview()",
+  uploadFallbackIndex,
+);
+assert(
+  uploadAssetIdIndex >= 0 &&
+    uploadAssetIdIndex < uploadHydrateIndex &&
+    uploadFallbackIndex > uploadHydrateIndex &&
+    uploadLogoHandler.indexOf('setLogo("")', uploadFallbackIndex) >
+      uploadFallbackIndex &&
+    uploadRenderIndex > uploadFallbackIndex &&
+    uploadLogoHandler.indexOf("throw error", uploadRenderIndex) >
+      uploadRenderIndex,
+  "gagal hidrasi upload harus mempertahankan asset ID lalu merender fallback kosong sebelum meneruskan error",
+);
+assert.match(
+  settingsEditor,
+  /if\s*\(generation !== undefined && generation !== settingsLoadGeneration\)\s*\{\s*TalentaMedia\.revokePreviewUrl\(url\);\s*return false;\s*\}/s,
+  "Object URL dari operasi settings yang stale harus langsung dicabut",
+);
+assert.match(
+  settingsEditor,
+  /async function revertSettings\(\)\s*\{\s*const generation = \+\+settingsLoadGeneration;/s,
+  "Urungkan edit harus membuat generation baru sebelum load settings",
+);
+assert.match(
+  settingsEditor,
+  /const initialGeneration = \+\+settingsLoadGeneration;\s*void Promise\.all/s,
+  "load awal harus memiliki generation sendiri",
+);
+assert.match(
+  settingsEditor,
+  /input\.onchange = \(\) => \{\s*\+\+settingsLoadGeneration;/s,
+  "edit navigasi harus membatalkan load atau upload logo lama",
+);
+assert.match(
+  settingsEditor,
+  /addEventListener\("input", \(\) => \{\s*\+\+settingsLoadGeneration;\s*renderPreview\(\);/s,
+  "edit form harus membatalkan load atau upload logo lama",
+);
+assert.match(
+  settingsEditor,
+  /logoDeleteButton\.onclick = \(\) => \{\s*\+\+settingsLoadGeneration;/s,
+  "hapus logo harus membatalkan operasi logo lama",
+);
+assert.match(
+  settingsEditor,
+  /delBtn\.hidden = !globalState\?\.identity\?\.logoAssetId;/,
+  "tombol hapus harus tetap tersedia berdasarkan asset ID ketika preview gagal dimuat",
+);
+assert.match(
+  settingsEditor,
+  /form\.onsubmit = async \(e\) => \{\s*e\.preventDefault\(\);\s*\+\+settingsLoadGeneration;/s,
+  "simpan harus membatalkan operasi logo lama",
+);
 assert(
   !read("apps/public-site/assets/js/archive-detail.js").includes(
     "competition.gradient",
@@ -109,6 +203,7 @@ assert(
 
 const storage = new Map();
 const listeners = new Map();
+let selectedEventId = "event-2026";
 const context = {
   console,
   localStorage: {
@@ -117,6 +212,11 @@ const context = {
     removeItem: (key) => storage.delete(key),
   },
   window: {
+    parent: {
+      TalentaAdminAuth: {
+        currentEvent: () => ({ id: selectedEventId }),
+      },
+    },
     addEventListener(type, callback) {
       const callbacks = listeners.get(type) || [];
       callbacks.push(callback);
@@ -141,17 +241,100 @@ globalThis.__themeAudit = {
   getGlobalThemePalette,
   applyGlobalThemeTokens,
   subscribeGlobalSettings,
-  GLOBAL_SETTINGS_KEY
+  saveGlobalSettings,
+  GLOBAL_SETTINGS_KEY,
+  globalSettingsStorageKey
 };`,
   context,
 );
 
 const audit = context.__themeAudit;
+assert.equal(
+  audit.getGlobalSettings().identity.logoAssetId,
+  null,
+  "baseline identity harus memakai logoAssetId null",
+);
+assert.equal(
+  audit.getGlobalSettings().identity.navbarLogoSize,
+  36,
+  "baseline identity harus memakai ukuran logo navbar 36 px",
+);
+const normalizedLogoSizes = vm.runInContext(
+  `[
+    normalizeGlobalSettings({ version: 3, identity: { navbarLogoSize: 12 } }).identity.navbarLogoSize,
+    normalizeGlobalSettings({ version: 3, identity: { navbarLogoSize: 50 } }).identity.navbarLogoSize,
+    normalizeGlobalSettings({ version: 3, identity: { navbarLogoSize: "40" } }).identity.navbarLogoSize,
+    normalizeGlobalSettings({ version: 3, identity: { navbarLogoSize: "invalid" } }).identity.navbarLogoSize,
+  ]`,
+  context,
+);
+assert.deepEqual(
+  Array.from(normalizedLogoSizes),
+  [24, 44, 40, 36],
+  "ukuran logo navbar harus dinormalisasi ke rentang 24..44 dengan fallback 36",
+);
+let previewEventDetail;
+context.window.addEventListener(
+  "talenta:settings",
+  (event) => (previewEventDetail = event.detail),
+);
+const previewSettings = audit.saveGlobalSettings({
+  version: 3,
+  identity: {
+    logoAssetId: "asset-logo",
+    logo: "blob:admin-logo-preview",
+    navbarLogoSize: 40,
+  },
+});
+assert.equal(
+  previewSettings.identity.logo,
+  "blob:admin-logo-preview",
+  "state memori hasil save harus mempertahankan Object URL preview",
+);
+assert.equal(
+  previewEventDetail.identity.logo,
+  "blob:admin-logo-preview",
+  "detail event settings harus mempertahankan Object URL preview",
+);
+assert.equal(
+  JSON.parse(storage.get(audit.globalSettingsStorageKey())).identity.logo,
+  "",
+  "cache localStorage tidak boleh menyimpan Object URL preview",
+);
+assert(
+  !storage.get(audit.globalSettingsStorageKey()).includes("blob:"),
+  "cache localStorage tidak boleh memuat blob:",
+);
+assert.equal(
+  audit.globalSettingsStorageKey(),
+  `${audit.GLOBAL_SETTINGS_KEY}:event-2026`,
+  "cache tema Admin harus memakai ID Event terpilih",
+);
+audit.saveGlobalSettings({
+  version: 3,
+  theme: { primaryColor: "#2457a6" },
+});
+selectedEventId = "event-2027";
+audit.saveGlobalSettings({
+  version: 3,
+  theme: { primaryColor: "#a62626" },
+});
+assert.equal(
+  audit.getGlobalSettings().theme.primaryColor,
+  "#a62626",
+  "preview Event 2027 harus memakai tema Event 2027",
+);
+selectedEventId = "event-2026";
+assert.equal(
+  audit.getGlobalSettings().theme.primaryColor,
+  "#2457a6",
+  "preview Event 2026 harus tetap memakai tema Event 2026",
+);
 assert.equal(audit.getGlobalSettings().version, 3);
 assert.equal(audit.getGlobalSettings().theme.accentColor, "#ffffff");
 
 storage.set(
-  audit.GLOBAL_SETTINGS_KEY,
+  audit.globalSettingsStorageKey(),
   JSON.stringify({
     version: 2,
     theme: { primaryColor: "#1e4b8c", accentColor: "#c89b3c" },
@@ -164,7 +347,7 @@ assert.equal(
 );
 
 storage.set(
-  audit.GLOBAL_SETTINGS_KEY,
+  audit.globalSettingsStorageKey(),
   JSON.stringify({
     version: 3,
     theme: { primaryColor: "#2457a6", accentColor: "#e8f1ff" },
@@ -212,7 +395,7 @@ assert.deepEqual(
 let notifications = 0;
 audit.subscribeGlobalSettings(() => notifications++);
 for (const callback of listeners.get("storage") || [])
-  callback({ key: audit.GLOBAL_SETTINGS_KEY });
+  callback({ key: audit.globalSettingsStorageKey() });
 assert.equal(
   notifications,
   1,
@@ -230,6 +413,112 @@ assert.deepEqual(
   directLegacyReads,
   [],
   `feature masih membaca schema tema secara langsung: ${directLegacyReads.join(", ")}`,
+);
+
+const heroPreviewElements = new Map();
+const heroPreviewRoot = {
+  className: "",
+  innerHTML: "",
+  querySelectorAll: () => [],
+};
+heroPreviewElements.set("homePreview", heroPreviewRoot);
+heroPreviewElements.set("heroImagePreview", { innerHTML: "" });
+heroPreviewElements.set("heroImageDelete", { hidden: true });
+const revokedHeroUrls = [];
+const heroPreviewContext = {
+  console,
+  structuredClone,
+  localStorage: {
+    getItem: () => null,
+    setItem() {},
+    removeItem() {},
+  },
+  window: {
+    addEventListener() {},
+    dispatchEvent() {},
+  },
+  document: {
+    addEventListener() {},
+    getElementById(id) {
+      if (!heroPreviewElements.has(id))
+        heroPreviewElements.set(id, { type: "text", value: "" });
+      return heroPreviewElements.get(id);
+    },
+  },
+  CustomEvent: class CustomEvent {},
+  ResizeObserver: class ResizeObserver {},
+  requestAnimationFrame: () => 0,
+  getGlobalSettings: () => ({ theme: {} }),
+  applyGlobalThemeTokens() {},
+  subscribeGlobalSettings() {},
+  lucide: { createIcons() {} },
+  TalentaMedia: {
+    async adminPreviewUrl(assetId) {
+      return `blob:hero-${assetId}`;
+    },
+    revokePreviewUrl(url) {
+      revokedHeroUrls.push(url);
+    },
+  },
+};
+vm.createContext(heroPreviewContext);
+vm.runInContext(
+  `${read("packages/shared/js/data/repositories/home-repository.js")}
+${read("apps/admin/js/features/home/editor.js")}
+globalThis.__heroPreviewAudit =
+  typeof hydrateHeroImagePreview === "function" &&
+  typeof heroImagePreviewSource === "function"
+    ? {
+        setImage(value) { state.hero.image = value; },
+        stateImage() { return state.hero.image; },
+        hydrate: hydrateHeroImagePreview,
+        source: heroImagePreviewSource,
+        renderHero,
+        sync,
+        release: releaseHeroImagePreview,
+      }
+    : null;`,
+  heroPreviewContext,
+);
+const heroPreviewAudit = heroPreviewContext.__heroPreviewAudit;
+assert(heroPreviewAudit, "editor Hero harus menyediakan preview media Admin");
+const heroAssetId = "11111111-2222-4333-8444-555555555555";
+const publicHeroUrl = `/api/v1/public/media/${heroAssetId}`;
+heroPreviewAudit.setImage(publicHeroUrl);
+heroPreviewAudit.sync();
+assert.doesNotMatch(
+  heroPreviewElements.get("heroImagePreview").innerHTML,
+  /<img\b/,
+  "thumbnail maskot harus memakai placeholder selama Blob belum tersedia",
+);
+await heroPreviewAudit.hydrate(publicHeroUrl);
+assert.equal(
+  heroPreviewAudit.stateImage(),
+  publicHeroUrl,
+  "URL publik maskot harus tetap tersimpan untuk publikasi",
+);
+assert.equal(
+  heroPreviewAudit.source(),
+  `blob:hero-${heroAssetId}`,
+  "preview Hero Admin harus memakai Blob terautentikasi",
+);
+heroPreviewAudit.sync();
+assert.match(
+  heroPreviewElements.get("heroImagePreview").innerHTML,
+  new RegExp(`src="blob:hero-${heroAssetId}"`),
+  "thumbnail maskot Admin harus memakai Blob terautentikasi",
+);
+heroPreviewAudit.renderHero();
+assert.match(
+  heroPreviewRoot.innerHTML,
+  new RegExp(`src="blob:hero-${heroAssetId}"`),
+  "preview Hero Admin harus memakai Blob terautentikasi",
+);
+heroPreviewAudit.release();
+assert.deepEqual(
+  revokedHeroUrls,
+  [`blob:hero-${heroAssetId}`],
+  "Object URL maskot harus dicabut saat preview dilepas",
 );
 
 console.log(

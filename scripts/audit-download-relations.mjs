@@ -210,18 +210,97 @@ assert.equal(
 const [
   downloadEditorSource,
   downloadApiSource,
+  downloadAdminHtml,
   publicApiSource,
   downloadRendererSource,
   downloadHtml,
 ] = await Promise.all([
   readFile("apps/admin/js/features/downloads/editor.js", "utf8"),
   readFile("apps/admin/js/features/downloads/api.js", "utf8"),
+  readFile("apps/admin/editors/unduh/index.html", "utf8"),
   readFile("apps/public-site/assets/js/public-api.js", "utf8"),
   readFile("apps/public-site/assets/js/download-renderer.js", "utf8"),
   readFile("apps/public-site/unduh/index.html", "utf8"),
 ]);
 const mainCss = await readFile("apps/public-site/assets/css/main.css", "utf8");
 
+const currentEvent = {
+  id: "event-2027",
+  categoryId: "category-science",
+  name: "Olimpiade Sains",
+  periodYear: 2027,
+  batchNumber: 1,
+};
+let currentTabs = [];
+const downloadApiWindow = {
+  parent: {
+    TalentaAdminAuth: {
+      currentEvent: () => currentEvent,
+    },
+  },
+};
+const downloadApiContext = vm.createContext({
+  console,
+  window: downloadApiWindow,
+  TalentaMedia: { url: (assetId) => `/api/v1/public/media/${assetId}` },
+  TalentaApi: {
+    async request(path) {
+      if (path === "/admin/categories/category-science/events") {
+        return { data: [currentEvent] };
+      }
+      if (path === "/admin/events/event-2027/documents") {
+        return { data: [] };
+      }
+      if (path === "/admin/events/event-2027/downloads") {
+        return { data: { tabs: currentTabs } };
+      }
+      if (path === "/admin/events/event-2027/pages/download") {
+        return { data: { isActive: true } };
+      }
+      throw new Error(`Request audit tidak dikenal: ${path}`);
+    },
+  },
+});
+vm.runInContext(downloadApiSource, downloadApiContext, {
+  filename: "apps/admin/js/features/downloads/api.js",
+});
+
+const defaultCurrentTab = await downloadApiWindow.TalentaDownloadApi.load();
+assert.equal(
+  defaultCurrentTab.configs[0]?.customTabName,
+  "Olimpiade Sains 2027",
+  "Nama tab default Event saat ini harus menyertakan tahun periodenya.",
+);
+
+currentTabs = [
+  {
+    tabId: "tab-current",
+    customTabName: "Olimpiade Sains",
+    isDefault: true,
+    isActive: true,
+    documents: [],
+  },
+];
+const legacyCurrentTab = await downloadApiWindow.TalentaDownloadApi.load();
+assert.equal(
+  legacyCurrentTab.configs[0]?.customTabName,
+  "Olimpiade Sains 2027",
+  "Nama tab default lama harus ditingkatkan agar menyertakan tahun.",
+);
+
+currentTabs[0].customTabName = "Panduan 2027";
+const customCurrentTab = await downloadApiWindow.TalentaDownloadApi.load();
+assert.equal(
+  customCurrentTab.configs[0]?.customTabName,
+  "Panduan 2027",
+  "Nama tab custom Event saat ini harus dipertahankan.",
+);
+
+assert.ok(
+  downloadAdminHtml.includes('id="downloadCurrentTabName"') &&
+    downloadEditorSource.includes("currentConfig.customTabName"),
+  "Editor harus menyediakan input nama tab untuk Event saat ini dan mengikatnya ke customTabName.",
+);
 assert.ok(
   downloadEditorSource.includes('class="repeat-row download-document-row"'),
   "Baris dokumen harus memakai repeat-row tanpa class grid dokumen lama.",

@@ -22,12 +22,21 @@
             let photo = winner.photo || "";
             if (winner.photoUrl) {
               const base =
-                window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
+                window.TalentaConfig?.apiBaseUrl &&
+                window.TalentaConfig.apiBaseUrl.startsWith("http")
                   ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
                   : location.origin;
               photo = new URL(winner.photoUrl, base).href;
             } else if (winner.photoAssetId) {
-              photo = `/api/v1/public/media/${winner.photoAssetId}`;
+              const base =
+                window.TalentaConfig?.apiBaseUrl &&
+                window.TalentaConfig.apiBaseUrl.startsWith("http")
+                  ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                  : location.origin;
+              photo = new URL(
+                `/api/v1/public/media/${winner.photoAssetId}`,
+                base,
+              ).href;
             }
             return {
               name: winner.fullName || winner.name || "",
@@ -49,16 +58,27 @@
                 let url = "";
                 if (data.decree.url) {
                   const base =
-                    window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
-                      ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                    window.TalentaConfig?.apiBaseUrl &&
+                    window.TalentaConfig.apiBaseUrl.startsWith("http")
+                      ? window.TalentaConfig.apiBaseUrl.replace(
+                          /\/api\/v1\/?$/,
+                          "",
+                        )
                       : location.origin;
                   url = new URL(data.decree.url, base).href;
                 } else if (data.decree.assetId) {
                   const base =
-                    window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
-                      ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+                    window.TalentaConfig?.apiBaseUrl &&
+                    window.TalentaConfig.apiBaseUrl.startsWith("http")
+                      ? window.TalentaConfig.apiBaseUrl.replace(
+                          /\/api\/v1\/?$/,
+                          "",
+                        )
                       : location.origin;
-                  url = new URL(`/api/v1/public/media/${data.decree.assetId}`, base).href;
+                  url = new URL(
+                    `/api/v1/public/media/${data.decree.assetId}`,
+                    base,
+                  ).href;
                 }
                 return url;
               })(),
@@ -68,7 +88,8 @@
       page: {
         ...baseline.page,
         active: data.page?.isActive ?? data.settings?.isActive ?? true,
-        eyebrow: data.page?.eyebrow || data.event?.name || baseline.page.eyebrow,
+        eyebrow:
+          data.page?.eyebrow || data.event?.name || baseline.page.eyebrow,
         title: data.page?.title || baseline.page.title,
         description: data.page?.description || baseline.page.description,
         alignment: data.page?.alignment || baseline.page.alignment,
@@ -81,13 +102,20 @@
         archiveActive:
           data.settings?.archiveActive ?? baseline.page.archiveActive,
         archiveTitle: data.settings?.archiveTitle || baseline.page.archiveTitle,
-        archiveAction: data.settings?.archiveAction || baseline.page.archiveAction,
+        archiveAction:
+          data.settings?.archiveAction || baseline.page.archiveAction,
         archiveLimit: data.settings?.archiveLimit ?? baseline.page.archiveLimit,
       },
       archives: (data.archives || []).map((event) => ({
         ...event,
         id: event.slug || event.id,
         name: event.name || event.title || "",
+        icon: event.fallbackIcon || event.icon || "archive",
+        iconMode: event.mascotAssetId ? "upload" : "library",
+        uploadedIcon: event.mascotAssetId
+          ? TalentaMedia.url(event.mascotAssetId)
+          : "",
+        iconAlt: `Logo atau maskot ${event.name || "lomba"}`,
       })),
     };
   }

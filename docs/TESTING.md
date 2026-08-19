@@ -85,6 +85,34 @@ E2E memerlukan PostgreSQL writable dengan schema migration terbaru. Test membuat
 - Ubah Hero/section Beranda dan cocokkan preview dengan Public Site pada 1440px, 768px, dan 390px.
 - Viewer tidak dapat menyimpan/publish perubahan; editor dapat menyimpan draf, preview, dan publish.
 
+## Logo dan Favicon Event
+
+### Unit dan kontrak otomatis
+
+- Settings GET mengembalikan `logoAssetId` serta `navbarLogoSize`; settings PUT menulis, mengganti, dan menghapus logo Event tanpa memakai `mascot_asset_id` atau logo Kategori.
+- `logoAssetId` hanya menerima UUID asset PNG/JPEG/WebP aktif milik Organization Event; PDF, SVG, asset nonaktif, serta asset tenant lain ditolak.
+- `navbarLogoSize` menerima 24 sampai 44 dan menolak 23 atau 45; settings/snapshot lama tanpa ukuran memakai 36.
+- Restore snapshot lama tanpa key `logo_asset_id` mempertahankan logo existing; snapshot baru dengan nilai `null` menghapus logo.
+- Public bootstrap mengambil `event_sites.logo_asset_id`; publish memasukkan UUID logo ke allowlist media snapshot.
+- Audit frontend mencakup copy upload 1:1/transparan dan batas 5 MB, Blob/Object URL Admin, larangan Object URL di `localStorage`, favicon dinamis, `object-fit: contain`, serta satu ukuran desktop/tablet/mobile.
+
+### Keamanan
+
+- `GET /api/v1/admin/events/:eventId/media/:assetId` mengembalikan binary hanya dengan JWT dan membership tenant/Event yang sesuai.
+- Endpoint Admin tanpa JWT menghasilkan `401`; akses dari Organization lain ditolak tanpa binary atau enumerasi tenant.
+- URL public asset draf tanpa token preview dan tanpa allowlist snapshot menghasilkan `404`.
+- Token preview Event yang sah dapat membaca logo workspace; website published hanya dapat membaca asset pada allowlist snapshot.
+- PDF/SVG sebagai `logoAssetId` dan ukuran 23/45 ditolak `400`.
+
+### Browser dan acceptance
+
+- Dalam satu Kategori, buat dua Event dengan logo dan ukuran berbeda; berpindah Event serta reload tidak boleh membocorkan state logo/ukuran.
+- Upload PNG transparan maksimal 5 MB. Preview Admin harus memakai URL `blob:` dari endpoint Admin `200`, bukan URL public yang `404`; reload settings harus mengambil Blob lagi dan menampilkan logo yang sama. Ganti logo lalu reload; Object URL lama harus dicabut dan Blob baru dimuat tanpa menyimpan URL `blob:` ke `localStorage`.
+- Atur slider ke 24, 36, dan 44. Satu nilai harus diterapkan pada preview desktop, tablet, dan mobile.
+- Hapus logo lalu **Urungkan edit**; logo workspace tersimpan harus kembali. Hapus, **Simpan draf**, buka **Lihat preview**, lalu **Batalkan draf**; logo dan ukuran harus kembali ke snapshot published terakhir.
+- **Lihat preview** harus menampilkan logo draf dan favicon dari asset yang sama. Website published tetap memakai logo/favicon lama sebelum publish; setelah publish navbar dan favicon memakai logo baru.
+- Pada viewport 1440×900, 768×1024, dan 390×844, pastikan ukuran logo tidak melebihi tinggi header dikurangi 8 piksel, `object-fit: contain`, background transparan, radius 0, dan tidak ada overflow horizontal. Fallback tanpa logo mempertahankan background serta radius existing.
+
 ## FAQ
 
 - Tambah kategori/pertanyaan, ubah urutan, simpan, dan refresh.
@@ -96,7 +124,8 @@ E2E memerlukan PostgreSQL writable dengan schema migration terbaru. Test membuat
 
 - Tambah Event Document dan tab Unduh.
 - Hanya satu tab default diizinkan.
-- Dokumen Event lain tidak dapat direferensikan.
+- Dokumen Event lain dalam Kategori Lomba yang sama dapat direferensikan dan tetap memakai record sumber tanpa duplikasi.
+- Dokumen dari kategori atau tenant lain tidak dapat direferensikan.
 - Sembunyikan dokumen; record sumber tetap ada.
 - PDF menggunakan `/api/v1/public/media/<asset-id>` dengan MIME dan header keamanan benar.
 
@@ -107,6 +136,8 @@ E2E memerlukan PostgreSQL writable dengan schema migration terbaru. Test membuat
 - Upload foto dan PDF SK valid.
 - SK direferensikan sebagai Event Document dan dapat muncul di Unduh tanpa file duplikat.
 - Pemenang Sebelumnya hanya berasal dari Event arsip dalam kategori yang sama.
+- Kartu Event Arsip pada Pemenang memakai ikon pustaka atau maskot upload yang sama dengan kartu halaman Arsip pada preview Admin, Lihat preview, dan Public Site.
+- Nama presentasi Arsip yang disimpan digunakan verbatim pada kartu Pemenang Sebelumnya.
 
 ## Arsip Otomatis
 
@@ -115,6 +146,9 @@ E2E memerlukan PostgreSQL writable dengan schema migration terbaru. Test membuat
 - `/public/sites/:categorySlug/archives/:eventSlug` menampilkan detail Event arsip.
 - URL browser Detail Arsip memakai `?event=...`, bukan `?id=` atau Competition slug.
 - Ubah visibilitas kategori/dokumen pada Detail Arsip; simpan dan refresh.
+- Tanpa nama custom, field Nama lomba, kartu, banner, dan breadcrumb memakai nama Event beserta tahun/batch sebagai default.
+- Edit Nama lomba lalu hapus tahunnya; preview Admin langsung mengikuti nilai tersebut. **Lihat halaman** pada editor Detail Arsip memakai token Event Arsip sehingga menampilkan workspace draf tanpa menambahkan tahun kembali. Public Site tanpa token tetap memakai snapshot lama sampai Event Arsip dipublikasikan, lalu memakai nama baru.
+- Nama presentasi Arsip tidak mengubah nama canonical Event pada Beranda, Unduh, atau Pemenang aktif.
 - Event dari kategori lain tidak masuk list arsip.
 
 ## Media

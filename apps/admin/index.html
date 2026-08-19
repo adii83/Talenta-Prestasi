@@ -198,7 +198,11 @@
                           >OSN</span
                         ><span
                           ><strong>Unggah logo event</strong
-                          ><small>PNG, JPG, atau WebP</small></span
+                          ><small
+                            >Rekomendasi: rasio 1:1 dengan background
+                            transparan. PNG, JPG, atau WebP, maksimal 5
+                            MB.</small
+                          ></span
                         ><i data-lucide="upload-cloud"></i>
                       </button>
                       <button
@@ -210,6 +214,26 @@
                       >
                         <i data-lucide="trash-2"></i> Hapus Logo
                       </button>
+                      <div class="admin-logo-size-control">
+                        <label for="navbarLogoSize">
+                          <strong>Ukuran logo navbar</strong>
+                          <small
+                            >Berlaku pada desktop, tablet, dan mobile.</small
+                          >
+                        </label>
+                        <div class="admin-logo-size-control__input">
+                          <input
+                            id="navbarLogoSize"
+                            type="range"
+                            min="24"
+                            max="44"
+                            step="1"
+                          />
+                          <output id="navbarLogoSizeValue" for="navbarLogoSize"
+                            >36 px</output
+                          >
+                        </div>
+                      </div>
                     </div>
                     <div class="admin-colors">
                       <label for="primaryColor">

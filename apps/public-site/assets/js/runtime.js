@@ -1,5 +1,22 @@
 /* Runtime global seluruh halaman publik. */
 (() => {
+  function applyEventFavicon(url) {
+    let link = document.querySelector(
+      'link[rel="icon"][data-talenta-event-icon]',
+    );
+    if (!url) {
+      link?.remove();
+      return;
+    }
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      link.dataset.talentaEventIcon = "";
+      document.head.append(link);
+    }
+    link.href = url;
+  }
+
   function applyGlobalSettings(settings = getGlobalSettings()) {
     const pageId = publicPageId();
     if (pageId && !isPublicPageEnabled(pageId, settings)) {
@@ -16,7 +33,11 @@
         if (!linkedPage || linkedPage === "home") return;
         const isHidden = settings.navigation[linkedPage] === false;
         element.hidden = isHidden;
-        element.style.setProperty("display", isHidden ? "none" : "", "important");
+        element.style.setProperty(
+          "display",
+          isHidden ? "none" : "",
+          "important",
+        );
         element.dataset.globalPage = linkedPage;
       });
     document.querySelectorAll(".bottom-nav").forEach((navigation) => {
@@ -27,6 +48,14 @@
     });
 
     applyGlobalThemeTokens(document.documentElement, settings);
+    const logoSize = Math.min(
+      44,
+      Math.max(24, Number(settings.identity.navbarLogoSize) || 36),
+    );
+    document.documentElement.style.setProperty(
+      "--navbar-logo-size",
+      `${logoSize}px`,
+    );
 
     const initials = settings.identity.eventName
       .split(/\s+/)
@@ -51,6 +80,7 @@
           element.replaceChildren(image);
         }
       });
+    applyEventFavicon(settings.identity.logo);
 
     document
       .querySelectorAll(".footer__brand-text")
@@ -120,8 +150,12 @@
         eventSlug: data.site.slug,
         organizerName: data.site.organizerName,
         logo: data.site.logoUrl
-          ? new URL(data.site.logoUrl, TalentaConfig.apiBaseUrl).href
+          ? new URL(
+              data.site.logoUrl,
+              new URL(TalentaConfig.apiBaseUrl, location.origin),
+            ).href
           : "",
+        navbarLogoSize: data.settings.navbarLogoSize ?? 36,
       },
       theme: {
         ...baseline.theme,

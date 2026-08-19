@@ -17,6 +17,277 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-19 — Preservasi Parameter Preview Token Media dan Adaptasi SK Banner Mobile
+
+- **Tanggal/Judul**: 2026-08-19 — Preservasi Parameter Preview Token Media dan Adaptasi SK Banner Mobile
+- **Permintaan**: Memperbaiki ikon unggahan Arsip yang belum tampil pada Lihat preview halaman Pemenang & Arsip (dan publik bila dipublikasikan) serta memastikan tombol Unduh SK berada di bawah deskripsi khusus mobile saja, sementara tablet dan desktop tetap sejajar.
+- **Proses/Keputusan**: 
+  1. `TalentaMedia.url()` pada client-side kini mendeteksi parameter `preview_token` pada URL halaman dan secara otomatis meneruskannya ke URL media `/api/v1/public/media/:id?preview_token=...` sehingga permintaan gambar preview tetap tersertifikasi authorization token.
+  2. `PublicService.winners()` disesuaikan agar passing flag `resolved.preview` ke `archiveSummary()`, memastikan `mascotAssetId` dan `fallbackIcon` draf dari workspace terkirim pada endpoint Pemenang preview.
+  3. `main.css` disesuaikan dengan media query `@media (max-width: 639px)` agar tombol SK berada di bawah deskripsi khusus pada layar mobile, sedangkan tablet & desktop (`>= 640px`) tetap sejajar horizontal di sebelah kanan.
+- **File**:
+  - `packages/shared/js/core/media-client.js`
+  - `apps/backend/src/public/public.service.ts`
+  - `apps/backend/src/public/public.service.spec.ts`
+  - `apps/public-site/assets/css/main.css`
+  - `scripts/audit-archive-layout.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**:
+  - NestJS Unit Tests: 10 suite / 59 test lulus (`npm test -- --runInBand`).
+  - NestJS Build: Berhasil (`npm run build`).
+  - Audit Relasi Arsip: Lulus (`node scripts/audit-archive-relations.mjs`).
+  - Audit Layout Arsip: Lulus pada 1440px, 768px, 390px, 320px (`node scripts/audit-archive-layout.mjs`).
+  - Prettier & Syntax Check: Lulus tanpa error (`npx prettier --check`).
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Pengguna dapat melihat preview ikon unggahan Arsip di halaman Pemenang & Arsip secara langsung saat mode preview aktif, dan pada publik setelah menekan tombol **Publikasikan**.
+
+### 2026-08-19 — Sinkronisasi Ikon Arsip ke Preview dan Publik
+
+- **Tanggal/Judul**: 2026-08-19 — Sinkronisasi Ikon Arsip ke Preview dan Publik
+- **Permintaan**: Memperbaiki ikon upload Event Arsip yang hanya terlihat pada editor, tetapi tetap memakai ikon lama pada **Lihat preview** dan Public Site.
+- **Proses/Keputusan**: Bukti database menunjukkan `mascot_asset_id` baru sudah tersimpan pada workspace Event Arsip, sedangkan snapshot publik Event Arsip dan allowlist medianya masih memakai nilai lama. Daftar Arsip dengan token preview kini menimpa identitas ikon snapshot menggunakan workspace Event Arsip yang termasuk periode sebelumnya. Endpoint media preview mengizinkan maskot Event lama dalam kategori dan organisasi yang sama. Saat Event aktif dipublikasikan, backend menyegarkan hanya snapshot Event Arsip published yang identitas ikonnya berbeda, beserta allowlist media, sehingga perubahan ikon menjadi publik melalui tombol publikasi existing tanpa membuka draf konten Arsip lain.
+- **File**:
+  - `apps/backend/src/public/public.service.ts`
+  - `apps/backend/src/public/public.service.spec.ts`
+  - `apps/backend/src/media/media.service.ts`
+  - `apps/backend/src/media/media.service.spec.ts`
+  - `apps/backend/src/admin/event-publication.service.ts`
+  - `apps/backend/src/admin/event-publication.service.spec.ts`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression daftar preview diamati merah karena respons masih berisi `asset-published`; regression media preview diamati merah karena query belum mengenali maskot Event Arsip; regression publikasi diamati merah karena builder hanya dipanggil untuk Event aktif. Setelah perbaikan, 3 suite/19 test terfokus lulus, audit relasi Arsip lulus, Prettier file scope lulus, dan build backend lulus.
+- **Kendala**: Public Site normal tetap memakai snapshot terakhir sampai Admin menekan **Publikasikan**; ini mempertahankan batas draf/publik existing.
+- **Tindak lanjut**: Refresh Admin, simpan ikon Arsip, periksa **Lihat preview**, lalu tekan **Publikasikan** agar ikon baru tampil pada Public Site.
+
+### 2026-08-19 — Perbaikan Konteks Auth Editor Detail Arsip
+
+- **Tanggal/Judul**: 2026-08-19 — Perbaikan Konteks Auth Editor Detail Arsip
+- **Permintaan**: Memperbaiki error `TalentaAdminAuth is not defined` saat membuka Edit Detail Arsip, langsung pada working tree utama dan tanpa perubahan lintas modul.
+- **Proses/Keputusan**: Editor Detail Arsip berjalan sebagai iframe dan sebelumnya membaca `TalentaAdminAuth` dari global iframe, padahal helper autentikasi hanya dimiliki shell Admin parent. Pembacaan kategori diubah mengikuti pola editor lain menjadi optional lookup melalui `window.parent`, sehingga kegagalan konteks tidak menghentikan sinkronisasi form dan pemuatan API.
+- **File**:
+  - `apps/admin/js/features/archive/detail-editor.js`
+  - `scripts/audit-archive-relations.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression baru diamati gagal tepat karena editor belum membaca `window.parent.TalentaAdminAuth`, kemudian audit relasi Arsip dan pemeriksaan sintaks 45 file JavaScript lulus setelah satu-line fix. Prettier kedua file source lulus. Browser tanpa shell membuktikan tidak ada lagi `ReferenceError`; data fallback dan preview tetap terisi, sedangkan request tanpa sesi secara terpisah menghasilkan `Unauthorized` sesuai kontrak.
+- **Kendala**: Acceptance data Admin nyata tetap memerlukan halaman dibuka dari shell Admin dengan sesi login valid.
+- **Tindak lanjut**: Refresh Admin, login bila sesi berakhir, lalu buka Edit Detail dari daftar Arsip.
+
+### 2026-08-19 — Migration Lokal, E2E Terisolasi, dan Layout Banner SK
+
+- **Tanggal/Judul**: 2026-08-19 — Migration Lokal, E2E Terisolasi, dan Layout Banner SK
+- **Permintaan**: Menjalankan migration database development secara aman, menguji seluruh migration dan E2E pada PostgreSQL terpisah, melakukan acceptance browser dengan data nyata, membiarkan layanan lokal hidup untuk pengujian pengguna, serta memindahkan tombol **Unduh SK** ke bawah deskripsi dengan posisi rata kanan.
+- **Proses/Keputusan**: Gate development membuktikan target PostgreSQL berada di loopback, database development adalah `talenta_prestasi`, migration reset destruktif lama sudah tercatat, dan seluruh 19 migration—termasuk logo Event serta nama presentasi Arsip—sudah applied; karena tidak ada migration tertunda, migration development tidak dijalankan ulang. Schema diverifikasi memiliki `event_sites.logo_asset_id` beserta foreign key media, `site_settings.navbar_logo_size` dengan default 36 dan batas 24–44, serta `event_detail_settings.archive_display_name`. E2E diarahkan hanya ke database fresh `talenta_prestasi_e2e_20260819` dan storage `apps/backend/storage/uploads/e2e-20260819`; seluruh migration direplay sebelum suite dijalankan. Banner SK memakai Grid scoped pada Detail Arsip: blok judul/deskripsi mengisi baris pertama, tombol natural-width berada pada baris kedua dan rata kanan tanpa mengubah markup renderer shared.
+- **File**:
+  - `apps/public-site/assets/css/main.css`
+  - `scripts/audit-archive-layout.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Audit layout diperluas ke 1440×900, 768×1024, 390×844, dan 320×844. RED sah menunjukkan tombol desktop masih sejajar dengan deskripsi; GREEN membuktikan tombol berada di bawah deskripsi, teks tetap rata kiri, sisi kanan sejajar padding banner, ukuran tombol natural, dan tidak ada overflow. Count development sebelum tindakan tetap `users=41`, `organizations=3`, `competition_categories=7`, `event_sites=16`, `event_publications=10`, `media_assets=25`, serta `event_detail_settings=5`; verifikasi schema dan ledger tidak mengubah record. Database E2E mulai dengan 0 tabel publik, lalu menunjukkan 19/19 migration applied. Full E2E menghasilkan 2 dari 3 suite dan 12 dari 13 test lulus. Build backend lulus; 10 suite/55 unit test backend lulus; audit layout Arsip, relasi Arsip, relasi Pemenang, serta sintaks 45 file JavaScript lulus. Acceptance Public Site langsung memakai API/database nyata pada tiga viewport: endpoint list/detail `oips`/`2026` merespons 200, heading dan SK nyata tampil tanpa fallback, CTA berlabel **Unduh SK** berada di bawah deskripsi dan rata kanan, serta tidak ada overflow horizontal.
+- **Kendala**: Satu E2E Admin gagal dengan respons 400 karena fixture PUT settings lama tidak menyertakan field wajib `navbarLogoSize`; API production tidak diubah dan test di luar scope tidak diperbaiki. Browser gateway dari origin `http://127.0.0.1:8080` menampilkan fallback karena backend tidak memberikan header CORS untuk origin tersebut, walaupun route halaman dan proxy API masing-masing merespons 200; konfigurasi CORS di luar scope tidak diubah. Acceptance Admin terautentikasi tidak dilakukan karena login harus dimasukkan manual oleh pengguna. Database E2E menyisakan empat user uji, tanpa Organization/Event/publication/media/detail-setting, serta satu file upload uji.
+- **Tindak lanjut**: Database dan storage E2E sengaja dibiarkan untuk inspeksi. Backend PID 30368, static server PID 12536, dan gateway PID 17144 tetap hidup. Admin tersedia di `http://localhost:4173/apps/admin/`; Detail Arsip data nyata tersedia di `http://localhost:4173/apps/public-site/arsip/detail/?site=oips&event=2026`. Perbaiki fixture E2E `navbarLogoSize` dan allowlist CORS gateway hanya melalui scope terpisah.
+
+### 2026-08-19 — Nama Presentasi Arsip dan Ikon Arsip pada Pemenang
+
+- **Tanggal/Judul**: 2026-08-19 — Nama Presentasi Arsip dan Ikon Arsip pada Pemenang
+- **Permintaan**: Mengisi Nama lomba pada Edit Detail Arsip dengan default nama Event beserta tahun/batch, tetap membebaskan Admin mengedit atau menghapus tahun, menerapkan hasilnya hanya pada kartu/detail Arsip, serta menyamakan ikon kartu Arsip halaman Pemenang pada preview Admin, Lihat preview, dan Public Site.
+- **Proses/Keputusan**: Menambahkan `event_detail_settings.archive_display_name` nullable sebagai nama presentasi scoped; `NULL` memakai formatter periode existing, sedangkan string tersimpan dipakai verbatim tanpa mengubah `event_sites.name`. Endpoint Detail Arsip mempertahankan value existing bila client lama menghilangkan field dan menolak nama yang kosong setelah trimming. Snapshot tetap schema versi 1 dengan field additive dan fallback untuk snapshot lama. Mapper Pemenang menerjemahkan `fallbackIcon`/`mascotAssetId` ke kontrak renderer shared; Admin memakai Blob endpoint Event Arsip, Public Site memakai URL media canonical. **Lihat halaman** dari editor Detail Arsip kini membuat token preview untuk Event Arsip yang sedang diedit, bukan Event aktif; resolver detail memakai workspace token tersebut hanya bila target URL adalah Event yang sama, sedangkan request tanpa token tetap membaca snapshot published.
+- **File**:
+  - `apps/backend/src/database/migrations/1786759300000-AddArchiveDisplayName.ts`
+  - `apps/backend/src/database/migrations/reset-category-event-schema.spec.ts`
+  - `apps/backend/src/entities/event-detail-settings.entity.ts`
+  - `apps/backend/src/admin/admin-content.controller.ts`
+  - `apps/backend/src/admin/admin-content.service.ts`
+  - `apps/backend/src/admin/admin-content.service.spec.ts`
+  - `apps/backend/src/admin/admin.service.ts`
+  - `apps/backend/src/admin/admin.service.spec.ts`
+  - `apps/backend/src/public/public-content.service.ts`
+  - `apps/backend/src/public/public-content.service.spec.ts`
+  - `apps/backend/src/public/public.service.ts`
+  - `apps/backend/src/public/public.service.spec.ts`
+  - `apps/admin/editors/arsip/detail/index.html`
+  - `apps/admin/js/features/archive/detail-api.js`
+  - `apps/admin/js/features/archive/detail-editor.js`
+  - `apps/admin/js/features/archive/manager.js`
+  - `apps/admin/js/features/winners/api.js`
+  - `apps/public-site/assets/js/winner-renderer.js`
+  - `scripts/audit-archive-relations.mjs`
+  - `scripts/audit-winner-relations.mjs`
+  - `docs/DATA_MODEL.md`
+  - `docs/TESTING.md`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression terfokus awal diamati merah: 8 test backend gagal karena migration/query/resolver belum tersedia; audit Arsip dan Pemenang gagal pada kontrak form/mapper. Setelah implementasi awal, 5 suite/39 test backend terfokus lulus. Regression boundary berikutnya membuktikan nama whitespace-only semula diterima, lalu 1 suite/5 test lulus setelah validasi trimming. Regression **Lihat halaman** membuktikan token Event Arsip semula berakhir `Archive event not found`; setelah resolver dan tautan diperbaiki, 1 suite/9 test Public Service serta audit relasi Arsip lulus. Verifikasi final terbaru: build backend lulus; 10 suite/55 unit test backend lulus; audit relasi Arsip, relasi Pemenang, serta layout mobile Arsip lulus; 45 file JavaScript lulus pemeriksaan sintaks; seluruh file scope tugas lulus Prettier; dan `git diff --check` lulus tanpa error whitespace.
+- **Kendala**: Assertion audit awal tidak menerima trailing comma hasil format object JavaScript; regex dilonggarkan tanpa mengurangi kontrak `siteId`. Percobaan pertama menjalankan audit dari direktori yang salah sehingga `package.json` tidak ditemukan; audit diulang dari root repository. Fixture regression whitespace pertama kehabisan mock query dan diperbaiki sebelum RED behavior diamati. `npm run format:check` global sebelumnya gagal pada file existing/lintas scope; pemeriksaan format terfokus dipakai agar tidak memformat massal perubahan di luar tugas. Peringatan line-ending LF→CRLF dari Git tidak merupakan error `diff --check`.
+- **Tindak lanjut**: Migration dibuat tetapi tidak dijalankan pada database aktif. Terapkan hanya melalui izin operasional terpisah. Public Site tanpa token baru menerima perubahan draf setelah alur publikasi existing.
+
+### 2026-08-19 — Sinkronisasi Identitas dan Detail Event Arsip
+
+- **Tanggal/Judul**: 2026-08-19 — Sinkronisasi Identitas dan Detail Event Arsip
+- **Permintaan**: Menyamakan ikon Event Arsip pada Admin dan Public Site; menyediakan pilih, upload, ganti, serta reset ikon; menghapus field Nama pendek; memilih otomatis SK Pemenang milik Event yang diedit; menyediakan judul/deskripsi banner SK; menyertakan tahun/batch pada nama tampilan; memperbaiki clipping mobile; serta menempatkan tombol Unduh SK dari sisi kanan dengan teks tetap rata kiri.
+- **Proses/Keputusan**: Identitas ikon memakai `fallbackIcon` dan `mascotAssetId` existing. PATCH Event dibuat true-partial agar field omitted tidak terhapus, sedangkan `mascotAssetId: null` tetap menjadi reset eksplisit. Asset ikon divalidasi berdasarkan organisasi, status aktif, dan MIME gambar. Preview Admin memakai URL Blob endpoint Admin; Public Site memakai media snapshot. SK diresolusikan hanya dari dokumen Event yang dimuat: ID tersimpan lebih dahulu, lalu dokumen aktif ber-role `winner_decree`; tanpa dokumen, selector tetap `— Tidak ada SK —` dan editor judul/deskripsi dinonaktifkan. Nama tahun/batch hanya format tampilan, bukan perubahan nama dasar Event. Banner mobile memakai tinggi adaptif; tombol tetap natural-width di kanan.
+- **File**:
+  - `apps/backend/src/admin/admin.controller.ts`
+  - `apps/backend/src/admin/admin.service.ts`
+  - `apps/backend/src/admin/admin.service.spec.ts`
+  - `apps/admin/editors/arsip/detail/index.html`
+  - `apps/admin/js/features/archive/api.js`
+  - `apps/admin/js/features/archive/detail-api.js`
+  - `apps/admin/js/features/archive/detail-editor.js`
+  - `apps/admin/js/features/archive/manager.js`
+  - `apps/public-site/arsip/index.html`
+  - `apps/public-site/assets/js/archive-list.js`
+  - `apps/public-site/assets/css/main.css`
+  - `packages/shared/js/data/repositories/archive-repository.js`
+  - `scripts/audit-archive-relations.mjs`
+  - `scripts/audit-archive-layout.mjs`
+  - `package.json`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression backend dan audit relasi/layout diamati gagal sebelum implementasi. Setelah perbaikan, build backend lulus; 10 suite/44 test backend lulus; `npm run check:js` memvalidasi 45 file; `npm run test:archive-relations` lulus; dan `npm run test:archive-layout` lulus pada viewport 320, 375, serta 480 px. Pemeriksaan format dan whitespace dijalankan terpisah setelah pencatatan ini.
+- **Kendala**: Pilihan mode Upload semula langsung dirender ulang sebagai Pustaka karena mode diturunkan dari `mascotAssetId`; handler diperbaiki agar kontrol upload tetap terbuka sampai file dipilih. Input judul/deskripsi SK semula dapat membuat banner tanpa dokumen; field kini dinonaktifkan sampai SK dipilih.
+- **Tindak lanjut**: Publikasikan masing-masing Event Arsip melalui alur publikasi existing agar perubahan draf tampil di Public Site.
+
+### 2026-08-18 — Perapian Layout Sumber Dokumen Event Saat Ini
+
+- **Tanggal/Judul**: 2026-08-18 — Perapian Layout Sumber Dokumen Event Saat Ini
+- **Permintaan**: Memanjangkan input Nama tab di halaman Unduh, menempatkan nama Event dan jumlah dokumen di samping judul Dokumen lomba saat ini dengan jarak yang rapi, serta menyejajarkan tombol Tambah dokumen baru di kanan input.
+- **Proses/Keputusan**: Heading dan metadata memakai satu baris fleksibel pada desktop. Baris kontrol memakai grid dengan input mengisi ruang tersisa dan tombol berada di kanan sejajar bagian bawah input. Pada layar sempit, heading, metadata, input, dan tombol ditumpuk agar tidak menyebabkan overflow horizontal.
+- **File**:
+  - `apps/admin/editors/unduh/index.html`
+  - `apps/public-site/assets/css/main.css`
+  - `scripts/audit-download-editor-layout.mjs`
+  - `package.json`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Browser regression audit terbukti gagal sebelum implementasi karena wrapper layout belum tersedia, kemudian `npm run test:download-layout` lulus pada viewport 1440 px dan 390 px setelah implementasi.
+- **Kendala**: `npm run test:theme-browser` berhenti pada pemeriksaan tema existing sebelum mencapai layout karena tema Public Site aktual `#1e4b8c`, bukan fixture audit `#3a8f1f`; layout dipisahkan ke audit browser terfokus agar tidak bergantung pada state tema tersebut.
+- **Tindak lanjut**: Tidak ada.
+
+### 2026-08-18 — Nama Tab Dokumen Event Saat Ini
+
+- **Tanggal/Judul**: 2026-08-18 — Nama Tab Dokumen Event Saat Ini
+- **Permintaan**: Menambahkan nama tab yang dapat dikustom pada Dokumen lomba saat ini di editor Unduh, seperti sumber Event sebelumnya, dengan default nama Event beserta tahun periodenya.
+- **Proses/Keputusan**: Editor memakai field `customTabName` existing tanpa perubahan schema/API. Default Event saat ini mengikuti format nama Event+periode existing, termasuk batch bila ada. Nilai lama yang kosong atau hanya sama dengan nama Event ditingkatkan agar menyertakan tahun, sedangkan nama custom existing dipertahankan. Input langsung memperbarui preview dan dipersistensikan melalui Simpan perubahan.
+- **File**:
+  - `apps/admin/editors/unduh/index.html`
+  - `apps/admin/js/features/downloads/api.js`
+  - `apps/admin/js/features/downloads/editor.js`
+  - `scripts/audit-download-relations.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression audit terbukti gagal karena default masih `Olimpiade Sains`, bukan `Olimpiade Sains 2027`, lalu `npm run test:download-relations`, `npm run check:js`, pemeriksaan format file terfokus, dan `git diff --check` lulus setelah implementasi.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Tidak ada.
+
+### 2026-08-18 — Perbaikan Preview Maskot Hero Admin
+
+- **Tanggal/Judul**: 2026-08-18 — Perbaikan Preview Maskot Hero Admin
+- **Permintaan**: Memperbaiki broken image Gambar Utama pada Hero hanya di editor Admin, mengganti nama field menjadi Maskot Event, dan menyamakan hanya teks rekomendasi upload dengan logo Event.
+- **Proses/Keputusan**: Editor sebelumnya langsung merender URL `/api/v1/public/media/:assetId`; asset draf belum masuk allowlist publik sehingga endpoint dapat mengembalikan 404. URL publik tetap disimpan untuk data Hero, sedangkan thumbnail dan preview editor kini membaca asset melalui endpoint Admin terautentikasi sebagai Blob/Object URL. Object URL dicabut saat diganti, dihapus, atau halaman dilepas. Sebelum Blob tersedia, thumbnail memakai placeholder agar tidak membentuk gambar kosong. Behavior upload lain tidak disamakan dengan logo.
+- **File**:
+  - `apps/admin/editors/beranda/index.html`
+  - `apps/admin/js/features/home/editor.js`
+  - `scripts/audit-theme-sync.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression audit terbukti gagal sebelum perbaikan karena editor belum menyediakan preview media Admin, lalu lulus setelah implementasi. Audit tambahan terbukti gagal ketika thumbnail membentuk `<img src="">`, lalu lulus setelah placeholder diterapkan. `npm run check:theme`, `npm run check:js`, dan `git diff --check` lulus setelah perubahan production.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Tidak ada.
+
+### 2026-08-18 — Transparansi Logo Footer dan Diagnosis Loading Publik
+
+- **Tanggal/Judul**: 2026-08-18 — Transparansi Logo Footer dan Diagnosis Loading Publik
+- **Permintaan**: Menghilangkan background logo footer saat gambar tersedia agar transparansi PNG dipertahankan seperti navbar, sekaligus mendiagnosis loading hasil publikasi yang terasa lambat tanpa memperluas scope ke optimasi.
+- **Proses/Keputusan**: Wrapper footer bergambar kini transparan tanpa radius, sedangkan gambar memakai `object-fit: contain`; fallback inisial tetap mempertahankan background dan radius existing. Pengukuran lokal menunjukkan gateway HTML sekitar 6 ms, API warm sekitar 2–3 ms, dan bootstrap cold sekitar 30–128 ms, sehingga database lokal bukan bottleneck utama yang terukur. Halaman awal mereferensikan 13 asset lokal sekitar 275 KB, termasuk CSS sekitar 192 KB, ditambah resource font dan ikon eksternal. Static dev server memakai `no-cache, no-store` melalui opsi `-c-1`, sehingga asset dimuat ulang; latency hostname/tunnel publik belum diukur karena URL publik aktual tidak tersedia.
+- **File**:
+  - `apps/public-site/assets/css/main.css`
+  - `scripts/audit-event-logo.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression audit footer terbukti gagal sebelum perubahan CSS dan lulus setelah perubahan melalui `npm run test:event-logo`. Pengukuran lokal dilakukan secara read-only terhadap gateway dan endpoint publik.
+- **Kendala**: Chrome DevTools tidak tersedia dan proses `agent-browser` tidak selesai, sehingga trace browser dihentikan. Diagnosis hostname publik memerlukan pengukuran URL publik aktual.
+- **Tindak lanjut**: Tidak ada optimasi cache, kompresi, gambar, database, atau tunnel dalam scope ini.
+
+### 2026-08-18 — Stabilitas Tema/Logo Event dan Foto Pemenang
+
+- **Tanggal/Judul**: 2026-08-18 — Stabilitas Tema/Logo Event dan Foto Pemenang
+- **Permintaan**: Memperbaiki dua bug tanpa memperluas scope: bootstrap Event aktif kadang tidak menerapkan tema, logo, dan favicon; foto pemenang kadang broken pada Public Site.
+- **Proses/Keputusan**: URL logo bootstrap sebelumnya memakai `TalentaConfig.apiBaseUrl` langsung sebagai base `new URL`; nilai relatif `/api/v1` pada gateway membuat handler berhenti sebelum tema/logo/favicon diterapkan. Base kini selalu diresolusikan terhadap `location.origin`. Cabang fallback `photoAssetId` pada Highlight Beranda dan halaman Pemenang sebelumnya menghasilkan URL relatif ke dev server port 4173; keduanya kini diresolusikan ke origin backend/gateway seperti `photoUrl`. Detail Arsip sudah memakai resolusi benar dan tidak diubah.
+- **File**:
+  - `apps/public-site/assets/js/runtime.js`
+  - `apps/public-site/assets/js/home-renderer.js`
+  - `apps/public-site/assets/js/winner-renderer.js`
+  - `scripts/audit-event-logo.mjs`
+  - `scripts/audit-winner-relations.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression audit kedua bug terbukti gagal sebelum perubahan production. Setelah perbaikan, `npm run test:event-logo` dan `npm run test:winner-relations` lulus.
+- **Kendala**: Acceptance database/browser tidak dijalankan karena migration logo belum diizinkan; backend existing tidak dihidupkan agar migration otomatis tidak berjalan.
+- **Tindak lanjut**: Tidak ada dalam scope bug ini.
+
+### 2026-08-18 — Logo dan Favicon Per Event
+
+- **Tanggal/Judul**: 2026-08-18 — Logo dan Favicon Per Event
+- **Permintaan**: Menambahkan logo eksplisit per Event, memakai asset yang sama sebagai favicon Public Site, serta menyediakan satu pengaturan ukuran logo navbar 24–44 piksel untuk desktop, tablet, dan mobile. Logo harus terpisah dari maskot Event dan field logo/favicon Kategori legacy.
+- **Proses/Keputusan**: Menambahkan referensi nullable `event_sites.logo_asset_id` dan `site_settings.navbar_logo_size` dengan default 36. Migration hanya menyiapkan backfill workspace dari maskot Event atau logo Kategori legacy; snapshot publik existing tidak ditulis ulang. Settings Admin memvalidasi asset PNG/JPEG/WebP aktif milik Organization Event. Preview Admin membaca endpoint binary terautentikasi sebagai Blob/Object URL yang hanya hidup di memori dan dicabut saat stale, diganti, dihapus, atau halaman dilepas. Cache browser tetap di-scope per Event dan tidak menyimpan URL `blob:`. Runtime Public Site memakai logo Event untuk navbar, mobile header, footer, dan favicon; slider hanya mengubah navbar serta mobile header. Audit race mencegah operasi asinkron lama menimpa state baru dan memastikan tombol hapus tetap tersedia ketika asset masih tersimpan tetapi preview gagal dimuat. Tidak ditambahkan pemrosesan gambar atau remove-background otomatis.
+- **File**:
+  - `apps/backend/src/database/migrations/1786759200000-AddEventLogoSettings.ts`
+  - `apps/backend/src/database/migrations/reset-category-event-schema.spec.ts`
+  - `apps/backend/src/entities/event-site.entity.ts`
+  - `apps/backend/src/entities/site-settings.entity.ts`
+  - `apps/backend/src/admin/admin.controller.ts`
+  - `apps/backend/src/admin/admin.service.ts`
+  - `apps/backend/src/admin/admin.service.spec.ts`
+  - `apps/backend/src/admin/event-publication.service.spec.ts`
+  - `apps/backend/src/media/media.controller.ts`
+  - `apps/backend/src/media/media.controller.spec.ts`
+  - `apps/backend/src/media/media.service.ts`
+  - `apps/backend/src/media/media.service.spec.ts`
+  - `apps/backend/src/public/public-content.service.ts`
+  - `apps/backend/src/public/public-content.service.spec.ts`
+  - `apps/backend/src/public/workspace-snapshot.service.ts`
+  - `apps/admin/index.html`
+  - `apps/admin/js/shell/settings-editor.js`
+  - `apps/public-site/assets/css/main.css`
+  - `apps/public-site/assets/js/runtime.js`
+  - `packages/shared/js/core/api-client.js`
+  - `packages/shared/js/core/media-client.js`
+  - `packages/shared/js/data/repositories/settings-repository.js`
+  - `scripts/audit-api-client.mjs`
+  - `scripts/audit-theme-sync.mjs`
+  - `scripts/audit-event-logo.mjs`
+  - `package.json`
+  - `docs/ARCHITECTURE.md`
+  - `docs/ADMIN_SPEC.md`
+  - `docs/DATA_MODEL.md`
+  - `docs/TESTING.md`
+  - `docs/WORK_LOG.md`
+  - `docs/superpowers/specs/2026-08-18-event-logo-favicon-design.md`
+  - `docs/superpowers/plans/2026-08-18-event-logo-favicon.md`
+- **Validasi**: Backend build lulus; 10 suite/39 unit test lulus. Audit publikasi Event, UX periode Event, sinkronisasi tema enam editor, runtime logo/favicon, 13 route canonical, dan sintaks 45 file JavaScript lulus. Regression test race tombol hapus terbukti gagal sebelum perbaikan dan lulus setelah perbaikan. Audit runtime membuktikan pembuatan serta penggantian gambar navbar/mobile, favicon dinamis, fallback ukuran 36, clamp 24–44, dan isolasi ukuran footer.
+- **Kendala**: Migration dibuat dan diuji secara source, tetapi tidak dijalankan. Acceptance browser/database tidak dijalankan karena belum ada izin migration; backend juga tidak dihidupkan terhadap database existing karena konfigurasi startup dapat menjalankan migration otomatis.
+- **Tindak lanjut**: Jalankan migration dan acceptance browser/database hanya setelah izin operasional terpisah. Commit, push, release, dan deployment tetap memerlukan instruksi terpisah.
+
+### 2026-08-18 — Perbaikan Tema Preview Editor Antar-Event
+
+- **Tanggal/Judul**: 2026-08-18 — Perbaikan Tema Preview Editor Antar-Event
+- **Permintaan**: Memperbaiki preview internal editor Admin yang memakai warna tema Event aktif ketika Admin sedang mengelola Event lain; Pengaturan Global, Lihat Preview, dan Public Site sudah menampilkan tema Event yang benar.
+- **Proses/Keputusan**: Akar masalah berada pada cache browser settings yang memakai satu key `localStorage` untuk semua Event. Cache settings sekarang di-scope dengan ID Event terpilih. Hasil pemuatan settings API, penyimpanan, dan Urungkan edit menghidrasi cache Event tersebut sehingga enam editor Admin merender tema Event yang sedang dikelola tanpa dipengaruhi Event aktif.
+- **File**:
+  - `packages/shared/js/data/repositories/settings-repository.js`
+  - `apps/admin/js/shell/settings-editor.js`
+  - `scripts/audit-theme-sync.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Regression test merah membuktikan helper scope Event belum tersedia, lalu hijau setelah perbaikan. `npm run check:js`, `npm run check:theme`, `npm run test:event-period-ux`, dan `npm run test:event-publication` lulus. Puppeteer membuktikan preview editor Event 2026 tetap biru ketika cache global/aktif merah, lalu preview Event 2027 tetap merah ketika cache global/aktif biru. Pemeriksaan format file JavaScript terfokus serta `git diff --check` dijalankan setelah perubahan final.
+- **Kendala**: Suite browser tema penuh berhenti pada fixture Unduh yang tidak memiliki `.doc-card`; skenario lintas Event tetap diverifikasi terpisah dengan Puppeteer.
+- **Tindak lanjut**: Tidak ada.
+
+### 2026-08-18 — Penyelarasan Dokumentasi Referensi Dokumen Lintas Event
+
+- **Tanggal/Judul**: 2026-08-18 — Penyelarasan Dokumentasi Referensi Dokumen Lintas Event
+- **Permintaan**: Menyelaraskan dokumentasi aktif dengan implementasi terbaru yang mengizinkan tab Unduh mereferensikan dokumen dari Event lain dalam Kategori Lomba yang sama.
+- **Proses/Keputusan**: Mendokumentasikan bahwa dokumen tetap dimiliki Event sumber, foreign key tab tetap menjaga scope Event pemilik tab, dan service memverifikasi kesamaan Kategori Lomba. Referensi lintas kategori atau tenant tetap ditolak. Aturan ownership SK, Detail Arsip, pemenang, dan media tidak diubah.
+- **File**:
+  - `docs/ARCHITECTURE.md`
+  - `docs/ADMIN_SPEC.md`
+  - `docs/DATA_MODEL.md`
+  - `docs/TESTING.md`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Pemeriksaan istilah konflik pada dokumentasi aktif, format Prettier terfokus, dan `git diff --check`.
+- **Kendala**: Ruflo `hooks_route` menutup koneksi; pekerjaan dokumentasi dilanjutkan langsung tanpa mengubah konfigurasi Ruflo atau AgentDB Bridge.
+- **Tindak lanjut**: Tidak ada.
+
 ### 2026-08-13 — Perbaikan Resolusi Absolut URL `photoAssetId` pada Rendering Detail Arsip
 
 - **Tanggal/Judul**: 2026-08-13 — Perbaikan Resolusi Absolut URL `photoAssetId` pada Rendering Detail Arsip
@@ -42,7 +313,7 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 - **Tanggal/Judul**: 2026-08-13 — Perbaikan Dimensi dan Overflow Foto Pemenang (CSS)
 - **Permintaan**: Memperbaiki foto pemenang yang masih terlihat tumpang tindih, melebihi lingkaran, atau "gepeng" pada tampilan Preview maupun Publik.
-- **Proses/Keputusan**: Meskipun URL gambar sudah benar, properti CSS pada wrapper foto (`.champion-card__photo` dan `.winner-card__photo`) sebelumnya tidak memiliki pengaturan batas *overflow* serta *object-fit* pada elemen gambarnya. File `main.css` diperbarui untuk menambahkan `overflow: hidden` pada elemen pembungkus dan menetapkan `width: 100%; height: 100%; object-fit: cover;` pada elemen `img` agar foto selalu terpotong melingkar secara proporsional.
+- **Proses/Keputusan**: Meskipun URL gambar sudah benar, properti CSS pada wrapper foto (`.champion-card__photo` dan `.winner-card__photo`) sebelumnya tidak memiliki pengaturan batas _overflow_ serta _object-fit_ pada elemen gambarnya. File `main.css` diperbarui untuk menambahkan `overflow: hidden` pada elemen pembungkus dan menetapkan `width: 100%; height: 100%; object-fit: cover;` pada elemen `img` agar foto selalu terpotong melingkar secara proporsional.
 - **File**:
   - `apps/public-site/assets/css/main.css`
   - `docs/WORK_LOG.md`
@@ -52,7 +323,7 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 - **Tanggal/Judul**: 2026-08-13 — Perbaikan Rendering Foto Pemenang pada Modul Pemenang Utama
 - **Permintaan**: Mengatasi sisa gambar corrupt pada preview halaman Pemenang utama di CMS Admin (fungsi `buildWinnerCardMarkup`).
-- **Proses/Keputusan**: Meskipun sebelumnya template kartu pemenang untuk *Beranda* (`home-repository.js`) dan *Detail Arsip* (`archive-repository.js`) telah diperbaiki, halaman **Pemenang** utama dikontrol oleh template dari `winner-repository.js`. Template string pada `buildWinnerCardMarkup` kini diperbarui untuk menyuntikkan `TalentaMedia.url(...)` secara langsung agar resolve URL berhasil dalam konteks iframe lokal Admin.
+- **Proses/Keputusan**: Meskipun sebelumnya template kartu pemenang untuk _Beranda_ (`home-repository.js`) dan _Detail Arsip_ (`archive-repository.js`) telah diperbaiki, halaman **Pemenang** utama dikontrol oleh template dari `winner-repository.js`. Template string pada `buildWinnerCardMarkup` kini diperbarui untuk menyuntikkan `TalentaMedia.url(...)` secara langsung agar resolve URL berhasil dalam konteks iframe lokal Admin.
 - **File**:
   - `packages/shared/js/data/repositories/winner-repository.js`
   - `docs/WORK_LOG.md`
@@ -62,7 +333,7 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 - **Tanggal/Judul**: 2026-08-13 — Perbaikan Lanjutan Rendering Foto Pemenang pada Highlight Beranda & Arsip
 - **Permintaan**: Mengatasi laporan bahwa foto pemenang masih rusak/corrupt pada Highlight Beranda (Preview Responsif dan Lihat Preview) meskipun foto di editor pemenang dan halaman publik sudah benar.
-- **Proses/Keputusan**: Pembentukan markup kartu pemenang didorong oleh fungsi repository bersama (`buildHomeWinnerMarkup` & `buildArchiveWinnerCardMarkup`). Meskipun halaman publik otomatis meresolve `/api/v1/...` menggunakan base tag/relative root, iframe Admin memerlukan URL penuh untuk resolusi asset saat rendering string template. 
+- **Proses/Keputusan**: Pembentukan markup kartu pemenang didorong oleh fungsi repository bersama (`buildHomeWinnerMarkup` & `buildArchiveWinnerCardMarkup`). Meskipun halaman publik otomatis meresolve `/api/v1/...` menggunakan base tag/relative root, iframe Admin memerlukan URL penuh untuk resolusi asset saat rendering string template.
   `TalentaMedia.url(...)` kini disisipkan di dalam iterasi map untuk rendering foto pemenang pada `packages/shared/js/data/repositories/home-repository.js` dan `archive-repository.js`, memastikan iframe preview me-render path gambar yang valid mengarah ke backend NestJS.
 - **File**:
   - `packages/shared/js/data/repositories/home-repository.js`
@@ -75,7 +346,7 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 - **Tanggal/Judul**: 2026-08-13 — Perbaikan Rendering Foto Pemenang pada Kartu Editor CMS Admin & Resolusi URL Media Relative
 - **Permintaan**: Mencatat penyelesaian masalah simpan tab Unduh serta memperbaiki tampilan foto pemenang di kartu editor CMS Admin yang sebelumnya tampak corrupt/broken padahal di halaman publik tampil sempurna.
-- **Proses/Keputusan**: 
+- **Proses/Keputusan**:
   1. Pada `apps/admin/js/features/winners/manager.js`, elemen thumbnail foto pemenang di kartu editor (`wm-winner-card__photo`) kini me-resolve `w.photo` melalui `TalentaMedia.url(w.photo)`. Ini memastikan URL asset UUID (`/api/v1/public/media/:id`) terkonversi dengan benar menjadi URL absolut terhadap origin browser saat ini (misal `http://localhost:3000/api/v1/public/media/:id`), bukan URL relatif broken di dalam konteks iframe/editor Admin.
   2. Pada `apps/admin/js/features/winners/api.js`, properti `photo` pada pemetaan pemenang memprioritaskan `winner.photoUrl` atau pembentukan URL dari `winner.photoAssetId` melalui `TalentaMedia.url(...)`.
 - **File**:
@@ -94,7 +365,7 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 - **Tanggal/Judul**: 2026-08-13 — Perbaikan Foreign Key Download Document Settings Lintas Event (Cross-Event Archive Documents)
 - **Permintaan**: Memperbaiki masalah dokumen dari event arsip/sebelumnya yang menampilkan status "Belum ada dokumen yang ditampilkan untuk lomba ini" pada tampilan publik & preview, serta mencegah Foreign Key constraint violation saat menyimpan draf tab Unduh yang menyertakan sumber arsip.
-- **Proses/Keputusan**: 
+- **Proses/Keputusan**:
   1. Membuat migration backend `1786672900000-AllowCrossEventDownloadDocuments.ts` untuk melepas constraint Foreign Key composite `(document_id, event_site_id)` pada `download_document_settings` dan menggantinya dengan FK direct `FOREIGN KEY (document_id) REFERENCES event_documents(id) ON DELETE CASCADE`. Hal ini mengizinkan tab Unduh mereferensikan dokumen dari event arsip mana pun dalam kategori lomba tanpa melanggar constraint database.
   2. Memperbarui entitas TypeORM `DownloadDocumentSettings` (`apps/backend/src/entities/download-document-settings.entity.ts`) agar relasi `@JoinColumn` ke `EventDocument` mengarah langsung ke `document_id`.
 - **File**:
@@ -133,7 +404,7 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 - **Tanggal/Judul**: 2026-08-13 — Perbaikan Komprehensif Sumber Arsip, Dokumen SK Pemenang, & Detail Arsip Publik
 - **Permintaan**: Menyelesaikan 3 masalah utama: (1) Sumber Arsip dari event sebelumnya selalu minta ditambahkan kembali, (2) Dokumen SK Penetapan Pemenang tidak muncul di publik/preview detail arsip, dan (3) Tampilan halaman detail arsip publik kosong (hanya navbar & footer) saat diakses.
-- **Proses/Keputusan**: 
+- **Proses/Keputusan**:
   1. Pada `apps/backend/src/admin/admin.service.ts` (`putDownloads`), pengecekan dokumen diperluas dari `event_site_id=$2` menjadi verifikasi kepemilikan kategori lomba (`doc_event.category_id=current_event.category_id`). Hal ini mengizinkan dokumen dari event arsip (seperti event 2026) disimpan dan dimasukkan ke draf tab event 2027 tanpa error Foreign Key.
   2. Pada `apps/admin/js/features/downloads/api.js`, pemetaan `save()` kini menyertakan kembali seluruh dokumen milik tab sumber arsip (`compDocuments`) sehingga metadata dokumen arsip tersimpan utuh di draf backend dan publik.
   3. Di `packages/shared/js/core/runtime-config.js`, `apiBaseUrl` diselaraskan ke relatif `/api/v1` (bukan hardcoded `http://localhost:3000/api/v1`), mencegah error CORS / mixed content saat gambar/preview dibuka dari origin tunnel/iframe.

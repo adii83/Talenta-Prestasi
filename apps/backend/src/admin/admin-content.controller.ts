@@ -96,6 +96,7 @@ class DetailDocumentDto {
   @IsString() @MaxLength(200) labelOverride!: string;
 }
 class DetailSettingsDto {
+  @IsOptional() @IsString() @MinLength(1) @MaxLength(200) archiveDisplayName?: string;
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
   @IsOptional() @IsUUID() decreeDocumentId?: string;
   @IsOptional() @IsString() @MaxLength(200) decreeTitle?: string;
