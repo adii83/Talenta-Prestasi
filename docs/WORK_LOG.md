@@ -17,6 +17,37 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-19 — Template Event Terbaru pada Pembuatan Periode
+
+- **Tanggal/Judul**: 2026-08-19 — Template Event Terbaru pada Pembuatan Periode
+- **Permintaan**: Menambahkan opsi tidak aktif secara default pada form **Buat Event/Periode** untuk memakai konfigurasi dan konten berulang dari Event paling baru dalam kategori yang sama, termasuk Event Persiapan atau Arsip.
+- **Proses/Keputusan**: Frontend hanya mengirim boolean `useLatestTemplate`; backend memilih ulang sumber dalam transaksi kategori terkunci memakai urutan `period_year`, gelombang, waktu pembuatan, dan ID. Event target tetap Persiapan, nonaktif, serta belum dipublikasikan. Clone menyalin identitas visual, `site_settings`, Beranda beserta turunannya, FAQ, pengaturan halaman, pengaturan halaman Pemenang, dan struktur kategori pemenang memakai ID baru serta referensi asset organisasi existing. Dokumen, tab Unduh, pemenang, SK/detail Arsip, publikasi, publication assets, dan audit lama tidak disalin. Kegagalan clone membatalkan transaksi. Tidak ada migration karena tidak ada perubahan schema.
+- **File**:
+  - `apps/backend/src/admin/admin.controller.ts`
+  - `apps/backend/src/admin/admin.service.ts`
+  - `apps/backend/src/admin/admin.service.spec.ts`
+  - `apps/admin/js/shell/portal-dashboard.js`
+  - `scripts/audit-category-event-contracts.mjs`
+  - `docs/superpowers/specs/2026-08-19-template-event-terbaru-design.md`
+  - `docs/superpowers/plans/2026-08-19-template-event-terbaru.md`
+  - `docs/WORK_LOG.md`
+- **Validasi**: TDD — audit frontend dan unit backend diamati merah sebelum implementasi. Seluruh unit test backend lulus 10 suite / 67 test (`npm --prefix apps/backend test -- --runInBand`); backend build lulus (`npm --prefix apps/backend run build`); `npm run check:js` lulus 45 file; `npm run test:category-events` dan `npm run test:event-period-ux` lulus; `git diff --check` lulus dengan peringatan normal konversi LF/CRLF. E2E tidak dijalankan karena memerlukan PostgreSQL disposable.
+- **Kendala**: Entity child Beranda lama tidak sepenuhnya sesuai schema aktif; clone mengikuti migration reset aktif, khususnya `pricing_facilities.package_id`.
+- **Tindak lanjut**: Restart/hot reload backend dan refresh Admin cukup untuk acceptance testing pada database sekarang. Commit, push, dan deployment tidak dilakukan.
+
+### 2026-08-19 — Rekonsiliasi Batch/Gelombang Saat Event Dihapus
+
+- **Tanggal/Judul**: 2026-08-19 — Rekonsiliasi Batch/Gelombang Saat Event Dihapus
+- **Permintaan**: Saat konversi otomatis membuat gelombang (mis. buat Event 2026 dua kali → Gelombang 1 dan 2), penghapusan salah satu gelombang meninggalkan Event tersisa tetap berlabel gelombang. Menambahkan validasi: bila setelah hapus hanya tersisa satu Event pada tahun yang sama, Event itu kembali menjadi Event tanpa gelombang; bila tersisa lebih dari satu, penomoran gelombang dirapikan ulang berurutan naik (mis. [1,2,3,4,5] hapus 3 → sisa jadi [1,2,3,4]).
+- **Proses/Keputusan**: `deleteEvent` diperluas dalam transaksi yang sama. Saat soft delete, `batch_number` dan `batch_label` Event yang dihapus di-`NULL`-kan agar slot nomornya lepas (unique index `uq_event_period_batch` tidak mengecualikan baris terhapus). Jika Event yang dihapus memiliki `period_year` dan `batch_number`, helper `reconcilePeriodBatches` dijalankan: mengambil Event hidup berbatch pada `(category, period_year)` yang sama urut naik; bila tersisa tepat satu → demote menjadi tanpa gelombang (`batch_number`/`batch_label` NULL, slug = tahun); bila tersisa ≥2 → renumber berurutan 1..n dengan slug dibangun ulang. Renumber ascending menjamin bebas kolisi terhadap unique index. Batas draf/publik dipertahankan: perubahan berada di workspace dan baru tampil publik setelah publikasi Event terkait.
+- **File**:
+  - `apps/backend/src/admin/admin.service.ts`
+  - `apps/backend/src/admin/admin.service.spec.ts`
+  - `docs/WORK_LOG.md`
+- **Validasi**: TDD — 4 test baru diamati merah lebih dulu (fitur belum ada), lalu hijau setelah implementasi. Backend build lulus (`npm run build`); seluruh unit test backend lulus 10 suite / 63 test (`npm test -- --runInBand`); `npm run check:js` lulus 45 file. E2E tidak dijalankan karena memerlukan database disposable dan suite tidak menyentuh `deleteEvent`.
+- **Kendala**: Tidak ada.
+- **Tindak lanjut**: Acceptance browser dengan data nyata dapat dilakukan pengguna melalui dashboard Event (buat dua/lebih gelombang, hapus salah satu, verifikasi penomoran tersisa). Commit, push, dan deployment menunggu instruksi terpisah.
+
 ### 2026-08-19 — Preservasi Parameter Preview Token Media dan Adaptasi SK Banner Mobile
 
 - **Tanggal/Judul**: 2026-08-19 — Preservasi Parameter Preview Token Media dan Adaptasi SK Banner Mobile

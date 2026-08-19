@@ -382,6 +382,338 @@ describe('AdminService category flow', () => {
     });
   });
 
+  describe('create Event from latest template', () => {
+    const category = {
+      id: 'category-1',
+      organizationId: 'organization-1',
+      name: 'Octal',
+      slug: 'octal',
+    };
+    const template = {
+      id: 'event-source',
+      description: 'Deskripsi sumber',
+      logoAssetId: 'asset-logo-source',
+      mascotAssetId: 'asset-mascot-source',
+      fallbackIcon: 'star',
+    };
+
+    const buildManager = (options: {
+      includeTemplate?: boolean;
+      failClone?: boolean;
+    } = {}) => {
+      const query = jest.fn(async (sql: string) => {
+        if (sql.includes('FROM competition_categories c')) return [category];
+        if (sql.includes('COALESCE(batch_number,1) DESC'))
+          return options.includeTemplate === false ? [] : [template];
+        if (sql.includes('WHERE category_id=$1 AND period_year=$2')) return [];
+        if (options.failClone && sql.includes('UPDATE site_settings target'))
+          throw new Error('clone failed');
+        if (sql.includes('SELECT id,section_type AS "sectionType"'))
+          return [
+            {
+              id: 'section-source',
+              sectionType: 'pricing',
+              isActive: true,
+              sortOrder: 0,
+              settings: { title: 'Biaya' },
+            },
+          ];
+        if (sql.includes('INSERT INTO home_sections'))
+          return [{ id: 'section-target' }];
+        if (sql.includes('SELECT id,title,price'))
+          return [
+            {
+              id: 'package-source',
+              title: 'Paket A',
+              price: '100000',
+              isFeatured: true,
+              actionLabel: 'Daftar',
+              actionUrl: '/daftar',
+              isActive: true,
+              sortOrder: 0,
+            },
+          ];
+        if (sql.includes('INSERT INTO pricing_packages'))
+          return [{ id: 'package-target' }];
+        if (sql.includes('SELECT id,title,is_active AS "isActive"'))
+          return [
+            {
+              id: 'faq-category-source',
+              title: 'Umum',
+              isActive: true,
+              sortOrder: 0,
+            },
+          ];
+        if (sql.includes('INSERT INTO faq_categories'))
+          return [{ id: 'faq-category-target' }];
+        return [];
+      });
+      const manager = {
+        query,
+        create: jest.fn((_entity, input) => ({ id: 'event-target', ...input })),
+        save: jest.fn((value) => Promise.resolve(value)),
+      };
+      return manager;
+    };
+
+    const buildService = (manager: ReturnType<typeof buildManager>) =>
+      new AdminService(
+        {} as never,
+        {} as never,
+        { transaction: jest.fn((callback) => callback(manager)) } as never,
+        { get: jest.fn() } as unknown as ConfigService,
+      );
+
+    it('preserves create behavior when template use is omitted', async () => {
+      const manager = buildManager();
+      const service = buildService(manager);
+
+      await service.createEvent('category-1', 'user-1', {
+        periodYear: 2028,
+        batchEnabled: false,
+      });
+
+      expect(
+        manager.query.mock.calls.some(([sql]) =>
+          sql.includes('COALESCE(batch_number,1) DESC'),
+        ),
+      ).toBe(false);
+    });
+
+    it('selects the latest live Event and clones only reusable workspace data', async () => {
+      const manager = buildManager();
+      const service = buildService(manager);
+
+      await service.createEvent('category-1', 'user-1', {
+        periodYear: 2028,
+        batchEnabled: false,
+        useLatestTemplate: true,
+      } as never);
+
+      const sourceCall = manager.query.mock.calls.find(([sql]) =>
+        sql.includes('COALESCE(batch_number,1) DESC'),
+      );
+      expect(sourceCall?.[0]).toMatch(
+        /deleted_at IS NULL[\s\S]*period_year DESC NULLS LAST[\s\S]*COALESCE\(batch_number,1\) DESC[\s\S]*created_at DESC[\s\S]*id DESC/,
+      );
+      expect(sourceCall?.[0]).not.toMatch(/is_active|publication|status=/);
+      expect(sourceCall?.[1]).toEqual(['category-1']);
+
+      expect(manager.create.mock.calls[0][1]).toMatchObject({
+        description: 'Deskripsi sumber',
+        logoAssetId: 'asset-logo-source',
+        mascotAssetId: 'asset-mascot-source',
+        fallbackIcon: 'star',
+        isActive: false,
+        status: 'active',
+      });
+
+      const sql = manager.query.mock.calls
+        .map(([statement]) => statement)
+        .join('\n');
+      expect(sql).toContain('UPDATE site_settings target');
+      expect(sql).toContain('INSERT INTO home_sections');
+      expect(sql).toContain('INSERT INTO faq_categories');
+      expect(sql).toContain('INSERT INTO faq_questions');
+      expect(sql).toContain('INSERT INTO page_settings');
+      expect(sql).toContain('INSERT INTO winner_page_settings');
+      expect(sql).toContain('INSERT INTO winner_categories');
+      expect(sql).not.toMatch(
+        /INSERT INTO (event_documents|download_tabs|download_document_settings|winners|event_detail_settings|archive_category_settings|archive_document_settings|event_publications|event_publication_assets|media_assets)/,
+      );
+
+      const facilityCall = manager.query.mock.calls.find(([statement]) =>
+        statement.includes('INSERT INTO pricing_facilities'),
+      );
+      expect(facilityCall?.[0]).toContain(
+        'JOIN package_map map ON map.source_id=facility.package_id',
+      );
+      expect(facilityCall?.[0]).toContain('SELECT map.target_id');
+      expect(facilityCall?.[1]).toEqual(['event-source', 'event-target']);
+      const questionCall = manager.query.mock.calls.find(([statement]) =>
+        statement.includes('INSERT INTO faq_questions'),
+      );
+      expect(questionCall?.[0]).toContain(
+        'JOIN category_map map ON map.source_id=question.category_id',
+      );
+      expect(questionCall?.[0]).toContain('SELECT map.target_id');
+      expect(questionCall?.[1]).toEqual(['event-source', 'event-target']);
+
+      const auditCall = manager.query.mock.calls.find(([statement]) =>
+        statement.includes("'create','event_site'"),
+      );
+      expect(JSON.parse(auditCall?.[1]?.[2] as string)).toMatchObject({
+        templateSourceEventId: 'event-source',
+        templateModules: [
+          'site_settings',
+          'home',
+          'faq',
+          'page_settings',
+          'winner_page_settings',
+          'winner_categories',
+        ],
+      });
+    });
+
+    it('returns 409 when template use is requested without a source Event', async () => {
+      const manager = buildManager({ includeTemplate: false });
+      const service = buildService(manager);
+
+      await expect(
+        service.createEvent('category-1', 'user-1', {
+          periodYear: 2028,
+          batchEnabled: false,
+          useLatestTemplate: true,
+        } as never),
+      ).rejects.toThrow('Template Event sebelumnya tidak tersedia');
+      expect(manager.save).not.toHaveBeenCalled();
+    });
+
+    it('propagates clone failure before writing the create audit', async () => {
+      const manager = buildManager({ failClone: true });
+      const service = buildService(manager);
+
+      await expect(
+        service.createEvent('category-1', 'user-1', {
+          periodYear: 2028,
+          batchEnabled: false,
+          useLatestTemplate: true,
+        } as never),
+      ).rejects.toThrow('clone failed');
+      expect(
+        manager.query.mock.calls.some(([sql]) =>
+          sql.includes("'create','event_site'"),
+        ),
+      ).toBe(false);
+    });
+  });
+
+  describe('delete Event batch reconciliation', () => {
+    const buildService = (manager: {
+      query: jest.Mock;
+    }) =>
+      new AdminService(
+        {} as never,
+        {} as never,
+        { transaction: jest.fn((cb) => cb(manager)) } as never,
+        { get: jest.fn() } as unknown as ConfigService,
+      );
+
+    it('releases the deleted Event batch slot on soft delete', async () => {
+      const manager = {
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              id: 'event-2',
+              categoryId: 'category-1',
+              organizationId: 'organization-1',
+            },
+          ]) // authorizedEvent
+          .mockResolvedValueOnce([{ periodYear: 2026, batchNumber: 2 }]) // period identity
+          .mockResolvedValueOnce([]) // soft delete
+          .mockResolvedValueOnce([{ id: 'event-1', batchLabel: 'Gelombang' }]), // live events
+      };
+      const service = buildService(manager);
+
+      await service.deleteEvent('event-2', 'user-1');
+
+      expect(manager.query.mock.calls[2][0]).toContain('batch_number=NULL');
+      expect(manager.query.mock.calls[2][0]).toContain('batch_label=NULL');
+      expect(manager.query.mock.calls[2][0]).toContain("status='suspended'");
+      expect(manager.query.mock.calls[2][1]).toEqual(['event-2']);
+    });
+
+    it('demotes the sole surviving batch to an unbatched Event', async () => {
+      const manager = {
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              id: 'event-2',
+              categoryId: 'category-1',
+              organizationId: 'organization-1',
+            },
+          ])
+          .mockResolvedValueOnce([{ periodYear: 2026, batchNumber: 2 }])
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([{ id: 'event-1', batchLabel: 'Gelombang' }])
+          .mockResolvedValueOnce([]), // demote update
+      };
+      const service = buildService(manager);
+
+      await service.deleteEvent('event-2', 'user-1');
+
+      const demote = manager.query.mock.calls[4];
+      expect(demote[0]).toContain('batch_number=NULL');
+      expect(demote[0]).toContain('batch_label=NULL');
+      expect(demote[1]).toEqual(['event-1', '2026']);
+    });
+
+    it('renumbers surviving batches sequentially when a middle wave is deleted', async () => {
+      const manager = {
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              id: 'event-3',
+              categoryId: 'category-1',
+              organizationId: 'organization-1',
+            },
+          ])
+          .mockResolvedValueOnce([{ periodYear: 2026, batchNumber: 3 }])
+          .mockResolvedValueOnce([])
+          .mockResolvedValueOnce([
+            { id: 'event-1', batchLabel: 'Gelombang' },
+            { id: 'event-2', batchLabel: 'Gelombang' },
+            { id: 'event-4', batchLabel: 'Gelombang' },
+            { id: 'event-5', batchLabel: 'Gelombang' },
+          ])
+          .mockResolvedValue([]), // renumber updates
+      };
+      const service = buildService(manager);
+
+      await service.deleteEvent('event-3', 'user-1');
+
+      const renumberCalls = manager.query.mock.calls
+        .slice(4)
+        .map((call) => ({ sql: call[0], params: call[1] }));
+      const assigned = renumberCalls.map((call) => ({
+        id: call.params[0],
+        batchNumber: call.params[1],
+        label: call.params[2],
+        slug: call.params[3],
+      }));
+      expect(assigned).toEqual([
+        { id: 'event-1', batchNumber: 1, label: 'Gelombang', slug: '2026-gelombang-1' },
+        { id: 'event-2', batchNumber: 2, label: 'Gelombang', slug: '2026-gelombang-2' },
+        { id: 'event-4', batchNumber: 3, label: 'Gelombang', slug: '2026-gelombang-3' },
+        { id: 'event-5', batchNumber: 4, label: 'Gelombang', slug: '2026-gelombang-4' },
+      ]);
+    });
+
+    it('skips reconciliation when the deleted Event has no period identity', async () => {
+      const manager = {
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([
+            {
+              id: 'event-9',
+              categoryId: 'category-1',
+              organizationId: 'organization-1',
+            },
+          ])
+          .mockResolvedValueOnce([{ periodYear: null, batchNumber: null }])
+          .mockResolvedValueOnce([]), // soft delete only
+      };
+      const service = buildService(manager);
+
+      await service.deleteEvent('event-9', 'user-1');
+
+      expect(manager.query).toHaveBeenCalledTimes(3);
+    });
+  });
+
   describe('settings read and write', () => {
     it('returns event logo settings on read', async () => {
       const queryBuilder = {

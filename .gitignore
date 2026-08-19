@@ -1,31 +1,75 @@
+# =========================
+# Dependencies / Build
+# =========================
 node_modules/
-.DS_Store
-Thumbs.db
-*.log
-.vscode/
-.idea/
-.env
 dist/
 
-# Ruflo local secrets and runtime data
-.env.local
-.env.*.local
-.claude-flow/data/
-.claude-flow/logs/
-.claude-flow/sessions/
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
 
-# Local AI/tooling
-.claude/
-.claude-flow/
-.swarm/
-.mcp.json
-
-# Local environment
+# =========================
+# Environment / Secrets
+# =========================
+.env
 .env.*
 !.env.example
 !**/.env.example
 
-# Local database/cache
+.env.local
+.env.*.local
+
+# Private keys
+*.pem
+*.key
+*.p12
+*.pfx
+
+# =========================
+# Local AI / Claude / Ruflo
+# =========================
+
+# Claude Code
+**/.claude/
+.claudeignore
+
+# Ruflo / Claude Flow
+**/.claude-flow/
+**/.swarm/
+
+# MCP local configuration
+.mcp.json
+
+# Superpowers
+**/.superpowers/
+docs/superpowers/
+
+# AI session / generated AI docs
+docs/AI_SESSION_PROMPT.md
+
+# Archived AI/development context
+docs/archive/
+
+# =========================
+# Graphify
+# =========================
+**/graphify-out/
+
+# =========================
+# Git/tool generated config
+# =========================
+
+# Ignore only if this file was created solely by your tooling
+.gitattributes
+
+# =========================
+# Local Database / Cache
+# =========================
 *.db
 *.db-shm
 *.db-wal
@@ -35,12 +79,8 @@ dist/
 *.backup
 *.bak
 
-# Local uploaded media
+# =========================
+# Local Uploaded Media
+# =========================
 apps/backend/storage/uploads/*
 !apps/backend/storage/uploads/.gitkeep
-
-# Local private keys
-*.pem
-*.key
-*.p12
-*.pfx

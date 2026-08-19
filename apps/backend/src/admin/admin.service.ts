@@ -23,7 +23,17 @@ interface EventPeriodInput {
   confirmBatchConversion?: boolean;
 }
 
-interface NewEvent extends EventPeriodInput {}
+interface NewEvent extends EventPeriodInput {
+  useLatestTemplate?: boolean;
+}
+
+interface EventTemplate {
+  id: string;
+  description: string;
+  logoAssetId: string | null;
+  mascotAssetId: string | null;
+  fallbackIcon: string;
+}
 
 interface CategoryUpdate {
   name: string;
@@ -185,7 +195,12 @@ export class AdminService {
         userId,
         ['owner', 'admin'],
       );
-      return this.createPeriodEvent(manager, category, userId, input);
+      const template = input.useLatestTemplate
+        ? await this.latestTemplateEvent(manager, category.id)
+        : null;
+      if (input.useLatestTemplate && !template)
+        throw new ConflictException('Template Event sebelumnya tidak tersedia');
+      return this.createPeriodEvent(manager, category, userId, input, template);
     });
   }
 
@@ -477,12 +492,76 @@ export class AdminService {
   async deleteEvent(eventId: string, userId: string) {
     return this.dataSource.transaction(async (manager) => {
       await this.authorizedEvent(manager, eventId, userId, ['owner', 'admin']);
-      await manager.query(
-        `UPDATE event_sites SET status='suspended',deleted_at=now(),updated_at=now() WHERE id=$1`,
+      const identity = await manager.query<
+        Array<{ periodYear: number | null; batchNumber: number | null }>
+      >(
+        `SELECT period_year AS "periodYear",batch_number AS "batchNumber"
+         FROM event_sites WHERE id=$1`,
         [eventId],
       );
+      await manager.query(
+        `UPDATE event_sites
+         SET status='suspended',deleted_at=now(),batch_number=NULL,batch_label=NULL,updated_at=now()
+         WHERE id=$1`,
+        [eventId],
+      );
+      const periodYear = identity[0]?.periodYear ?? null;
+      if (periodYear !== null && identity[0]?.batchNumber !== null)
+        await this.reconcilePeriodBatches(
+          manager,
+          eventId,
+          periodYear,
+        );
       return { data: { id: eventId, deleted: true }, errors: [] };
     });
+  }
+
+  private async reconcilePeriodBatches(
+    manager: EntityManager,
+    deletedEventId: string,
+    periodYear: number,
+  ) {
+    const survivors = await manager.query<
+      Array<{ id: string; batchLabel: string | null }>
+    >(
+      `SELECT event.id,event.batch_label AS "batchLabel"
+       FROM event_sites event
+       INNER JOIN (
+         SELECT category_id FROM event_sites WHERE id=$1
+       ) target ON target.category_id=event.category_id
+       WHERE event.period_year=$2
+         AND event.batch_number IS NOT NULL
+         AND event.deleted_at IS NULL
+         AND event.id<>$1
+       ORDER BY event.batch_number,event.created_at,event.id`,
+      [deletedEventId, periodYear],
+    );
+    if (!survivors.length) return;
+    if (survivors.length === 1) {
+      await manager.query(
+        `UPDATE event_sites
+         SET batch_number=NULL,batch_label=NULL,slug=$2,updated_at=now()
+         WHERE id=$1`,
+        [survivors[0].id, this.periodSlug(periodYear, null, null)],
+      );
+      return;
+    }
+    for (let index = 0; index < survivors.length; index += 1) {
+      const survivor = survivors[index];
+      const batchNumber = index + 1;
+      const label = this.batchLabel(survivor.batchLabel ?? undefined);
+      await manager.query(
+        `UPDATE event_sites
+         SET batch_number=$2,batch_label=$3,slug=$4,updated_at=now()
+         WHERE id=$1`,
+        [
+          survivor.id,
+          batchNumber,
+          label,
+          this.periodSlug(periodYear, label, batchNumber),
+        ],
+      );
+    }
   }
 
   async event(eventId: string, userId: string) {
@@ -834,6 +913,7 @@ export class AdminService {
     category: { id: string; organizationId: string; name: string },
     userId: string,
     input: EventPeriodInput,
+    template: EventTemplate | null = null,
   ) {
     const identities = await this.periodEvents(
       manager,
@@ -877,6 +957,10 @@ export class AdminService {
         batchNumber,
         batchLabel: label,
         batchNote: input.batchNote?.trim() ?? '',
+        description: template?.description ?? '',
+        logoAssetId: template?.logoAssetId ?? null,
+        mascotAssetId: template?.mascotAssetId ?? null,
+        fallbackIcon: template?.fallbackIcon ?? 'graduation-cap',
         isActive: false,
         status: 'active',
       }),
@@ -884,6 +968,8 @@ export class AdminService {
     await manager.query(`INSERT INTO site_settings(event_site_id) VALUES($1)`, [
       event.id,
     ]);
+    if (template)
+      await this.cloneEventTemplate(manager, template.id, event.id);
     await manager.query(
       `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes)
        VALUES($1,$2,'create','event_site',$1,$3)`,
@@ -894,6 +980,19 @@ export class AdminService {
           periodYear: input.periodYear,
           batchNumber,
           batchLabel: label,
+          ...(template
+            ? {
+                templateSourceEventId: template.id,
+                templateModules: [
+                  'site_settings',
+                  'home',
+                  'faq',
+                  'page_settings',
+                  'winner_page_settings',
+                  'winner_categories',
+                ],
+              }
+            : {}),
         }),
       ],
     );
@@ -910,6 +1009,151 @@ export class AdminService {
       },
       errors: [],
     };
+  }
+
+  private async latestTemplateEvent(
+    manager: { query: DataSource['query'] },
+    categoryId: string,
+  ) {
+    const rows = await manager.query<EventTemplate[]>(
+      `SELECT id,description,logo_asset_id AS "logoAssetId",
+              mascot_asset_id AS "mascotAssetId",fallback_icon AS "fallbackIcon"
+       FROM event_sites
+       WHERE category_id=$1 AND deleted_at IS NULL
+       ORDER BY period_year DESC NULLS LAST,
+                COALESCE(batch_number,1) DESC,
+                created_at DESC,
+                id DESC
+       LIMIT 1`,
+      [categoryId],
+    );
+    return rows[0] ?? null;
+  }
+
+  private async cloneEventTemplate(
+    manager: EntityManager,
+    sourceEventId: string,
+    targetEventId: string,
+  ) {
+    await manager.query(
+      `UPDATE site_settings target
+       SET primary_color=source.primary_color,
+           navbar_logo_size=source.navbar_logo_size,
+           navigation=source.navigation,
+           contact=source.contact,
+           footer=source.footer,
+           seo=source.seo
+       FROM site_settings source
+       WHERE source.event_site_id=$1 AND target.event_site_id=$2`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO page_settings(event_site_id,page_type,is_active,eyebrow,title,description,alignment)
+       SELECT $2,page_type,is_active,eyebrow,title,description,alignment
+       FROM page_settings WHERE event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO winner_page_settings(event_site_id,is_active,show_decree,metadata_visibility,archive_active,archive_limit)
+       SELECT $2,is_active,show_decree,metadata_visibility,archive_active,archive_limit
+       FROM winner_page_settings WHERE event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO winner_categories(event_site_id,name,rank_prefix,icon,is_active,sort_order)
+       SELECT $2,name,rank_prefix,icon,is_active,sort_order
+       FROM winner_categories WHERE event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO home_sections(event_site_id,section_type,is_active,sort_order,settings)
+       SELECT $2,section_type,is_active,sort_order,settings
+       FROM home_sections WHERE event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO hero_badges(section_id,label,sort_order)
+       SELECT target.id,item.label,item.sort_order
+       FROM hero_badges item
+       JOIN home_sections source ON source.id=item.section_id
+       JOIN home_sections target ON target.event_site_id=$2 AND target.section_type=source.section_type
+       WHERE source.event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO hero_actions(section_id,label,url,variant,sort_order)
+       SELECT target.id,item.label,item.url,item.variant,item.sort_order
+       FROM hero_actions item
+       JOIN home_sections source ON source.id=item.section_id
+       JOIN home_sections target ON target.event_site_id=$2 AND target.section_type=source.section_type
+       WHERE source.event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO schedule_items(section_id,title,date,time_start,time_end,is_active,sort_order)
+       SELECT target.id,item.title,item.date,item.time_start,item.time_end,item.is_active,item.sort_order
+       FROM schedule_items item
+       JOIN home_sections source ON source.id=item.section_id
+       JOIN home_sections target ON target.event_site_id=$2 AND target.section_type=source.section_type
+       WHERE source.event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `WITH package_map AS (
+         SELECT package.id AS source_id,uuid_generate_v4() AS target_id,target.id AS target_section_id,
+                package.title,package.price,package.is_featured,package.action_label,
+                package.action_url,package.is_active,package.sort_order
+         FROM pricing_packages package
+         JOIN home_sections source ON source.id=package.section_id
+         JOIN home_sections target ON target.event_site_id=$2 AND target.section_type=source.section_type
+         WHERE source.event_site_id=$1
+       ), inserted_packages AS (
+         INSERT INTO pricing_packages(id,section_id,title,price,is_featured,action_label,action_url,is_active,sort_order)
+         SELECT target_id,target_section_id,title,price,is_featured,action_label,action_url,is_active,sort_order
+         FROM package_map RETURNING id
+       )
+       INSERT INTO pricing_facilities(package_id,label,is_included,sort_order)
+       SELECT map.target_id,facility.label,facility.is_included,facility.sort_order
+       FROM pricing_facilities facility
+       JOIN package_map map ON map.source_id=facility.package_id
+       WHERE (SELECT count(*) FROM inserted_packages)>=0`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO benefit_items(section_id,title,description,icon,is_active,sort_order)
+       SELECT target.id,item.title,item.description,item.icon,item.is_active,item.sort_order
+       FROM benefit_items item
+       JOIN home_sections source ON source.id=item.section_id
+       JOIN home_sections target ON target.event_site_id=$2 AND target.section_type=source.section_type
+       WHERE source.event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `INSERT INTO partner_items(section_id,name,logo_asset_id,url,is_active,sort_order)
+       SELECT target.id,item.name,item.logo_asset_id,item.url,item.is_active,item.sort_order
+       FROM partner_items item
+       JOIN home_sections source ON source.id=item.section_id
+       JOIN home_sections target ON target.event_site_id=$2 AND target.section_type=source.section_type
+       WHERE source.event_site_id=$1`,
+      [sourceEventId, targetEventId],
+    );
+    await manager.query(
+      `WITH category_map AS (
+         SELECT category.id AS source_id,uuid_generate_v4() AS target_id,
+                category.title,category.is_active,category.sort_order
+         FROM faq_categories category WHERE category.event_site_id=$1
+       ), inserted_categories AS (
+         INSERT INTO faq_categories(id,event_site_id,title,is_active,sort_order)
+         SELECT target_id,$2,title,is_active,sort_order FROM category_map
+         RETURNING id
+       )
+       INSERT INTO faq_questions(category_id,question,answer,is_active,sort_order)
+       SELECT map.target_id,question.question,question.answer,question.is_active,question.sort_order
+       FROM faq_questions question
+       JOIN category_map map ON map.source_id=question.category_id
+       WHERE (SELECT count(*) FROM inserted_categories)>=0`,
+      [sourceEventId, targetEventId],
+    );
   }
 
   private periodEvents(

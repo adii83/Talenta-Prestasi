@@ -50,7 +50,9 @@ class EventPeriodIdentityDto {
   @IsOptional() @IsBoolean() confirmBatchConversion?: boolean;
 }
 
-class CreateEventDto extends EventPeriodIdentityDto {}
+class CreateEventDto extends EventPeriodIdentityDto {
+  @IsOptional() @IsBoolean() useLatestTemplate?: boolean;
+}
 
 class UpdateCategoryDto {
   @IsString() @MinLength(1) @MaxLength(160) name!: string;

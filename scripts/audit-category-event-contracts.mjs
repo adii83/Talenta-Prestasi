@@ -28,6 +28,25 @@ assert.doesNotMatch(files.seed, /siteId|siteSlug|\n\s*email,?\s*\n/);
 assert.match(files.admin, /\/admin\/categories/);
 assert.match(files.admin, /\/admin\/events/);
 assert.doesNotMatch(files.admin, /\/admin\/sites|\/admin\/competitions/);
+assert.match(files.admin, /name="useLatestTemplate" type="checkbox"/);
+assert.match(
+  files.admin,
+  /useLatestTemplate:\s*formBody\.useLatestTemplate === "on"/,
+);
+assert.match(files.admin, /eventTemplateFields/);
+assert.match(
+  files.admin,
+  /Tema, tampilan halaman, konten Beranda, dan FAQ akan disalin/,
+);
+assert.match(
+  files.admin,
+  /Pemenang, dokumen, SK, dan detail Arsip tidak disalin/,
+);
+assert.match(files.admin, /right\.periodYear/);
+assert.match(files.admin, /right\.batchNumber \?\? 1/);
+assert.match(files.admin, /right\.createdAt/);
+assert.match(files.admin, /right\.id/);
+assert.doesNotMatch(files.admin, /templateSourceEventId|sourceEventId/);
 assert.match(files.publicApi, /TalentaConfig\.categorySlug/);
 assert.match(files.archiveList, /data\.events/);
 assert.match(files.archiveDetail, /get\("event"\)/);
