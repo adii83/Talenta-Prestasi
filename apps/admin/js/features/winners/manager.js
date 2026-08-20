@@ -61,16 +61,10 @@ async function hydrateWinners() {
     const loaded = await TalentaWinnerApi.load();
     wmState = loaded.state;
     winnerArchiveSources = loaded.archives || [];
-    const metadata = loaded.page?.metadataVisibility || {};
     wmDisplay = normalizeWinnerPageState({
       ...wmDisplay,
       ...(loaded.page || {}),
       showSk: loaded.page?.showDecree ?? wmDisplay.showSk,
-      showPhoto: metadata.showPhoto ?? wmDisplay.showPhoto,
-      showSchool: metadata.showSchool ?? wmDisplay.showSchool,
-      showExam: metadata.showExam ?? wmDisplay.showExam,
-      showRegency: metadata.showRegency ?? wmDisplay.showRegency,
-      showProvince: metadata.showProvince ?? wmDisplay.showProvince,
     });
     if (Number.isFinite(Number(loaded.page?.archiveLimit)))
       wmDisplay.archiveLimit = Number(loaded.page.archiveLimit);
@@ -181,7 +175,6 @@ function renderActiveComp() {
 }
 function syncSk() {
   document.getElementById("wmSkTitle").value = wmState.sk.title;
-  document.getElementById("wmSkDescription").value = wmState.sk.description;
   const btnText = document.getElementById("wmSkFileBtnText");
   const link = document.getElementById("wmSkFileLink");
   btnText.textContent = wmState.sk.assetId
@@ -195,16 +188,10 @@ function syncSk() {
   if (delBtn) delBtn.hidden = !wmState.sk.assetId;
 }
 function bindSk() {
-  ["wmSkTitle", "wmSkDescription"].forEach((id) => {
-    const map = {
-      wmSkTitle: "title",
-      wmSkDescription: "description",
-    };
-    document.getElementById(id).oninput = (e) => {
-      wmState.sk[map[id]] = e.target.value;
-      renderPreview();
-    };
-  });
+  document.getElementById("wmSkTitle").oninput = (event) => {
+    wmState.sk.title = event.target.value;
+    renderPreview();
+  };
   document.getElementById("wmSkFile").onchange = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -260,11 +247,6 @@ function syncDisplay() {
     wmPageDescription: wmDisplay.description,
     wmPageAlignment: wmDisplay.alignment,
     wmShowSk: wmDisplay.showSk,
-    wmShowPhoto: wmDisplay.showPhoto,
-    wmShowSchool: wmDisplay.showSchool,
-    wmShowExam: wmDisplay.showExam,
-    wmShowRegency: wmDisplay.showRegency,
-    wmShowProvince: wmDisplay.showProvince,
     wmArchiveActive: wmDisplay.archiveActive,
     wmArchiveTitle: wmDisplay.archiveTitle,
     wmArchiveAction: wmDisplay.archiveAction,
@@ -304,11 +286,6 @@ function bindDisplay() {
   const checks = {
     wmPageActive: "active",
     wmShowSk: "showSk",
-    wmShowPhoto: "showPhoto",
-    wmShowSchool: "showSchool",
-    wmShowExam: "showExam",
-    wmShowRegency: "showRegency",
-    wmShowProvince: "showProvince",
     wmArchiveActive: "archiveActive",
   };
   Object.entries(checks).forEach(

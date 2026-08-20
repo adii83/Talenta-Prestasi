@@ -48,6 +48,7 @@ class EventPeriodIdentityDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(40) batchLabel?: string;
   @IsOptional() @IsString() @MaxLength(240) batchNote?: string;
   @IsOptional() @IsBoolean() confirmBatchConversion?: boolean;
+  @IsOptional() @IsInt() @Min(1) expectedRevision?: number;
 }
 
 class CreateEventDto extends EventPeriodIdentityDto {
@@ -78,6 +79,7 @@ class UpdateEventDto {
   @ValidateIf((_object, value) => value !== null)
   @IsUUID()
   mascotAssetId?: string | null;
+  @IsOptional() @IsInt() @Min(1) expectedRevision?: number;
 }
 
 class EventSettingsDto {
@@ -96,6 +98,7 @@ class EventSettingsDto {
   @IsObject() contact!: Record<string, string>;
   @IsObject() footer!: Record<string, string>;
   @IsOptional() @IsObject() seo?: Record<string, string>;
+  @IsOptional() @IsInt() @Min(1) expectedRevision?: number;
 }
 
 class FaqQuestionDto {
@@ -116,6 +119,7 @@ class FaqAggregateDto {
   @ValidateNested({ each: true })
   @Type(() => FaqCategoryDto)
   categories!: FaqCategoryDto[];
+  @IsOptional() @IsInt() @Min(1) expectedRevision?: number;
 }
 
 class DownloadDocumentDto {
@@ -133,6 +137,7 @@ class DownloadTabDto {
   documents!: DownloadDocumentDto[];
 }
 class DownloadAggregateDto {
+  @IsInt() @Min(1) expectedRevision!: number;
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => DownloadTabDto)
@@ -154,6 +159,7 @@ class HomeSectionDto {
   @IsObject() settings!: Record<string, unknown>;
 }
 class HomeAggregateDto {
+  @IsInt() @Min(1) expectedRevision!: number;
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => HomeSectionDto)
@@ -162,6 +168,7 @@ class HomeAggregateDto {
 
 class PublicationActionDto {
   @IsOptional() @IsInt() @Min(1) expectedVersion?: number;
+  @IsInt() @Min(1) expectedRevision!: number;
   @IsOptional()
   @IsString()
   @Matches(/^[a-f0-9]{64}$/)
@@ -337,6 +344,7 @@ export class AdminController {
       user.userId,
       input.expectedVersion,
       input.expectedChecksum,
+      input.expectedRevision,
     );
   }
 
@@ -351,6 +359,7 @@ export class AdminController {
       user.userId,
       input.expectedVersion,
       input.expectedChecksum,
+      input.expectedRevision,
     );
   }
 
@@ -385,7 +394,7 @@ export class AdminController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() input: FaqAggregateDto,
   ) {
-    return this.adminService.putFaq(eventId, user.userId, input.categories);
+    return this.adminService.putFaq(eventId, user.userId, input.categories, input.expectedRevision);
   }
 
   @Get('downloads')
@@ -402,7 +411,7 @@ export class AdminController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() input: DownloadAggregateDto,
   ) {
-    return this.adminService.putDownloads(eventId, user.userId, input.tabs);
+    return this.adminService.putDownloads(eventId, user.userId, input.tabs, input.expectedRevision);
   }
 
   @Get('home')
@@ -419,6 +428,11 @@ export class AdminController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() input: HomeAggregateDto,
   ) {
-    return this.adminService.putHome(eventId, user.userId, input.sections);
+    return this.adminService.putHome(
+      eventId,
+      user.userId,
+      input.sections,
+      input.expectedRevision,
+    );
   }
 }

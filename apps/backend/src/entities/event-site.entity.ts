@@ -82,6 +82,9 @@ export class EventSite {
   @VersionColumn({ default: 1 })
   version!: number;
 
+  @Column({ name: 'workspace_revision', type: 'integer', default: 1 })
+  workspaceRevision!: number;
+
   @CreateDateColumn({ name: 'created_at' })
   createdAt!: Date;
 

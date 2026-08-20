@@ -22,6 +22,32 @@
   async function request(path, options = {}) {
     const { responseType, timeoutMs, auth, previewToken, ...fetchOptions } =
       options;
+    const revision =
+      window.TalentaWorkspaceRevision ||
+      window.parent?.TalentaWorkspaceRevision;
+    const eventMatch = path.match(/^\/admin\/events\/([^/?]+)/);
+    const method = String(fetchOptions.method || 'GET').toUpperCase();
+    const mutatesWorkspace =
+      eventMatch &&
+      (['PUT', 'PATCH', 'DELETE'].includes(method) ||
+        (method === 'POST' &&
+          (/\/(documents|winner-categories|winners)$/.test(path) ||
+            path.endsWith('/publish') ||
+            path.endsWith('/discard-draft'))));
+    if (mutatesWorkspace && revision?.current) {
+      const expectedRevision = revision.current(eventMatch[1]);
+      if (expectedRevision) {
+        if (fetchOptions.body instanceof FormData)
+          fetchOptions.body.set('expectedRevision', String(expectedRevision));
+        else
+          fetchOptions.body = revision.body(
+            fetchOptions.body || {},
+            expectedRevision,
+          );
+        if (String(fetchOptions.method).toUpperCase() === 'DELETE')
+          path = revision.query(path, expectedRevision);
+      }
+    }
     const controller = new AbortController();
     const timeout = setTimeout(
       () => controller.abort(),
@@ -73,6 +99,7 @@
           : payload?.message || `Permintaan gagal (${response.status})`;
         throw new ApiError(message, response.status, payload);
       }
+      if (eventMatch && revision?.next) revision.next(eventMatch[1], payload);
       return payload;
     } catch (error) {
       if (error instanceof ApiError) throw error;

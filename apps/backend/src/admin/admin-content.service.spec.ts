@@ -11,7 +11,8 @@ describe('AdminContentService event access', () => {
           { archiveDisplayName: 'Nama Arsip Tanpa Tahun' },
         ])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]),
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ workspaceRevision: 1 }]),
     };
     const service = new AdminContentService(db as never);
 
@@ -36,7 +37,8 @@ describe('AdminContentService event access', () => {
           { archiveDisplayName: 'Nama Arsip Tanpa Tahun' },
         ])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]),
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ workspaceRevision: 1 }]),
       transaction: jest.fn((callback) => callback(manager)),
     };
     const service = new AdminContentService(db as never);
@@ -100,7 +102,8 @@ describe('AdminContentService event access', () => {
           { archiveDisplayName: 'Nama Existing' },
         ])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]),
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ workspaceRevision: 1 }]),
       transaction: jest.fn((callback) => callback(manager)),
     };
     const service = new AdminContentService(db as never);
@@ -137,7 +140,8 @@ describe('AdminContentService event access', () => {
         .mockResolvedValueOnce([{ id: 'event-1' }])
         .mockResolvedValueOnce([{ archiveDisplayName: null }])
         .mockResolvedValueOnce([])
-        .mockResolvedValueOnce([]),
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ workspaceRevision: 1 }]),
       transaction: jest.fn((callback) => callback(manager)),
     };
     const service = new AdminContentService(db as never);
@@ -162,6 +166,59 @@ describe('AdminContentService event access', () => {
       ['event-1', 'document-2', true, '', 0],
       ['event-1', 'document-1', true, '', 1],
     ]);
+  });
+
+  it('rejects stale workspace revisions before mutating content', async () => {
+    const manager = { query: jest.fn().mockResolvedValue([]) };
+    const db = {
+      query: jest.fn().mockResolvedValue([{ id: 'event-1' }]),
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+    const service = new AdminContentService(db as never);
+
+    await expect(
+      service.createWinnerCategory('event-1', 'user-1', {
+        name: 'Juara Umum',
+        expectedRevision: 2,
+      }),
+    ).rejects.toThrow(
+      'Data Event telah diperbarui pengguna lain. Muat ulang sebelum menyimpan.',
+    );
+
+    expect(
+      manager.query.mock.calls.some(([sql]) =>
+        sql.includes('INSERT INTO winner_categories'),
+      ),
+    ).toBe(false);
+  });
+
+  it('rejects stale detail settings before mutating workspace content', async () => {
+    const manager = { query: jest.fn().mockResolvedValue([]) };
+    const db = {
+      query: jest.fn().mockResolvedValue([{ id: 'event-1' }]),
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+    const service = new AdminContentService(db as never);
+
+    await expect(
+      service.putDetailSettings('event-1', 'user-1', {
+        isActive: true,
+        winnersActive: true,
+        documentsActive: true,
+        metadataVisibility: {},
+        categories: [],
+        documents: [],
+        expectedRevision: 2,
+      }),
+    ).rejects.toThrow(
+      'Data Event telah diperbarui pengguna lain. Muat ulang sebelum menyimpan.',
+    );
+
+    expect(
+      manager.query.mock.calls.some(([sql]) =>
+        sql.includes('INSERT INTO event_detail_settings'),
+      ),
+    ).toBe(false);
   });
 
   it('rejects content writes from read-only memberships', async () => {

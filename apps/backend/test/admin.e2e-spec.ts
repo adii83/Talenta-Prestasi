@@ -41,6 +41,14 @@ describe('Admin Category → Event flow (e2e)', () => {
 
   const auth = (token: string) => ({ Authorization: `Bearer ${token}` });
 
+  async function workspaceRevision(eventId: string, token = editorToken) {
+    const response = await request(app.getHttpServer())
+      .get(`/api/v1/admin/events/${eventId}`)
+      .set(auth(token))
+      .expect(200);
+    return response.body.data.workspaceRevision as number;
+  }
+
   beforeAll(async () => {
     db = new Client({
       host: process.env.DB_HOST,
@@ -181,24 +189,31 @@ describe('Admin Category → Event flow (e2e)', () => {
     await request(app.getHttpServer())
       .put(`/api/v1/admin/events/${activeEventId}/home`)
       .set(auth(viewerToken))
-      .send(home)
+      .send({ ...home, expectedRevision: 1 })
       .expect(403);
     await request(app.getHttpServer())
       .put(`/api/v1/admin/events/${activeEventId}/downloads`)
       .set(auth(viewerToken))
-      .send({ tabs: [] })
+      .send({ tabs: [], expectedRevision: 1 })
       .expect(403);
+    const eventBeforeSettings = await request(app.getHttpServer())
+      .get(`/api/v1/admin/events/${activeEventId}`)
+      .set(auth(editorToken))
+      .expect(200);
+    const homeRevision = eventBeforeSettings.body.data.workspaceRevision as number;
     await request(app.getHttpServer())
       .put(`/api/v1/admin/events/${activeEventId}/home`)
       .set(auth(editorToken))
-      .send(home)
+      .send({ ...home, expectedRevision: homeRevision })
       .expect(200);
     await request(app.getHttpServer())
       .put(`/api/v1/admin/events/${activeEventId}/settings`)
       .set(auth(editorToken))
       .send({
+        expectedRevision: homeRevision + 1,
         eventDescription: 'Deskripsi event aktif',
         primaryColor: '#123456',
+        navbarLogoSize: 36,
         navigation: { home: true },
         contact: {},
         footer: {},
@@ -207,17 +222,87 @@ describe('Admin Category → Event flow (e2e)', () => {
       .expect(200);
   });
 
+  it('rejects stale editor saves and publication actions with 409', async () => {
+    const current = await request(app.getHttpServer())
+      .get(`/api/v1/admin/events/${activeEventId}`)
+      .set(auth(editorToken))
+      .expect(200);
+    const revision = current.body.data.workspaceRevision as number;
+    expect(revision).toBeGreaterThanOrEqual(1);
+
+    const firstSave = await request(app.getHttpServer())
+      .put(`/api/v1/admin/events/${activeEventId}/home`)
+      .set(auth(editorToken))
+      .send({
+        expectedRevision: revision,
+        sections: [
+          { sectionType: 'hero', isActive: true, settings: { title: 'First' } },
+        ],
+      })
+      .expect(200);
+    expect(firstSave.body.data.workspaceRevision).toBe(revision + 1);
+    const revisionAfterSave = firstSave.body.data.workspaceRevision as number;
+
+    await request(app.getHttpServer())
+      .put(`/api/v1/admin/events/${activeEventId}/home`)
+      .set(auth(editorToken))
+      .send({
+        expectedRevision: revision,
+        sections: [
+          { sectionType: 'hero', isActive: true, settings: { title: 'Stale' } },
+        ],
+      })
+      .expect(409);
+
+    const afterSave = await request(app.getHttpServer())
+      .get(`/api/v1/admin/events/${activeEventId}`)
+      .set(auth(editorToken))
+      .expect(200);
+    const nextRevision = afterSave.body.data.workspaceRevision as number;
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/events/${activeEventId}/publish`)
+      .set(auth(editorToken))
+      .send({ expectedRevision: revision })
+      .expect(409);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/events/${activeEventId}/publish`)
+      .set(auth(editorToken))
+      .send({ expectedRevision: nextRevision })
+      .expect(201);
+
+    await request(app.getHttpServer())
+      .put(`/api/v1/admin/events/${activeEventId}/home`)
+      .set(auth(editorToken))
+      .send({ expectedRevision: nextRevision, sections: [] })
+      .expect(200);
+
+    await request(app.getHttpServer())
+      .post(`/api/v1/admin/events/${activeEventId}/discard-draft`)
+      .set(auth(editorToken))
+      .send({ expectedRevision: nextRevision })
+      .expect(409);
+  });
+
   it('supports event content and automatic archives', async () => {
     const document = await request(app.getHttpServer())
       .post(`/api/v1/admin/events/${archivedEventId}/documents`)
       .set(auth(editorToken))
-      .send({ title: 'Dokumen Arsip', category: 'Panduan' })
+      .send({
+        title: 'Dokumen Arsip',
+        category: 'Panduan',
+        expectedRevision: await workspaceRevision(archivedEventId),
+      })
       .expect(201);
     const documentId = document.body.data.id as string;
     const winnerCategory = await request(app.getHttpServer())
       .post(`/api/v1/admin/events/${archivedEventId}/winner-categories`)
       .set(auth(editorToken))
-      .send({ name: 'Juara Umum' })
+      .send({
+        name: 'Juara Umum',
+        expectedRevision: await workspaceRevision(archivedEventId),
+      })
       .expect(201);
     await request(app.getHttpServer())
       .post(`/api/v1/admin/events/${archivedEventId}/winners`)
@@ -225,12 +310,14 @@ describe('Admin Category → Event flow (e2e)', () => {
       .send({
         categoryId: winnerCategory.body.data.id,
         fullName: 'Pemenang Arsip',
+        expectedRevision: await workspaceRevision(archivedEventId),
       })
       .expect(201);
     await request(app.getHttpServer())
       .put(`/api/v1/admin/events/${archivedEventId}/downloads`)
       .set(auth(editorToken))
       .send({
+        expectedRevision: await workspaceRevision(archivedEventId),
         tabs: [
           {
             customTabName: 'Arsip',
@@ -253,12 +340,12 @@ describe('Admin Category → Event flow (e2e)', () => {
     await request(app.getHttpServer())
       .post(`/api/v1/admin/events/${archivedEventId}/publish`)
       .set(auth(editorToken))
-      .send({})
+      .send({ expectedRevision: await workspaceRevision(archivedEventId) })
       .expect(201);
     await request(app.getHttpServer())
       .post(`/api/v1/admin/events/${activeEventId}/publish`)
       .set(auth(editorToken))
-      .send({})
+      .send({ expectedRevision: await workspaceRevision(activeEventId) })
       .expect(201);
 
     const events = await request(app.getHttpServer())

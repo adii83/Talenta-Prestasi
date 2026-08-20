@@ -4,6 +4,7 @@ import { AddEventDraftPublications1786586400000 } from './1786586400000-AddEvent
 import { AddEventPeriodIdentity1786672800000 } from './1786672800000-AddEventPeriodIdentity';
 import { AddEventLogoSettings1786759200000 } from './1786759200000-AddEventLogoSettings';
 import { AddWinnerDisplayMode1786845600000 } from './1786845600000-AddWinnerDisplayMode';
+import { AddWorkspaceRevision1787270400000 } from './1787270400000-AddWorkspaceRevision';
 import { ResetCategoryEventSchema1786500000000 } from './1786500000000-ResetCategoryEventSchema';
 
 describe('ResetCategoryEventSchema migration', () => {
@@ -101,10 +102,7 @@ describe('ResetCategoryEventSchema migration', () => {
   });
 
   it('adds a nullable archive display name without resetting Event content', () => {
-    const path = join(
-      __dirname,
-      '1786759300000-AddArchiveDisplayName.ts',
-    );
+    const path = join(__dirname, '1786759300000-AddArchiveDisplayName.ts');
     expect(existsSync(path)).toBe(true);
     const source = readFileSync(path, 'utf8');
 
@@ -172,5 +170,24 @@ describe('ResetCategoryEventSchema migration', () => {
       down.indexOf('ALTER COLUMN full_name SET NOT NULL'),
     );
     expect(down).not.toContain('ALTER COLUMN full_name SET DEFAULT');
+  });
+
+  it('adds and removes workspace revision', async () => {
+    const queries: string[] = [];
+    const runner = {
+      query: jest.fn((sql: string) => {
+        queries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    };
+    const migration = new AddWorkspaceRevision1787270400000();
+
+    await migration.up(runner as never);
+    await migration.down(runner as never);
+
+    expect(queries[0]).toContain(
+      'ADD "workspace_revision" integer NOT NULL DEFAULT 1',
+    );
+    expect(queries[1]).toContain('DROP COLUMN "workspace_revision"');
   });
 });

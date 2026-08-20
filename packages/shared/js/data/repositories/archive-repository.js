@@ -56,11 +56,6 @@ function archiveDetailDefaults() {
     documentsActive: true,
     documentsEyebrow: "Dokumen",
     documentsTitle: "Dokumen Terkait",
-    showPhoto: true,
-    showSchool: true,
-    showExam: true,
-    showRegency: true,
-    showProvince: true,
     hiddenCategoryIds: [],
     hiddenDocumentIds: [],
     documentLabelOverrides: {},
@@ -120,8 +115,7 @@ function normalizeArchiveCompetition(source) {
         .map((winner) => ({
           id: archiveString(winner.id),
           rank: archiveString(winner.rank),
-          displayMode:
-            winner.displayMode === "custom" ? "custom" : "built_in",
+          displayMode: winner.displayMode === "custom" ? "custom" : "built_in",
           designAssetId: archiveString(winner.designAssetId) || null,
           design: archiveSafeUrl(winner.design || winner.designUrl || "", ""),
           name: archiveString(winner.name),
@@ -198,11 +192,6 @@ function normalizeArchiveCompetition(source) {
       detailSource.documentsTitle,
       "Dokumen Terkait",
     ),
-    showPhoto: detailSource.showPhoto !== false,
-    showSchool: detailSource.showSchool !== false,
-    showExam: detailSource.showExam !== false,
-    showRegency: detailSource.showRegency !== false,
-    showProvince: detailSource.showProvince !== false,
     hiddenCategoryIds,
     hiddenDocumentIds,
     documentLabelOverrides,
@@ -473,14 +462,8 @@ function buildArchiveListMarkup(page, competitions, options = {}) {
   return `<section class="section" id="arsip"><div class="container"><div class="section__header${leftClass}"><p class="t-eyebrow">${archiveEscape(page.eyebrow)}</p><h1 class="t-h1">${archiveEscape(page.title)}</h1><p>${archiveEscape(page.description)}</p></div>${competitions.length ? `<div class="grid grid--3">${competitions.map((competition) => `<a href="${archiveEscape(archiveSafeUrl(archiveHref(competition)))}" class="lomba-card"><div class="lomba-card__thumb">${buildArchiveIconMarkup(competition)}</div><div class="lomba-card__body"><h2 class="lomba-card__title">${archiveEscape(competition.name)}</h2><span class="lomba-card__action">${archiveEscape(page.action)} <i data-lucide="arrow-right"></i></span></div></a>`).join("")}</div>` : '<div class="public-empty-state"><i data-lucide="archive-x"></i><h2 class="t-h2">Belum ada arsip</h2><p>Belum ada ajang terdahulu yang dipublikasikan.</p></div>'}</div></section>`;
 }
 
-function buildArchiveWinnerCardMarkup(winner, detail) {
-  return buildWinnerCardMarkup(winner, {
-    showPhoto: detail.showPhoto,
-    showSchool: detail.showSchool,
-    showExam: detail.showExam,
-    showRegency: detail.showRegency,
-    showProvince: detail.showProvince,
-  });
+function buildArchiveWinnerCardMarkup(winner) {
+  return buildWinnerCardMarkup(winner);
 }
 
 function buildArchiveDetailMarkup(source, options = {}) {
@@ -489,7 +472,7 @@ function buildArchiveDetailMarkup(source, options = {}) {
     typeof options.archiveHref === "function" ? options.archiveHref() : "#";
   const winnersSection =
     detail.winnersActive && (categories.length || (detail.showSk && sk))
-      ? `<section class="section" id="pemenang"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${archiveEscape(detail.winnersEyebrow)}</p><h2 class="t-h2">${archiveEscape(detail.winnersTitle)}</h2></div>${detail.showSk && sk ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2"></i></div><div class="sk-banner__content"><h3>${archiveEscape(sk.title)}</h3><p>${archiveEscape(sk.description || "Unduh dokumen resmi penetapan pemenang.")}</p></div></div><a href="${archiveEscape(archiveSafeUrl(sk.url || ""))}" class="btn btn--primary"><i data-lucide="download"></i>Unduh SK</a></div>` : ""}${categories.length ? `<div class="winner-section">${categories.map((category) => `<section class="winner-group"><h3 class="winner-group__title"><i data-lucide="${archiveEscape(category.icon || "trophy")}"></i>${archiveEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildArchiveWinnerCardMarkup(winner, detail)).join("")}</div></section>`).join("")}</div>` : '<div class="public-empty-state public-empty-state--compact"><p>Belum ada pemenang yang dipublikasikan.</p></div>'}</div></section>`
+      ? `<section class="section" id="pemenang"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${archiveEscape(detail.winnersEyebrow)}</p><h2 class="t-h2">${archiveEscape(detail.winnersTitle)}</h2></div>${detail.showSk && sk ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2"></i></div><div class="sk-banner__content"><h3>${archiveEscape(sk.title)}</h3></div></div><a href="${archiveEscape(archiveSafeUrl(sk.url || ""))}" class="btn btn--primary"><i data-lucide="download"></i>Unduh SK</a></div>` : ""}${categories.length ? `<div class="winner-section">${categories.map((category) => `<section class="winner-group"><h3 class="winner-group__title"><i data-lucide="${archiveEscape(category.icon || "trophy")}"></i>${archiveEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildArchiveWinnerCardMarkup(winner)).join("")}</div></section>`).join("")}</div>` : '<div class="public-empty-state public-empty-state--compact"><p>Belum ada pemenang yang dipublikasikan.</p></div>'}</div></section>`
       : "";
   const documentsSection =
     detail.documentsActive && documents.length

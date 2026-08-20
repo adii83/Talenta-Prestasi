@@ -9,6 +9,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, EntityManager, Repository } from 'typeorm';
 import { CompetitionCategory } from '../entities/competition-category.entity';
 import { EventSite } from '../entities/event-site.entity';
+import {
+  claimWorkspaceRevision,
+  readWorkspaceRevision,
+} from './workspace-revision';
 
 interface NewCategory {
   name: string;
@@ -580,6 +584,7 @@ export class AdminService {
         periodYear: event.periodYear,
         batchNumber: event.batchNumber,
         batchLabel: event.batchLabel,
+        workspaceRevision: await readWorkspaceRevision(this.dataSource, eventId),
       },
       errors: [],
     };
@@ -616,6 +621,7 @@ export class AdminService {
         contact: rows[0]?.contact ?? {},
         footer: rows[0]?.footer ?? {},
         seo: rows[0]?.seo ?? {},
+        workspaceRevision: await readWorkspaceRevision(this.dataSource, eventId),
       },
       errors: [],
     };
@@ -633,10 +639,13 @@ export class AdminService {
       contact: Record<string, string>;
       footer: Record<string, string>;
       seo?: Record<string, string>;
+      expectedRevision?: number;
     },
   ) {
     await this.authorizedEventContentWrite(eventId, userId);
     await this.dataSource.transaction(async (manager) => {
+      if (input.expectedRevision !== undefined)
+        await claimWorkspaceRevision(manager, eventId, input.expectedRevision);
       if (input.logoAssetId) {
         const owned = await manager.query<Array<{ id: string }>>(
           `SELECT asset.id FROM media_assets asset
@@ -704,7 +713,13 @@ export class AdminService {
        WHERE c.event_site_id=$1 GROUP BY c.id ORDER BY c.sort_order,c.id`,
       [eventId],
     );
-    return { data: { categories: rows }, errors: [] };
+    return {
+      data: {
+        categories: rows,
+        workspaceRevision: await readWorkspaceRevision(this.dataSource, eventId),
+      },
+      errors: [],
+    };
   }
 
   async putFaq(
@@ -721,9 +736,12 @@ export class AdminService {
         active: boolean;
       }[];
     }[],
+    expectedRevision?: number,
   ) {
     await this.authorizedEventContentWrite(eventId, userId);
     await this.dataSource.transaction(async (manager) => {
+      if (expectedRevision !== undefined)
+        await claimWorkspaceRevision(manager, eventId, expectedRevision);
       await manager.query(`DELETE FROM faq_categories WHERE event_site_id=$1`, [
         eventId,
       ]);
@@ -783,7 +801,13 @@ export class AdminService {
        WHERE dt.event_site_id=$1 GROUP BY dt.id ORDER BY dt.sort_order,dt.id`,
       [eventId],
     );
-    return { data: { tabs: rows }, errors: [] };
+    return {
+      data: {
+        tabs: rows,
+        workspaceRevision: await readWorkspaceRevision(this.dataSource, eventId),
+      },
+      errors: [],
+    };
   }
 
   async putDownloads(
@@ -799,11 +823,14 @@ export class AdminService {
         labelOverride: string;
       }[];
     }[],
+    expectedRevision?: number,
   ) {
     await this.authorizedEventContentWrite(eventId, userId);
     if (tabs.filter((t) => t.isDefault).length > 1)
       throw new BadRequestException('Only one default download tab is allowed');
     await this.dataSource.transaction(async (manager) => {
+      if (expectedRevision !== undefined)
+        await claimWorkspaceRevision(manager, eventId, expectedRevision);
       await manager.query(`DELETE FROM download_tabs WHERE event_site_id=$1`, [
         eventId,
       ]);
@@ -853,6 +880,13 @@ export class AdminService {
     return this.downloads(eventId, userId);
   }
 
+  private async homeSections(eventId: string) {
+    return this.dataSource.query(
+      `SELECT section_type AS "sectionType",is_active AS "isActive",sort_order AS "sortOrder",settings FROM home_sections WHERE event_site_id=$1 ORDER BY sort_order,id`,
+      [eventId],
+    );
+  }
+
   async home(eventId: string, userId: string) {
     await this.authorizedEventRead(eventId, userId);
     const rows = await this.dataSource.query<
@@ -866,7 +900,13 @@ export class AdminService {
       `SELECT section_type AS "sectionType",is_active AS "isActive",sort_order AS "sortOrder",settings FROM home_sections WHERE event_site_id=$1 ORDER BY sort_order,id`,
       [eventId],
     );
-    return { data: { sections: rows }, errors: [] };
+    return {
+      data: {
+        sections: rows,
+        workspaceRevision: await readWorkspaceRevision(this.dataSource, eventId),
+      },
+      errors: [],
+    };
   }
 
   async putHome(
@@ -877,11 +917,19 @@ export class AdminService {
       isActive: boolean;
       settings: Record<string, unknown>;
     }[],
+    expectedRevision?: number,
   ) {
     await this.authorizedEventContentWrite(eventId, userId);
     if (new Set(sections.map((s) => s.sectionType)).size !== sections.length)
       throw new BadRequestException('Home section types must be unique');
-    await this.dataSource.transaction(async (manager) => {
+    const workspaceRevision = await this.dataSource.transaction(async (manager) => {
+      if (expectedRevision === undefined)
+        throw new BadRequestException('Workspace revision is required');
+      const nextRevision = await claimWorkspaceRevision(
+        manager,
+        eventId,
+        expectedRevision,
+      );
       const normalizedSections = sections.map((section) => ({
         ...section,
         settings: { ...section.settings },
@@ -939,8 +987,16 @@ export class AdminService {
         `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes) VALUES($1,$2,'update','home_sections',$1,$3)`,
         [eventId, userId, JSON.stringify({ sectionCount: sections.length })],
       );
+      return nextRevision;
     });
-    return this.home(eventId, userId);
+    return {
+      data: {
+        sections: await this.homeSections(eventId),
+        workspaceRevision,
+      },
+      workspaceRevision,
+      errors: [],
+    };
   }
 
   // --- helpers ---

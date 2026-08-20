@@ -4,6 +4,7 @@ import {
   ForbiddenException,
   Injectable,
 } from '@nestjs/common';
+import { WORKSPACE_CONFLICT_MESSAGE } from './workspace-revision';
 import { createHash } from 'node:crypto';
 import { DataSource } from 'typeorm';
 import { PreviewTokenService } from '../public/preview-token.service';
@@ -18,6 +19,7 @@ interface EventAccess {
   categoryId: string;
   organizationId: string;
   version: number;
+  workspaceRevision: number;
   role: string;
 }
 
@@ -65,6 +67,7 @@ export class EventPublicationService {
         publishedBy: publication?.publishedBy ?? null,
         changedModules: changedModuleNames,
         eventVersion: access.version,
+        workspaceRevision: access.workspaceRevision,
         workspaceChecksum: checksum,
         readiness: {
           canActivate: Boolean(publication),
@@ -93,9 +96,12 @@ export class EventPublicationService {
     userId: string,
     expectedVersion?: number,
     expectedChecksum?: string,
+    expectedRevision?: number,
   ) {
     return this.db.transaction('REPEATABLE READ', async (manager) => {
       const access = await this.writeAccess(manager, eventId, userId);
+      if (expectedRevision !== undefined && access.workspaceRevision !== expectedRevision)
+        throw new ConflictException(WORKSPACE_CONFLICT_MESSAGE);
       if (expectedVersion && access.version !== expectedVersion)
         throw new ConflictException('Event telah diperbarui pengguna lain');
       const publicSnapshot = await this.publicContent.build(eventId, manager);
@@ -166,9 +172,12 @@ export class EventPublicationService {
     userId: string,
     expectedVersion?: number,
     expectedChecksum?: string,
+    expectedRevision?: number,
   ) {
     return this.db.transaction('REPEATABLE READ', async (manager) => {
       const access = await this.writeAccess(manager, eventId, userId);
+      if (expectedRevision !== undefined && access.workspaceRevision !== expectedRevision)
+        throw new ConflictException(WORKSPACE_CONFLICT_MESSAGE);
       if (expectedVersion && access.version !== expectedVersion)
         throw new ConflictException('Event telah diperbarui pengguna lain');
       if (expectedChecksum) {
@@ -245,13 +254,14 @@ export class EventPublicationService {
     executor: { query: DataSource['query'] },
     eventId: string,
     userId: string,
+    lock = false,
   ) {
     const rows = await executor.query<EventAccess[]>(
       `SELECT event.id,event.category_id AS "categoryId",event.organization_id AS "organizationId",
-              event.version,membership.role
+              event.version,event.workspace_revision AS "workspaceRevision",membership.role
        FROM event_sites event
        JOIN organization_memberships membership ON membership.organization_id=event.organization_id
-       WHERE event.id=$1 AND membership.user_id=$2 AND event.deleted_at IS NULL`,
+       WHERE event.id=$1 AND membership.user_id=$2 AND event.deleted_at IS NULL${lock ? ' FOR UPDATE' : ''}`,
       [eventId, userId],
     );
     if (!rows[0]) throw new ForbiddenException('Event access denied');
@@ -263,7 +273,7 @@ export class EventPublicationService {
     eventId: string,
     userId: string,
   ) {
-    const access = await this.readAccess(executor, eventId, userId);
+    const access = await this.readAccess(executor, eventId, userId, true);
     if (!['owner', 'admin', 'editor'].includes(access.role))
       throw new ForbiddenException('Event write access denied');
     return access;

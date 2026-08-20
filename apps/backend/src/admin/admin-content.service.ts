@@ -6,6 +6,10 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
+import {
+  claimWorkspaceRevision,
+  readWorkspaceRevision,
+} from './workspace-revision';
 
 type Table = 'event_documents' | 'winner_categories' | 'winners';
 type Doc = {
@@ -17,6 +21,7 @@ type Doc = {
   assetId?: string;
   isActive?: boolean;
   sortOrder?: number;
+  expectedRevision?: number;
 };
 type Cat = {
   name: string;
@@ -24,6 +29,7 @@ type Cat = {
   icon?: string;
   isActive?: boolean;
   sortOrder?: number;
+  expectedRevision?: number;
 };
 type WinnerDisplayMode = 'built_in' | 'custom';
 type Win = {
@@ -40,6 +46,7 @@ type Win = {
   photoAssetId?: string | null;
   isActive?: boolean;
   sortOrder?: number;
+  expectedRevision?: number;
 };
 type WinnerState = Required<
   Pick<Win, 'categoryId' | 'displayMode' | 'isActive' | 'sortOrder'>
@@ -72,6 +79,7 @@ type Page = {
   metadataVisibility?: Record<string, boolean>;
   archiveActive?: boolean;
   archiveLimit?: number;
+  expectedRevision?: number;
 };
 
 const DEFAULT_DECREE_TITLE = 'SK Penetapan Pemenang';
@@ -99,7 +107,12 @@ export class AdminContentService {
       `SELECT document_id AS "documentId",is_visible AS "isVisible",label_override AS "labelOverride",sort_order AS "sortOrder" FROM archive_document_settings WHERE event_site_id=$1 ORDER BY sort_order,document_id`,
       [eventId],
     );
-    return { data: { settings, categories, documents }, errors: [] };
+    const workspaceRevision = await readWorkspaceRevision(this.db, eventId);
+    return {
+      data: { settings, categories, documents, workspaceRevision },
+      workspaceRevision,
+      errors: [],
+    };
   }
 
   async putDetailSettings(
@@ -121,12 +134,15 @@ export class AdminContentService {
         isVisible: boolean;
         labelOverride: string;
       }[];
+      expectedRevision?: number;
     },
   ) {
     await this.eventAccess(eventId, userId, true);
     if (typeof input.archiveDisplayName === 'string' && !input.archiveDisplayName.trim())
       throw new BadRequestException('Archive display name is required');
     await this.db.transaction(async (manager) => {
+      if (input.expectedRevision !== undefined)
+        await claimWorkspaceRevision(manager, eventId, input.expectedRevision);
       if (typeof input.description === 'string') {
         await manager.query(
           `UPDATE event_sites SET description=$2, updated_at=now() WHERE id=$1`,
@@ -237,7 +253,12 @@ export class AdminContentService {
       fileType: 'PDF',
       displaySize: '',
     };
-    return { data: row, errors: [] };
+    const workspaceRevision = await readWorkspaceRevision(this.db, eventId);
+    return {
+      data: { ...row, workspaceRevision },
+      workspaceRevision,
+      errors: [],
+    };
   }
 
   async putDecree(
@@ -250,10 +271,13 @@ export class AdminContentService {
       fileType?: string;
       displaySize?: string;
       deleteFile?: boolean;
+      expectedRevision?: number;
     },
   ) {
     await this.eventAccess(eventId, userId, true);
     await this.db.transaction(async (manager) => {
+      if (input.expectedRevision !== undefined)
+        await claimWorkspaceRevision(manager, eventId, input.expectedRevision);
       if (input.assetId)
         await this.assetOwnership(input.assetId, eventId, manager);
       const title = input.title.trim() || DEFAULT_DECREE_TITLE;
@@ -388,7 +412,7 @@ export class AdminContentService {
           ],
         )
       )[0];
-    });
+    }, undefined, d.expectedRevision);
   }
   async updateDocument(e: string, id: string, u: string, d: Doc) {
     return this.write(
@@ -417,6 +441,7 @@ export class AdminContentService {
         )[0];
       },
       id,
+      d.expectedRevision,
     );
   }
   async createWinnerCategory(e: string, u: string, d: Cat) {
@@ -439,6 +464,8 @@ export class AdminContentService {
             ],
           )
         )[0],
+      undefined,
+      d.expectedRevision,
     );
   }
   async updateWinnerCategory(e: string, id: string, u: string, d: Cat) {
@@ -463,6 +490,7 @@ export class AdminContentService {
           )
         )[0],
       id,
+      d.expectedRevision,
     );
   }
   async createWinner(e: string, u: string, d: Win) {
@@ -476,7 +504,7 @@ export class AdminContentService {
           this.winnerParams(e, state),
         )
       )[0];
-    });
+    }, undefined, d.expectedRevision);
   }
 
   async updateWinner(e: string, id: string, u: string, d: Win) {
@@ -504,10 +532,11 @@ export class AdminContentService {
         )[0];
       },
       id,
+      d.expectedRevision,
     );
   }
 
-  async deleteWinner(e: string, id: string, u: string) {
+  async deleteWinner(e: string, id: string, u: string, expectedRevision?: number) {
     return this.write(
       e,
       u,
@@ -551,10 +580,17 @@ export class AdminContentService {
         return { id, categoryId: winners[0].categoryId };
       },
       id,
+      expectedRevision,
     );
   }
 
-  async remove(table: Table, e: string, id: string, u: string) {
+  async remove(
+    table: Table,
+    e: string,
+    id: string,
+    u: string,
+    expectedRevision?: number,
+  ) {
     return this.write(
       e,
       u,
@@ -568,6 +604,7 @@ export class AdminContentService {
         return result[0];
       },
       id,
+      expectedRevision,
     );
   }
 
@@ -586,17 +623,23 @@ export class AdminContentService {
         : Promise.resolve([]),
     ]);
     const page = rows[0] ?? null;
+    const workspaceRevision = await readWorkspaceRevision(this.db, eventId);
     return {
       data:
         pageType === 'winners'
-          ? { ...(page ?? {}), ...(winnerSettings[0] ?? {}) }
-          : page,
+          ? { ...(page ?? {}), ...(winnerSettings[0] ?? {}), workspaceRevision }
+          : page
+            ? { ...page, workspaceRevision }
+            : { workspaceRevision },
+      workspaceRevision,
       errors: [],
     };
   }
   async putPage(eventId: string, pageType: string, userId: string, d: Page) {
     await this.eventAccess(eventId, userId, true);
     await this.db.transaction(async (manager) => {
+      if (d.expectedRevision !== undefined)
+        await claimWorkspaceRevision(manager, eventId, d.expectedRevision);
       await manager.query(
         `INSERT INTO page_settings(event_site_id,page_type,is_active,eyebrow,title,description,alignment) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(event_site_id,page_type) DO UPDATE SET is_active=EXCLUDED.is_active,eyebrow=EXCLUDED.eyebrow,title=EXCLUDED.title,description=EXCLUDED.description,alignment=EXCLUDED.alignment`,
         [
@@ -633,7 +676,9 @@ export class AdminContentService {
   ): Promise<WinnerState> {
     const has = (key: keyof Win) =>
       Object.prototype.hasOwnProperty.call(input, key);
-    const value = <K extends keyof Win>(key: K): Win[K] | undefined =>
+    const value = <K extends Exclude<keyof Win, 'expectedRevision'>>(
+      key: K,
+    ): Win[K] | undefined =>
       has(key) ? input[key] : existing?.[key];
     const categoryId = value('categoryId');
     if (!categoryId)
@@ -748,16 +793,25 @@ export class AdminContentService {
     type: string,
     operation: (m: any) => Promise<any>,
     id?: string,
+    expectedRevision?: number,
   ) {
     await this.eventAccess(e, u, true);
     return this.db.transaction(async (m) => {
+      const workspaceRevision =
+        expectedRevision === undefined
+          ? undefined
+          : await claimWorkspaceRevision(m, e, expectedRevision);
       const row = await operation(m);
       if (!row) throw new NotFoundException('Resource not found');
       await m.query(
         `INSERT INTO audit_logs(event_site_id,actor_user_id,action,entity_type,entity_id,changes) VALUES($1,$2,$3,$4,$5,'{}')`,
         [e, u, action, type, id ?? row.id],
       );
-      return { data: row, errors: [] };
+      return {
+        data: row,
+        workspaceRevision,
+        errors: [],
+      };
     });
   }
   private async eventAccess(e: string, u: string, write: boolean) {

@@ -264,6 +264,7 @@
         method: "POST",
         body: {
           expectedVersion: publication?.eventVersion,
+          expectedRevision: publication?.workspaceRevision,
           expectedChecksum: publication?.workspaceChecksum,
         },
       });
@@ -292,6 +293,7 @@
         method: "POST",
         body: {
           expectedVersion: publication?.eventVersion,
+          expectedRevision: publication?.workspaceRevision,
           expectedChecksum: publication?.workspaceChecksum,
         },
       });

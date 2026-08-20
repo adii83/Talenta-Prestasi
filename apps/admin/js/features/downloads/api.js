@@ -184,22 +184,20 @@
         })),
       };
     });
-    await Promise.all([
-      TalentaApi.request(`/admin/events/${current.id}/downloads`, {
-        method: "PUT",
-        body: { tabs },
-      }),
-      TalentaApi.request(`/admin/events/${current.id}/pages/download`, {
-        method: "PUT",
-        body: {
-          isActive: state.active,
-          eyebrow: state.eyebrow,
-          title: state.title,
-          description: state.description,
-          alignment: state.alignment,
-        },
-      }),
-    ]);
+    await TalentaApi.request(`/admin/events/${current.id}/downloads`, {
+      method: "PUT",
+      body: { tabs },
+    });
+    await TalentaApi.request(`/admin/events/${current.id}/pages/download`, {
+      method: "PUT",
+      body: {
+        isActive: state.active,
+        eyebrow: state.eyebrow,
+        title: state.title,
+        description: state.description,
+        alignment: state.alignment,
+      },
+    });
   }
 
   async function createCurrentDocument(_sourceId, input, file) {

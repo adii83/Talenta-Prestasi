@@ -285,6 +285,7 @@ const [
   publicDetail,
   publicDetailHtml,
   mainCss,
+  archiveRepository,
 ] = await Promise.all([
   readSource("apps/admin/editors/arsip/detail/index.html"),
   readSource("apps/admin/js/features/archive/detail-api.js"),
@@ -294,6 +295,7 @@ const [
   readSource("apps/public-site/assets/js/archive-detail.js"),
   readSource("apps/public-site/arsip/detail/index.html"),
   readSource("apps/public-site/assets/css/main.css"),
+  readSource("packages/shared/js/data/repositories/archive-repository.js"),
 ]);
 assert.doesNotMatch(
   detailHtml,
@@ -301,7 +303,36 @@ assert.doesNotMatch(
   "Editor Detail Arsip tidak boleh menampilkan field Nama pendek.",
 );
 assert.match(detailHtml, /id="detailSkTitle"/);
-assert.match(detailHtml, /id="detailSkDescription"/);
+assert.doesNotMatch(
+  detailHtml,
+  /detailSkDescription|Kategori serta pemenang historis/,
+  "Editor Detail Arsip tidak boleh menampilkan deskripsi banner SK atau deskripsi Hasil dan Pemenang.",
+);
+assert.doesNotMatch(
+  archiveRepository,
+  /sk-banner__content[\s\S]*?sk\.description/,
+  "Banner SK Detail Arsip tidak boleh merender deskripsi.",
+);
+assert.doesNotMatch(
+  detailHtml,
+  /data-meta="show(?:Photo|School|Exam|Regency|Province)"/,
+  "Editor Detail Arsip tidak boleh menampilkan kontrol metadata card.",
+);
+assert.doesNotMatch(
+  detailEditor,
+  /detailSkDescription|\[data-meta\]/,
+  "Editor Detail Arsip tidak boleh mengikat field yang telah dihapus.",
+);
+assert.match(
+  detailEditor,
+  /champion-card__photo[\s\S]*?champion-card__school[\s\S]*?No\. Ujian:[\s\S]*?Kabupaten:[\s\S]*?Provinsi:/,
+  "Preview Detail Arsip harus tetap menampilkan metadata card.",
+);
+assert.doesNotMatch(
+  publicDetail,
+  /showPhoto|showSchool|showExam|showRegency|showProvince/,
+  "Detail Arsip publik tidak boleh memakai pengaturan checkbox metadata lama.",
+);
 const winnerSectionHtml = detailHtml.slice(
   detailHtml.indexOf("<h2>Hasil dan Pemenang</h2>"),
   detailHtml.indexOf("<h2>Dokumen Terkait</h2>"),
@@ -394,11 +425,6 @@ assert.match(
   /detailSkTitle"\)\.disabled =[\s\S]*?!comp\.skDocument\?\.documentId/,
   "Judul SK harus nonaktif saat Event tidak memiliki SK.",
 );
-assert.match(
-  detailEditor,
-  /detailSkDescription"\)\.disabled =[\s\S]*?!comp\.skDocument\?\.documentId/,
-  "Deskripsi SK harus nonaktif saat Event tidak memiliki SK.",
-);
 assert.doesNotMatch(
   detailEditor,
   /const ensureSk =/,
@@ -415,7 +441,11 @@ assert.match(
   publicList,
   /iconMode: event\.mascotAssetId \? "upload" : "library"/,
 );
-assert.match(publicList, /TalentaMedia\.url\(event\.mascotAssetId\)/);
+assert.match(
+  publicList,
+  /TalentaPublic\.mediaUrl\([\s\S]*?\/api\/v1\/public\/media\/\$\{event\.mascotAssetId\}/,
+  "Logo arsip publik harus memakai resolver media publik.",
+);
 assert.match(
   detailApi,
   /Promise\.all\([\s\S]*?winners[\s\S]*?TalentaMedia\.adminPreviewUrl\(winner\.designAssetId,[\s\S]*?siteId: eventId/,

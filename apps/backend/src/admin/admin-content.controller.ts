@@ -5,7 +5,9 @@ import {
   Get,
   Param,
   ParseEnumPipe,
+  ParseIntPipe,
   ParseUUIDPipe,
+  Query,
   Patch,
   Post,
   Put,
@@ -47,6 +49,7 @@ class DocumentDto {
   @IsOptional() @IsUUID() assetId?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
+  @IsInt() @Min(1) expectedRevision!: number;
 }
 class WinnerCategoryDto {
   @IsString() @MinLength(1) @MaxLength(160) name!: string;
@@ -54,6 +57,7 @@ class WinnerCategoryDto {
   @IsOptional() @IsString() @MaxLength(60) icon?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
+  @IsInt() @Min(1) expectedRevision!: number;
 }
 class WinnerDto {
   @IsOptional() @IsUUID() categoryId?: string;
@@ -71,6 +75,7 @@ class WinnerDto {
   @IsOptional() @IsUUID() photoAssetId?: string | null;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
+  @IsInt() @Min(1) expectedRevision!: number;
 }
 class PageDto {
   @IsOptional() @IsBoolean() isActive?: boolean;
@@ -82,6 +87,7 @@ class PageDto {
   @IsOptional() @IsObject() metadataVisibility?: Record<string, boolean>;
   @IsOptional() @IsBoolean() archiveActive?: boolean;
   @IsOptional() @IsInt() @Min(0) archiveLimit?: number;
+  @IsInt() @Min(1) expectedRevision!: number;
 }
 class DecreeDto {
   @IsString() @MinLength(1) @MaxLength(200) title!: string;
@@ -90,6 +96,7 @@ class DecreeDto {
   @IsOptional() @IsString() @MaxLength(20) fileType?: string;
   @IsOptional() @IsString() @MaxLength(40) displaySize?: string;
   @IsOptional() @IsBoolean() deleteFile?: boolean;
+  @IsInt() @Min(1) expectedRevision!: number;
 }
 class DetailCategoryDto {
   @IsUUID() categoryId!: string;
@@ -116,6 +123,7 @@ class DetailSettingsDto {
   @ValidateNested({ each: true })
   @Type(() => DetailDocumentDto)
   documents!: DetailDocumentDto[];
+  @IsInt() @Min(1) expectedRevision!: number;
 }
 
 @Controller('admin/events/:eventId')
@@ -175,9 +183,16 @@ export class AdminContentController {
   @Delete('documents/:resourceId') deleteDocument(
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @Param('resourceId', ParseUUIDPipe) resourceId: string,
+    @Query('expectedRevision', ParseIntPipe) expectedRevision: number,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.remove('event_documents', eventId, resourceId, u.userId);
+    return this.content.remove(
+      'event_documents',
+      eventId,
+      resourceId,
+      u.userId,
+      expectedRevision,
+    );
   }
 
   @Get('winner-categories') categories(
@@ -204,9 +219,16 @@ export class AdminContentController {
   @Delete('winner-categories/:resourceId') deleteCategory(
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @Param('resourceId', ParseUUIDPipe) resourceId: string,
+    @Query('expectedRevision', ParseIntPipe) expectedRevision: number,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.remove('winner_categories', eventId, resourceId, u.userId);
+    return this.content.remove(
+      'winner_categories',
+      eventId,
+      resourceId,
+      u.userId,
+      expectedRevision,
+    );
   }
 
   @Get('winners') winners(
@@ -233,9 +255,15 @@ export class AdminContentController {
   @Delete('winners/:resourceId') deleteWinner(
     @Param('eventId', ParseUUIDPipe) eventId: string,
     @Param('resourceId', ParseUUIDPipe) resourceId: string,
+    @Query('expectedRevision', ParseIntPipe) expectedRevision: number,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.deleteWinner(eventId, resourceId, u.userId);
+    return this.content.deleteWinner(
+      eventId,
+      resourceId,
+      u.userId,
+      expectedRevision,
+    );
   }
 
   @Get('pages/:pageType') page(

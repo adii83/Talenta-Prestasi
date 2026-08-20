@@ -142,9 +142,6 @@ function syncForm() {
     detailName: archiveDisplayName(comp),
     detailDescription: comp.description || "",
     detailSkTitle: comp.skDocument?.title || "SK Penetapan Pemenang",
-    detailSkDescription:
-      comp.skDocument?.description ||
-      "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
     detailWinnersActive: det.winnersActive,
     detailWinnersEyebrow: det.winnersEyebrow,
     detailWinnersTitle: det.winnersTitle,
@@ -158,13 +155,8 @@ function syncForm() {
     if (!e) return;
     e.type === "checkbox" ? (e.checked = v) : (e.value = v);
   });
-  document.querySelectorAll("[data-meta]").forEach((x) => {
-    x.checked = det[x.dataset.meta] !== false;
-  });
   renderSkSelect();
   document.getElementById("detailSkTitle").disabled =
-    !comp.skDocument?.documentId;
-  document.getElementById("detailSkDescription").disabled =
     !comp.skDocument?.documentId;
   renderCategorySummary();
   renderDocumentList();
@@ -330,23 +322,10 @@ function bindForm() {
     det.showSk = e.target.checked;
     renderPreview();
   };
-  document.querySelectorAll("[data-meta]").forEach(
-    (x) =>
-      (x.onchange = () => {
-        det[x.dataset.meta] = x.checked;
-        renderPreview();
-      }),
-  );
   const skTitle = document.getElementById("detailSkTitle");
-  const skDescription = document.getElementById("detailSkDescription");
   skTitle.oninput = () => {
     if (!comp.skDocument?.documentId) return;
     comp.skDocument.title = skTitle.value;
-    renderPreview();
-  };
-  skDescription.oninput = () => {
-    if (!comp.skDocument?.documentId) return;
-    comp.skDocument.description = skDescription.value;
     renderPreview();
   };
   document.getElementById("detailSkDocument").onchange = (e) => {
@@ -356,13 +335,9 @@ function bindForm() {
           ...d,
           documentId: d.id,
           title: skTitle.value || "SK Penetapan Pemenang",
-          description:
-            skDescription.value ||
-            "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
         }
       : null;
     skTitle.disabled = !d;
-    skDescription.disabled = !d;
     renderPreview();
   };
   document.querySelectorAll("[data-detail-preview]").forEach(
@@ -468,7 +443,7 @@ function renderLegacyPreview() {
       /* SK Banner */
       if (det.showSk && comp.skDocument) {
         const sk = comp.skDocument;
-        html += `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${esc(sk.title || "SK Penetapan Pemenang")}</h3><p>${esc(sk.description || "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.")}</p></div></div><a href="#" class="btn btn--primary" style="border:1px solid rgba(255,255,255,0.2)"><i data-lucide="download" style="width:16px;height:16px"></i> Unduh SK</a></div>`;
+        html += `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${esc(sk.title || "SK Penetapan Pemenang")}</h3></div></div><a href="#" class="btn btn--primary" style="border:1px solid rgba(255,255,255,0.2)"><i data-lucide="download" style="width:16px;height:16px"></i> Unduh SK</a></div>`;
       }
       /* Winner groups */
       if (cats.length) {
@@ -477,20 +452,7 @@ function renderLegacyPreview() {
           const ws = (cat.winners || []).filter((w) => w.active !== false);
           html += `<div class="winner-group"><h3 class="winner-group__title"><i data-lucide="${esc(cat.icon || "trophy")}" style="width:20px;height:20px;stroke-width:1.75;color:var(--c-primary)"></i> ${esc(cat.name)} <span class="badge badge--gold">${ws.length} Pemenang</span></h3><div class="champion-grid">`;
           ws.forEach((w) => {
-            html += `<div class="champion-card">`;
-            if (det.showPhoto !== false)
-              html += `<div class="champion-card__photo">${w.photo ? `<img src="${w.photo}" alt="Foto ${esc(w.name)}">` : initials(w.name)}</div>`;
-            html += `<p class="champion-card__rank t-mono">${esc(w.rank)}</p><p class="champion-card__name">${esc(w.name)}</p>`;
-            if (det.showSchool !== false)
-              html += `<p class="champion-card__school">${esc(w.school)}</p>`;
-            html += `<div class="champion-card__meta">`;
-            if (det.showExam !== false)
-              html += `<span><span class="meta-label">No. Ujian:</span> ${esc(w.exam)}</span>`;
-            if (det.showRegency !== false)
-              html += `<span><span class="meta-label">Kabupaten:</span> ${esc(w.regency)}</span>`;
-            if (det.showProvince !== false)
-              html += `<span><span class="meta-label">Provinsi:</span> ${esc(w.province)}</span>`;
-            html += `</div></div>`;
+            html += `<div class="champion-card"><div class="champion-card__photo">${w.photo ? `<img src="${w.photo}" alt="Foto ${esc(w.name)}">` : initials(w.name)}</div><p class="champion-card__rank t-mono">${esc(w.rank)}</p><p class="champion-card__name">${esc(w.name)}</p><p class="champion-card__school">${esc(w.school)}</p><div class="champion-card__meta">${w.exam ? `<span><span class="meta-label">No. Ujian:</span> ${esc(w.exam)}</span>` : ""}${w.regency ? `<span><span class="meta-label">Kabupaten:</span> ${esc(w.regency)}</span>` : ""}${w.province ? `<span><span class="meta-label">Provinsi:</span> ${esc(w.province)}</span>` : ""}</div></div>`;
           });
           html += `</div></div>`;
         });

@@ -18,6 +18,10 @@ const winnerAdminManagerSource = await readFile(
   "apps/admin/js/features/winners/manager.js",
   "utf8",
 );
+const winnerAdminHtml = await readFile(
+  "apps/admin/editors/pemenang/index.html",
+  "utf8",
+);
 const homeWinnerEditorSource = await readFile(
   "apps/admin/js/features/home/winner-highlight-editor.js",
   "utf8",
@@ -369,8 +373,47 @@ assert.equal(
   availableWinnerArchives.length,
   "Jumlah card tidak boleh melebihi Arsip yang memiliki pemenang aktif.",
 );
-assert.equal(normalizedPage.showPhoto, false);
 assert.equal(normalizedPage.archiveTitle, "Arsip Juara");
+assert.equal(
+  Object.hasOwn(normalizedPage, "showPhoto"),
+  false,
+  "Pengaturan visibilitas metadata card Pemenang harus dihapus.",
+);
+assert.doesNotMatch(
+  winnerAdminManagerSource,
+  /wmShowPhoto|wmShowSchool|wmShowExam|wmShowRegency|wmShowProvince/,
+  "Editor Pemenang tidak boleh memuat kontrol metadata card.",
+);
+assert.doesNotMatch(
+  winnerAdminHtml,
+  /wmSkDescription|Deskripsi SK/,
+  "Editor Pemenang tidak boleh menampilkan field Deskripsi SK.",
+);
+assert.doesNotMatch(
+  winnerAdminManagerSource,
+  /wmSkDescription/,
+  "Editor Pemenang tidak boleh mengikat field Deskripsi SK.",
+);
+assert.doesNotMatch(
+  winnerRepositorySource,
+  /sk-banner__content[\s\S]*?manager\.sk\.description/,
+  "Banner SK Pemenang tidak boleh merender deskripsi.",
+);
+assert.doesNotMatch(
+  winnerAdminApiSource,
+  /metadataVisibility/,
+  "Simpan halaman Pemenang tidak boleh menulis metadata visibility.",
+);
+assert.match(
+  winnerRepositorySource,
+  /champion-card__photo[\s\S]*?champion-card__school[\s\S]*?No\. Ujian:[\s\S]*?Kabupaten:[\s\S]*?Provinsi:/,
+  "Card desain bawaan harus tetap menampilkan foto, sekolah, nomor ujian, kabupaten, dan provinsi.",
+);
+assert.doesNotMatch(
+  winnerRendererSource,
+  /metadataVisibility/,
+  "Renderer publik tidak boleh memakai pengaturan checkbox metadata lama.",
+);
 
 context.__publicManager = {
   ...baselineManager,

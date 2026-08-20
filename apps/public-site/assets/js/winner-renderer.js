@@ -17,7 +17,13 @@
 
   function apiState(data) {
     const baseline = getPublicWinnerState();
-    const visibility = data.settings?.metadataVisibility || {};
+    const visibility = {
+      showPhoto: true,
+      showSchool: true,
+      showExam: true,
+      showRegency: true,
+      showProvince: true,
+    };
     return {
       manager: {
         competitionId: data.event?.slug || "",
@@ -72,11 +78,7 @@
         description: data.page?.description || baseline.page.description,
         alignment: data.page?.alignment || baseline.page.alignment,
         showSk: data.settings?.showDecree ?? baseline.page.showSk,
-        showPhoto: visibility.showPhoto ?? baseline.page.showPhoto,
-        showSchool: visibility.showSchool ?? baseline.page.showSchool,
-        showExam: visibility.showExam ?? baseline.page.showExam,
-        showRegency: visibility.showRegency ?? baseline.page.showRegency,
-        showProvince: visibility.showProvince ?? baseline.page.showProvince,
+        ...visibility,
         archiveActive:
           data.settings?.archiveActive ?? baseline.page.archiveActive,
         archiveTitle: data.settings?.archiveTitle || baseline.page.archiveTitle,

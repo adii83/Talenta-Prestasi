@@ -1,5 +1,6 @@
 const STORAGE_KEY = GLOBAL_SETTINGS_KEY;
 let logoPreviewObjectUrl = "",
+  globalHeroPreviewObjectUrl = "",
   settingsLoadGeneration = 0;
 
 function replaceLogoPreviewUrl(next = "") {
@@ -73,6 +74,32 @@ async function saveGlobalSettingsApi() {
     },
   });
 }
+function replaceGlobalHeroPreviewUrl(next = "") {
+  const value = String(next || "");
+  if (globalHeroPreviewObjectUrl && globalHeroPreviewObjectUrl !== value)
+    TalentaMedia.revokePreviewUrl(globalHeroPreviewObjectUrl);
+  globalHeroPreviewObjectUrl = value.startsWith("blob:") ? value : "";
+}
+
+function globalHeroAssetId(value) {
+  return (
+    String(value || "").match(
+      /\/api\/v1\/public\/media\/([\da-f-]{36})/,
+    )?.[1] || ""
+  );
+}
+
+async function hydrateGlobalHeroPreview(hero, siteId) {
+  const heroAssetId = globalHeroAssetId(hero?.image);
+  if (!heroAssetId) {
+    replaceGlobalHeroPreviewUrl("");
+    return hero;
+  }
+  const url = await TalentaMedia.adminPreviewUrl(heroAssetId, { siteId });
+  replaceGlobalHeroPreviewUrl(url);
+  return { ...hero, image: url };
+}
+
 async function loadHomeSettingsApi() {
   const site = TalentaAdminAuth.currentEvent();
   if (!site?.id)
@@ -99,6 +126,8 @@ async function loadHomeSettingsApi() {
   const baseAdminState =
     typeof getHomeAdminState === "function" ? getHomeAdminState() : {};
   const sections = { ...baseAdminState, ...apiSections };
+  if (sections.hero)
+    sections.hero = await hydrateGlobalHeroPreview(sections.hero, site.id);
 
   let categories = [];
   let display = {
@@ -224,6 +253,9 @@ document.addEventListener("DOMContentLoaded", () => {
       logo: globalState.identity.logo || "",
       navbarLogoSize: Number.parseInt(navbarLogoSize.value, 10),
     };
+    document.querySelectorAll("[data-global-navigation]").forEach((input) => {
+      globalState.navigation[input.dataset.globalNavigation] = input.checked;
+    });
     globalState.theme = {
       primaryColor: primaryColor.value,
       accentColor: "#ffffff",
@@ -576,6 +608,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const response = await saveGlobalSettingsApi();
       TalentaAdminAuth.updateCurrentEvent({ name: response.data.eventName });
       globalState = saveGlobalSettings(globalState);
+      document.dispatchEvent(new CustomEvent("talenta:editor-saved"));
       showToast("Pengaturan global tersimpan ke database.");
     } catch (error) {
       showToast(error.message, true);
@@ -675,6 +708,7 @@ document.addEventListener("DOMContentLoaded", () => {
     if (logoPreviewObjectUrl)
       TalentaMedia.revokePreviewUrl(logoPreviewObjectUrl);
     logoPreviewObjectUrl = "";
+    replaceGlobalHeroPreviewUrl("");
   };
   window.addEventListener("pagehide", releaseLogoPreview);
   window.addEventListener("beforeunload", releaseLogoPreview);
@@ -686,6 +720,15 @@ document.addEventListener("DOMContentLoaded", () => {
         if (local && globalHomeState && globalHomeState.sections) {
           if (local.hero)
             Object.assign(globalHomeState.sections.hero, local.hero);
+          void hydrateGlobalHeroPreview(
+            globalHomeState.sections.hero,
+            TalentaAdminAuth.currentEvent()?.id,
+          ).then((hero) => {
+            if (globalHomeState?.sections?.hero) {
+              globalHomeState.sections.hero = hero;
+              renderPreview();
+            }
+          });
           if (local.winnerHighlight)
             Object.assign(
               globalHomeState.sections.winnerHighlight,

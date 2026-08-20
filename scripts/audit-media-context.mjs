@@ -48,6 +48,11 @@ assert.match(
   "Ikon Beranda baru di Admin harus memakai Blob terautentikasi.",
 );
 assert.match(
+  settingsEditor,
+  /async function hydrateGlobalHeroPreview\(hero, siteId\)[\s\S]*?adminPreviewUrl\(heroAssetId,\s*\{\s*siteId\s*\}\)/,
+  "Hero preview Global Admin harus memakai Blob terautentikasi dengan Event eksplisit.",
+);
+assert.match(
   winnerRenderer,
   /return TalentaPublic\.mediaUrl\(source\)/,
   "Media halaman Pemenang harus membawa token saat Preview.",

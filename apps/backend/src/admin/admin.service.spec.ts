@@ -163,6 +163,7 @@ describe('AdminService category flow', () => {
     const manager = {
       query: jest
         .fn()
+        .mockResolvedValueOnce([[{ workspaceRevision: 2 }], 1])
         .mockResolvedValueOnce([{ id: assetId }])
         .mockResolvedValue([]),
     };
@@ -176,7 +177,8 @@ describe('AdminService category flow', () => {
       query: jest
         .fn()
         .mockResolvedValueOnce([{ id: eventId }])
-        .mockResolvedValueOnce([]),
+        .mockResolvedValueOnce([])
+        .mockResolvedValueOnce([{ workspaceRevision: 1 }]),
       transaction: jest.fn((callback) => callback(manager)),
     };
     const service = new AdminService(
@@ -194,16 +196,16 @@ describe('AdminService category flow', () => {
           image: `http://localhost:3000/api/v1/public/media/${assetId}`,
         },
       },
-    ]);
+    ], 1);
 
-    expect(manager.query.mock.calls[0][0]).toContain('FROM media_assets asset');
-    expect(manager.query.mock.calls[0][1]).toEqual([
+    expect(manager.query.mock.calls[1][0]).toContain('FROM media_assets asset');
+    expect(manager.query.mock.calls[1][1]).toEqual([
       eventId,
       assetId,
       ['image/png', 'image/jpeg', 'image/webp'],
       2 * 1024 * 1024,
     ]);
-    expect(manager.query.mock.calls[2][1][4]).toEqual({
+    expect(manager.query.mock.calls[3][1][4]).toEqual({
       image: `/api/v1/public/media/${assetId}`,
     });
   });
@@ -212,7 +214,9 @@ describe('AdminService category flow', () => {
     const eventId = '44444444-4444-4444-8444-444444444444';
     const userId = '33333333-3333-4333-8333-333333333333';
     const assetId = '55555555-5555-4555-8555-555555555555';
-    const manager = { query: jest.fn().mockResolvedValue([]) };
+    const manager = {
+      query: jest.fn().mockResolvedValueOnce([[{ workspaceRevision: 2 }], 1]).mockResolvedValue([]),
+    };
     const dataSource = {
       query: jest.fn().mockResolvedValue([{ id: eventId }]),
       transaction: jest.fn((callback) => callback(manager)),
@@ -231,9 +235,9 @@ describe('AdminService category flow', () => {
           isActive: true,
           settings: { image: `/api/v1/public/media/${assetId}` },
         },
-      ]),
+      ], 1),
     ).rejects.toThrow('Invalid Hero image');
-    expect(manager.query).toHaveBeenCalledTimes(1);
+    expect(manager.query).toHaveBeenCalledTimes(2);
   });
 
   it('updates event metadata without changing its slug', async () => {
@@ -449,7 +453,7 @@ describe('AdminService category flow', () => {
       const service = new AdminService(
         {} as never,
         { createQueryBuilder: jest.fn(() => queryBuilder) } as never,
-        {} as never,
+        { query: jest.fn().mockResolvedValue([{ workspaceRevision: 1 }]) } as never,
         { get: jest.fn() } as unknown as ConfigService,
       );
 
@@ -811,6 +815,8 @@ describe('AdminService category flow', () => {
         query: jest.fn((sql: string) => {
           if (sql.includes('organization_memberships'))
             return Promise.resolve([{ id: 'event-1' }]);
+          if (sql.includes('workspace_revision'))
+            return Promise.resolve([{ workspaceRevision: 1 }]);
           return Promise.resolve([
             {
               primaryColor: '#1e4b8c',
@@ -862,22 +868,27 @@ describe('AdminService category flow', () => {
       const manager = {
         query: jest
           .fn()
+          .mockResolvedValueOnce([[{ workspaceRevision: 2 }], 1]) // claim revision
           .mockResolvedValueOnce([{ id: 'logo-1' }]) // owned asset check
           .mockResolvedValueOnce([]) // UPDATE event_sites
           .mockResolvedValueOnce([]) // INSERT site_settings
           .mockResolvedValueOnce([]), // audit_logs
       };
       const dataSource = {
-        query: jest.fn().mockResolvedValue([
-          {
-            primaryColor: '#1e4b8c',
-            navigation: {},
-            contact: {},
-            footer: {},
-            seo: {},
-            navbarLogoSize: 40,
-          },
-        ]),
+        query: jest.fn((sql: string) => {
+          if (sql.includes('workspace_revision'))
+            return Promise.resolve([{ workspaceRevision: 2 }]);
+          return Promise.resolve([
+            {
+              primaryColor: '#1e4b8c',
+              navigation: {},
+              contact: {},
+              footer: {},
+              seo: {},
+              navbarLogoSize: 40,
+            },
+          ]);
+        }),
         transaction: jest.fn((cb) => cb(manager)),
       };
       const eventsRepo = {
@@ -904,6 +915,7 @@ describe('AdminService category flow', () => {
         navigation: {},
         contact: {},
         footer: {},
+        expectedRevision: 1,
       });
 
       expect(manager.query).toHaveBeenCalledWith(
@@ -924,12 +936,17 @@ describe('AdminService category flow', () => {
         getOne: jest.fn().mockResolvedValue({ id: 'event-1' }),
       };
       const manager = {
-        query: jest.fn().mockResolvedValue([]),
+        query: jest
+          .fn()
+          .mockResolvedValueOnce([[{ workspaceRevision: 2 }], 1])
+          .mockResolvedValue([]),
       };
       const dataSource = {
         query: jest.fn((sql: string) => {
           if (sql.includes('organization_memberships'))
             return Promise.resolve([{ id: 'event-1' }]);
+          if (sql.includes('workspace_revision'))
+            return Promise.resolve([{ workspaceRevision: 1 }]);
           return Promise.resolve([]);
         }),
         transaction: jest.fn((cb) => cb(manager)),
@@ -957,6 +974,7 @@ describe('AdminService category flow', () => {
         navigation: {},
         contact: {},
         footer: {},
+        expectedRevision: 1,
       });
 
       expect(manager.query).toHaveBeenCalledWith(
@@ -979,6 +997,8 @@ describe('AdminService category flow', () => {
         query: jest.fn((sql: string) => {
           if (sql.includes('organization_memberships'))
             return Promise.resolve([{ id: 'event-1' }]);
+          if (sql.includes('workspace_revision'))
+            return Promise.resolve([{ workspaceRevision: 1 }]);
           return Promise.resolve([]);
         }),
         transaction: jest.fn((cb) => cb(manager)),

@@ -109,11 +109,6 @@ function winnerPageBaseline() {
       "Selamat kepada para pemenang ajang talenta nasional tahun ini.",
     alignment: "left",
     showSk: true,
-    showPhoto: true,
-    showSchool: true,
-    showExam: true,
-    showRegency: true,
-    showProvince: true,
     archiveActive: true,
     archiveTitle: "Pemenang Ajang Talenta Sebelumnya",
     archiveAction: "Lihat Pemenang",
@@ -201,11 +196,6 @@ function normalizeWinnerPageState(source) {
     description: winnerString(state.description, baseline.description),
     alignment: state.alignment === "center" ? "center" : "left",
     showSk: state.showSk !== false,
-    showPhoto: state.showPhoto !== false,
-    showSchool: state.showSchool !== false,
-    showExam: state.showExam !== false,
-    showRegency: state.showRegency !== false,
-    showProvince: state.showProvince !== false,
     archiveActive: state.archiveActive !== false,
     archiveTitle: winnerString(state.archiveTitle, baseline.archiveTitle),
     archiveAction: winnerString(state.archiveAction, baseline.archiveAction),
@@ -325,20 +315,6 @@ function getPublicWinnerState() {
   );
 }
 
-function buildWinnerMetaMarkup(winner, page) {
-  return [
-    page.showExam && winner.exam
-      ? `<span><span class="meta-label">No. Ujian:</span> ${winnerEscape(winner.exam)}</span>`
-      : "",
-    page.showRegency && winner.regency
-      ? `<span><span class="meta-label">Kabupaten:</span> ${winnerEscape(winner.regency)}</span>`
-      : "",
-    page.showProvince && winner.province
-      ? `<span><span class="meta-label">Provinsi:</span> ${winnerEscape(winner.province)}</span>`
-      : "",
-  ].join("");
-}
-
 function buildWinnerCardMarkup(winner, page, options = {}) {
   const resolveAsset = options.resolveAsset || ((value) => value || "");
   const rank = winner.rank || "Pemenang";
@@ -349,7 +325,7 @@ function buildWinnerCardMarkup(winner, page, options = {}) {
     return `<article class="champion-card champion-card--custom"><span class="champion-card__fallback">${winnerEscape(rank)}</span>${designUrl ? `<img class="champion-card__design" loading="lazy" decoding="async" src="${winnerEscape(winnerSafeUrl(designUrl))}" alt="${winnerEscape(rank)}">` : ""}</article>`;
   }
   const photoUrl = resolveAsset(winner.photo || winner.photoAssetId);
-  return `<article class="champion-card champion-card--built-in">${page.showPhoto ? `<div class="champion-card__photo">${photoUrl ? `<img src="${winnerEscape(winnerSafeUrl(photoUrl))}" alt="Foto ${winnerEscape(winner.name)}" />` : winnerEscape(winnerInitials(winner.name))}</div>` : ""}<p class="champion-card__rank t-mono">${winnerEscape(rank)}</p><p class="champion-card__name">${winnerEscape(winner.name || "—")}</p>${page.showSchool ? `<p class="champion-card__school">${winnerEscape(winner.school)}</p>` : ""}<div class="champion-card__meta">${buildWinnerMetaMarkup(winner, page)}</div></article>`;
+  return `<article class="champion-card champion-card--built-in"><div class="champion-card__photo">${photoUrl ? `<img src="${winnerEscape(winnerSafeUrl(photoUrl))}" alt="Foto ${winnerEscape(winner.name)}" />` : winnerEscape(winnerInitials(winner.name))}</div><p class="champion-card__rank t-mono">${winnerEscape(rank)}</p><p class="champion-card__name">${winnerEscape(winner.name || "—")}</p><p class="champion-card__school">${winnerEscape(winner.school)}</p><div class="champion-card__meta">${winner.exam ? `<span><span class="meta-label">No. Ujian:</span> ${winnerEscape(winner.exam)}</span>` : ""}${winner.regency ? `<span><span class="meta-label">Kabupaten:</span> ${winnerEscape(winner.regency)}</span>` : ""}${winner.province ? `<span><span class="meta-label">Provinsi:</span> ${winnerEscape(winner.province)}</span>` : ""}</div></article>`;
 }
 
 function activateWinnerCardFallbacks(root) {
@@ -381,7 +357,7 @@ function buildWinnerPageMarkup(source, options = {}) {
   const headerClass = page.alignment === "left" ? " section__header--left" : "";
   const sk =
     page.showSk && manager.sk?.title && manager.sk?.url
-      ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${winnerEscape(manager.sk.title)}</h3><p>${winnerEscape(manager.sk.description)}</p></div></div><a href="${winnerEscape(winnerSafeUrl(manager.sk.url))}" class="btn btn--primary" style="border:1px solid rgba(255,255,255,.2)"${manager.sk.url ? ' target="_blank" rel="noopener"' : ""}><i data-lucide="download" style="width:16px;height:16px"></i> Unduh PDF</a></div>`
+      ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${winnerEscape(manager.sk.title)}</h3></div></div><a href="${winnerEscape(winnerSafeUrl(manager.sk.url))}" class="btn btn--primary" style="border:1px solid rgba(255,255,255,.2)"${manager.sk.url ? ' target="_blank" rel="noopener"' : ""}><i data-lucide="download" style="width:16px;height:16px"></i> Unduh PDF</a></div>`
       : "";
   const categories = manager.categories.length
     ? `<div class="winner-section">${manager.categories.map((category) => `<div class="winner-group"><h3 class="winner-group__title"><i data-lucide="${winnerEscape(category.icon || "trophy")}" style="width:20px;height:20px;stroke-width:1.75;color:var(--c-primary)"></i>${winnerEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildWinnerCardMarkup(winner, page, options)).join("")}</div></div>`).join("")}</div>`

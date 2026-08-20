@@ -32,6 +32,44 @@ describe('EventPublicationService', () => {
     ).toContain(designId);
   });
 
+  it('rejects a stale workspace revision before publishing', async () => {
+    const manager = {
+      query: jest.fn((sql: string) =>
+        Promise.resolve(
+          sql.includes('FROM event_sites event')
+            ? [
+                {
+                  id: 'event-1',
+                  categoryId: 'category-1',
+                  organizationId: 'organization-1',
+                  version: 1,
+                  workspaceRevision: 4,
+                  role: 'editor',
+                },
+              ]
+            : [],
+        ),
+      ),
+    };
+    const content = { build: jest.fn() };
+    const service = new EventPublicationService(
+      {
+        transaction: jest.fn((_isolation, callback) => callback(manager)),
+      } as never,
+      content as never,
+      { capture: jest.fn() } as never,
+      { issue: jest.fn() } as never,
+    );
+
+    await expect(
+      service.publish('event-1', 'user-1', undefined, undefined, 3),
+    ).rejects.toThrow(
+      'Data Event telah diperbarui pengguna lain. Muat ulang sebelum menyimpan.',
+    );
+    expect(manager.query.mock.calls[0][0]).toContain('FOR UPDATE');
+    expect(content.build).not.toHaveBeenCalled();
+  });
+
   it('captures publication snapshots sequentially on one transaction', async () => {
     let building = false;
     const manager = {

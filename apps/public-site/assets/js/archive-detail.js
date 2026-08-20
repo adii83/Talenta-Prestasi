@@ -18,11 +18,6 @@
         winnersActive: data.settings?.winnersActive ?? true,
         documentsActive: data.settings?.documentsActive ?? true,
         showSk: visibility.showSk ?? true,
-        showPhoto: visibility.showPhoto ?? true,
-        showSchool: visibility.showSchool ?? true,
-        showExam: visibility.showExam ?? true,
-        showRegency: visibility.showRegency ?? true,
-        showProvince: visibility.showProvince ?? true,
       },
       categories: data.categories.map((category) => ({
         name: category.name,
@@ -57,10 +52,6 @@
               data.decree.title ||
               data.settings?.decreeTitle ||
               "SK Penetapan Pemenang",
-            description:
-              data.decree.description ||
-              data.settings?.decreeDescription ||
-              "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
             url: mediaUrl(data.decree.url, data.decree.assetId),
             type: data.decree.fileType || "PDF",
             size: data.decree.displaySize || "-",
@@ -75,9 +66,6 @@
             data.settings?.decreeTitle ||
             document.title ||
             "SK Penetapan Pemenang",
-          description:
-            data.settings?.decreeDescription ||
-            "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
           url: mediaUrl(document.url, document.assetId),
           type: document.fileType || "PDF",
           size: document.displaySize || "-",
@@ -130,15 +118,9 @@
         documentsActive: state.detail.documentsActive,
         metadataVisibility: {
           showSk: state.detail.showSk,
-          showPhoto: state.detail.showPhoto,
-          showSchool: state.detail.showSchool,
-          showExam: state.detail.showExam,
-          showRegency: state.detail.showRegency,
-          showProvince: state.detail.showProvince,
         },
         decreeDocumentId: state.sk?.documentId,
         decreeTitle: state.sk?.title,
-        decreeDescription: state.sk?.description,
       },
       categories: state.categories.map((category) => ({
         ...category,

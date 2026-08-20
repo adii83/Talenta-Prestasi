@@ -262,13 +262,6 @@
         description: page.description,
         alignment: page.alignment,
         showDecree: page.showSk,
-        metadataVisibility: {
-          showPhoto: page.showPhoto,
-          showSchool: page.showSchool,
-          showExam: page.showExam,
-          showRegency: page.showRegency,
-          showProvince: page.showProvince,
-        },
         archiveActive: page.archiveActive,
         archiveLimit: page.archiveLimit,
       },

@@ -17,6 +17,36 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-20 — Optimistic Concurrency Workspace Event
+
+- **Tanggal/Judul**: 2026-08-20 — Optimistic Concurrency Workspace Event
+- **Permintaan**: Menambahkan optimistic concurrency control lintas editor Admin Event agar simpan stale, publish, dan discard draft ditolak tanpa auto-merge.
+- **Proses/Keputusan**: Menambahkan kolom `event_sites.workspace_revision` dengan default `1` melalui migration. Seluruh writer workspace memakai compare-and-swap atomik `UPDATE ... WHERE workspace_revision=$2 RETURNING`. Revision stale mengembalikan HTTP `409` dengan pesan reload konsisten. Publish/discard mengunci row Event. Respons reader dan writer menyediakan revision untuk rantai simpan frontend; API client mengirimkannya otomatis pada mutasi Event, sedangkan save FAQ dan Unduh dibuat berurutan. E2E memakai revision aktual, bukan nilai hardcode. Investigasi menemukan `EntityManager.query()` TypeORM mengembalikan hasil `UPDATE ... RETURNING` sebagai tuple `[[row], affectedCount]`; helper revision kini mengurai bentuk tersebut agar revision respons tidak hilang.
+- **File**:
+  - `apps/backend/src/database/migrations/1787270400000-AddWorkspaceRevision.ts`
+  - `apps/backend/src/entities/event-site.entity.ts`
+  - `apps/backend/src/admin/workspace-revision.ts`
+  - `apps/backend/src/admin/workspace-revision.spec.ts`
+  - `apps/backend/src/admin/admin.controller.ts`
+  - `apps/backend/src/admin/admin.service.ts`
+  - `apps/backend/src/admin/admin.service.spec.ts`
+  - `apps/backend/src/admin/admin-content.controller.ts`
+  - `apps/backend/src/admin/admin-content.service.ts`
+  - `apps/backend/src/admin/admin-content.service.spec.ts`
+  - `apps/backend/src/admin/event-publication.service.ts`
+  - `apps/backend/src/admin/event-publication.service.spec.ts`
+  - `apps/backend/test/admin.e2e-spec.ts`
+  - `apps/admin/js/core/workspace-revision.js`
+  - `packages/shared/js/core/api-client.js`
+  - `apps/admin/js/features/faq/api.js`
+  - `apps/admin/js/features/downloads/api.js`
+  - `apps/admin/js/shell/router.js`
+  - `apps/admin/index.html`
+  - `docs/WORK_LOG.md`
+- **Validasi**: `npm --prefix apps/backend test -- --runInBand` lulus 11 suite / 96 test; `npm --prefix apps/backend run build` lulus; `npm --prefix apps/backend run test:e2e -- --runInBand --no-cache test/admin.e2e-spec.ts` lulus 1 suite / 7 test; syntax JavaScript frontend berubah lulus `node --check`; Graphify diperbarui.
+- **Kendala**: E2E awal menerima `workspaceRevision` kosong meski database naik. Penyebab ialah bentuk tuple hasil `EntityManager.query()` TypeORM, bukan cache Jest atau controller route.
+- **Tindak lanjut**: Migration belum dijalankan pada database aktif. Commit, push, deployment, dan tindakan destruktif tidak dilakukan.
+
 ### 2026-08-20 — Konsistensi Akses Media Admin dan Public Preview
 
 - **Tanggal/Judul**: 2026-08-20 — Konsistensi Akses Media Admin dan Public Preview
