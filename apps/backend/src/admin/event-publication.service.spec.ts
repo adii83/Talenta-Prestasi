@@ -32,6 +32,53 @@ describe('EventPublicationService', () => {
     ).toContain(designId);
   });
 
+  it('captures publication snapshots sequentially on one transaction', async () => {
+    let building = false;
+    const manager = {
+      query: jest.fn((sql: string) => {
+        if (sql.includes('FROM event_sites event'))
+          return Promise.resolve([
+            {
+              id: 'event-1',
+              categoryId: 'category-1',
+              organizationId: 'organization-1',
+              version: 1,
+              role: 'editor',
+            },
+          ]);
+        if (sql.includes('INSERT INTO event_publications'))
+          return Promise.resolve([{ version: 1 }]);
+        return Promise.resolve([]);
+      }),
+    };
+    const service = new EventPublicationService(
+      {
+        transaction: jest.fn((_isolation, callback) => callback(manager)),
+      } as never,
+      {
+        build: jest.fn(async () => {
+          building = true;
+          await new Promise((resolve) => setImmediate(resolve));
+          building = false;
+          return { schemaVersion: 1, bootstrap: { site: {} } };
+        }),
+      } as never,
+      {
+        capture: jest.fn(async () => {
+          if (building) throw new Error('snapshot overlap');
+          return {
+            schemaVersion: 1,
+            eventId: 'event-1',
+            rows: { event_sites: [{ id: 'event-1' }] },
+          };
+        }),
+      } as never,
+      { issue: jest.fn() } as never,
+    );
+
+    await expect(service.publish('event-1', 'user-1')).resolves.toBeDefined();
+  });
+
   it('publishes public and workspace snapshots in one transaction', async () => {
     const manager = {
       query: jest.fn((sql: string) => {

@@ -2,6 +2,48 @@ import { PublicContentService } from './public-content.service';
 import { WorkspaceSnapshotService } from './workspace-snapshot.service';
 
 describe('PublicContentService', () => {
+  it('does not overlap queries on a shared transaction executor', async () => {
+    let active = false;
+    const db = {
+      query: jest.fn(async (sql: string) => {
+        if (active) throw new Error('query overlap');
+        active = true;
+        await new Promise((resolve) => setImmediate(resolve));
+        active = false;
+        if (sql.includes('FROM event_sites event'))
+          return [
+            {
+              eventId: 'event-1',
+              categoryId: 'category-1',
+              categoryName: 'Octal',
+              categorySlug: 'octal',
+              eventName: 'Octal',
+              eventSlug: '2027',
+              periodYear: 2027,
+              batchNumber: null,
+              batchLabel: null,
+              organizerName: 'Talenta',
+              logoAssetId: null,
+              navbarLogoSize: 36,
+              primaryColor: '#123456',
+              navigation: {},
+              contact: {},
+              footer: {},
+              seo: {},
+              description: '',
+              mascotAssetId: null,
+              fallbackIcon: 'star',
+            },
+          ];
+        return [];
+      }),
+    };
+
+    await expect(
+      new PublicContentService(db as never).build('event-1', db as never),
+    ).resolves.toMatchObject({ schemaVersion: 1 });
+  });
+
   it('builds a complete snapshot for exactly one Event', async () => {
     const db = {
       query: jest.fn((sql: string) => {

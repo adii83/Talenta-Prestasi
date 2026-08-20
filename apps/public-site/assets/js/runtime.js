@@ -150,10 +150,7 @@
         eventSlug: data.site.slug,
         organizerName: data.site.organizerName,
         logo: data.site.logoUrl
-          ? new URL(
-              data.site.logoUrl,
-              new URL(TalentaConfig.apiBaseUrl, location.origin),
-            ).href
+          ? TalentaPublic.mediaUrl(data.site.logoUrl)
           : "",
         navbarLogoSize: data.settings.navbarLogoSize ?? 36,
       },

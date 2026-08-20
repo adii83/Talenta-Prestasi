@@ -116,21 +116,30 @@ async function loadHomeSettingsApi() {
       TalentaApi.request(`/admin/events/${site.id}/winners`),
     ]);
     display = pagesReq.data.metadataVisibility || display;
-    categories = catReq.data
-      .filter((c) => c.isActive)
-      .map((c) => ({
-        ...c,
-        winners: winReq.data
-          .filter((w) => w.categoryId === c.id && w.isActive)
-          .map((w) => ({
-            ...w,
-            name: w.fullName,
-            rank: w.rankLabel,
-            exam: w.examNumber,
-            photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : "",
+    categories = (
+      await Promise.all(
+        catReq.data
+          .filter((c) => c.isActive)
+          .map(async (c) => ({
+            ...c,
+            winners: await Promise.all(
+              winReq.data
+                .filter((w) => w.categoryId === c.id && w.isActive)
+                .map(async (w) => ({
+                  ...w,
+                  name: w.fullName,
+                  rank: w.rankLabel,
+                  exam: w.examNumber,
+                  photo: w.photoAssetId
+                    ? await TalentaMedia.adminPreviewUrl(w.photoAssetId, {
+                        siteId: site.id,
+                      })
+                    : "",
+                })),
+            ),
           })),
-      }))
-      .filter((c) => c.winners.length > 0);
+      )
+    ).filter((c) => c.winners.length > 0);
   } catch (e) {
     console.warn("Gagal memuat data pemenang untuk pratinjau global", e);
   }

@@ -148,7 +148,36 @@ function heroImagePreviewSource(value = state.hero.image, fallback = "") {
 function releaseHeroImagePreview() {
   ++heroImagePreviewGeneration;
   replaceHeroImagePreviewUrl("");
+  [...(state.hero.buttons || []), ...(state.schedule.cards || [])].forEach(
+    (item) => {
+      TalentaMedia.revokePreviewUrl(item.uploadedIconPreview);
+      item.uploadedIconPreview = "";
+    },
+  );
 }
+async function hydrateUploadedIconPreviews() {
+  const siteId = window.parent?.TalentaAdminAuth?.currentEvent?.()?.id;
+  const items = [
+    ...(state.hero.buttons || []),
+    ...(state.schedule.cards || []),
+  ];
+  await Promise.all(
+    items.map(async (item) => {
+      TalentaMedia.revokePreviewUrl(item.uploadedIconPreview);
+      const icon = item.uploadedIconAssetId
+        ? await TalentaMedia.adminPreviewUrl(item.uploadedIconAssetId, {
+            siteId,
+          })
+        : "";
+      Object.defineProperty(item, "uploadedIconPreview", {
+        value: icon,
+        writable: true,
+        configurable: true,
+      });
+    }),
+  );
+}
+
 async function hydrateHome() {
   try {
     const loaded = await TalentaHomeApi.load();
@@ -159,10 +188,13 @@ async function hydrateHome() {
       }
     });
     try {
-      await hydrateHeroImagePreview(state.hero.image);
+      await Promise.all([
+        hydrateHeroImagePreview(state.hero.image),
+        hydrateUploadedIconPreviews(),
+      ]);
     } catch (error) {
       releaseHeroImagePreview();
-      toast(error.message || "Gagal memuat pratinjau maskot", true);
+      toast(error.message || "Gagal memuat pratinjau media Beranda", true);
     }
     sync();
     renderAll();
@@ -516,8 +548,18 @@ function wireIcon(el, item, render) {
       const asset = await TalentaMedia.upload(input.files[0], {
         altText: item.iconAlt || "Ikon kustom Beranda",
       });
+      const eventId = window.parent?.TalentaAdminAuth?.currentEvent?.()?.id;
+      const icon = await TalentaMedia.adminPreviewUrl(asset.assetId, {
+        siteId: eventId,
+      });
+      TalentaMedia.revokePreviewUrl(item.uploadedIconPreview);
       item.uploadedIconAssetId = asset.assetId;
-      item.uploadedIcon = TalentaMedia.url(asset);
+      item.uploadedIcon = asset.url;
+      Object.defineProperty(item, "uploadedIconPreview", {
+        value: icon,
+        writable: true,
+        configurable: true,
+      });
       item.iconMode = "upload";
       mode.value = "upload";
       refresh();
@@ -533,7 +575,10 @@ function wireIcon(el, item, render) {
   const remove = el.querySelector("[data-icon-remove]");
   if (remove)
     remove.onclick = () => {
+      TalentaMedia.revokePreviewUrl(item.uploadedIconPreview);
       item.uploadedIcon = "";
+      item.uploadedIconPreview = "";
+      item.uploadedIconAssetId = null;
       item.iconMode = "library";
       mode.value = "library";
       refresh();
@@ -651,13 +696,13 @@ function wireItemToggle(el, item, render) {
   };
 }
 function iconMarkup(x) {
-  if (x.iconMode === "upload" && x.uploadedIcon)
-    return `<img src="${x.uploadedIcon}" alt="${esc(x.iconAlt || "Ikon kustom")}">`;
+  if (x.iconMode === "upload" && (x.uploadedIconPreview || x.uploadedIcon))
+    return `<img src="${x.uploadedIconPreview || x.uploadedIcon}" alt="${esc(x.iconAlt || "Ikon kustom")}">`;
   return `<i data-lucide="${x.libraryIcon || x.icon || "circle"}"></i>`;
 }
 function heroPreviewIconMarkup(x, size = 18) {
-  if (x.iconMode === "upload" && x.uploadedIcon)
-    return `<img class="home-custom-icon" src="${x.uploadedIcon}" alt="${esc(x.iconAlt || "Ikon kustom")}" style="width:${size}px;height:${size}px">`;
+  if (x.iconMode === "upload" && (x.uploadedIconPreview || x.uploadedIcon))
+    return `<img class="home-custom-icon" src="${x.uploadedIconPreview || x.uploadedIcon}" alt="${esc(x.iconAlt || "Ikon kustom")}" style="width:${size}px;height:${size}px">`;
   return `<i data-lucide="${x.libraryIcon || x.icon || "circle"}" style="width:${size}px;height:${size}px;stroke-width:1.5"></i>`;
 }
 

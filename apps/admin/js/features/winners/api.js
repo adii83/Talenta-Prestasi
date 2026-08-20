@@ -36,11 +36,11 @@
         exam: winner.examNumber || "",
         district: winner.district || "",
         photoAssetId: winner.photoAssetId || null,
-        photo:
-          winner.photoUrl ||
-          (winner.photoAssetId
-            ? TalentaMedia.url(winner.photoAssetId)
-            : winner.photo || ""),
+        photo: winner.photoAssetId
+          ? await TalentaMedia.adminPreviewUrl(winner.photoAssetId, {
+              siteId: event.id,
+            })
+          : winner.photo || "",
         displayMode: winner.displayMode || "built_in",
         designAssetId: winner.designAssetId || null,
         design: winner.designAssetId

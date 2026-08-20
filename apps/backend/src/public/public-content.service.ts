@@ -8,6 +8,20 @@ export interface QueryExecutor {
   ): Promise<T>;
 }
 
+function serialExecutor(executor: QueryExecutor): QueryExecutor {
+  let pending = Promise.resolve();
+  return {
+    query<T>(sql: string, parameters?: unknown[]) {
+      const result = pending.then(() => executor.query<T>(sql, parameters));
+      pending = result.then(
+        () => undefined,
+        () => undefined,
+      );
+      return result;
+    },
+  };
+}
+
 interface SiteRow {
   eventId: string;
   categoryId: string;
@@ -50,6 +64,7 @@ export class PublicContentService {
     eventId: string,
     executor: QueryExecutor = this.db,
   ): Promise<PublicEventSnapshot> {
+    executor = serialExecutor(executor);
     const siteRows = await executor.query<SiteRow[]>(SITE_QUERY, [eventId]);
     const site = siteRows[0];
     if (!site) throw new NotFoundException('Event workspace not found');

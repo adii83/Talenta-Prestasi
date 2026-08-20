@@ -63,8 +63,8 @@ assert.match(
 );
 assert.match(
   winnerRendererSource,
-  /TalentaMedia\.url\(event\.mascotAssetId\)/,
-  "Public kartu Arsip Pemenang harus resolve media canonical melalui TalentaMedia.",
+  /TalentaPublic\.mediaUrl\([\s\S]*?event\.mascotAssetId[\s\S]*?\)/,
+  "Public kartu Arsip Pemenang harus resolve media dengan token Preview.",
 );
 assert.match(
   winnerAdminApiSource,

@@ -64,7 +64,9 @@ async function fetchRealWinnerData() {
                       })
                     : "",
                   photo: winner.photoAssetId
-                    ? TalentaMedia.url(winner.photoAssetId)
+                    ? await TalentaMedia.adminPreviewUrl(winner.photoAssetId, {
+                        siteId: site.id,
+                      })
                     : "",
                 })),
             ),

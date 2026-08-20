@@ -668,6 +668,7 @@ ${w.displayMode ? `<div class="wm-winner-card__form admin-form-grid">${w.display
         if (!confirmed) return;
         const oldWinners = [...cat.winners];
         TalentaMedia.revokePreviewUrl(w.design);
+        TalentaMedia.revokePreviewUrl(w.photo);
         cat.winners.splice(wi, 1);
         reconcileWinnerRanks(cat, oldWinners);
         renderCategories();
@@ -683,8 +684,12 @@ ${w.displayMode ? `<div class="wm-winner-card__form admin-form-grid">${w.display
             const asset = await TalentaMedia.upload(file, {
               altText: `Foto ${w.name || "pemenang"}`,
             });
+            const photo = await TalentaMedia.adminPreviewUrl(asset.assetId, {
+              siteId: wmState.competitionId,
+            });
+            TalentaMedia.revokePreviewUrl(w.photo);
             w.photoAssetId = asset.assetId;
-            w.photo = TalentaMedia.url(asset);
+            w.photo = photo;
             renderCategories();
             renderPreview();
             toast("Foto berhasil diunggah.");
@@ -738,6 +743,7 @@ ${w.displayMode ? `<div class="wm-winner-card__form admin-form-grid">${w.display
       const removePhotoBtn = wEl.querySelector("[data-w-remove-photo]");
       if (removePhotoBtn)
         removePhotoBtn.onclick = () => {
+          TalentaMedia.revokePreviewUrl(w.photo);
           w.photoAssetId = null;
           w.photo = "";
           renderCategories();

@@ -26,7 +26,9 @@
           icon: event.fallbackIcon || "archive",
           iconMode: event.mascotAssetId ? "upload" : "library",
           uploadedIcon: event.mascotAssetId
-            ? TalentaMedia.url(event.mascotAssetId)
+            ? TalentaPublic.mediaUrl(
+                `/api/v1/public/media/${event.mascotAssetId}`,
+              )
             : "",
           iconAlt: `Logo atau maskot ${event.name}`,
         }))

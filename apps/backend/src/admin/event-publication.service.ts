@@ -98,10 +98,8 @@ export class EventPublicationService {
       const access = await this.writeAccess(manager, eventId, userId);
       if (expectedVersion && access.version !== expectedVersion)
         throw new ConflictException('Event telah diperbarui pengguna lain');
-      const [publicSnapshot, workspaceSnapshot] = await Promise.all([
-        this.publicContent.build(eventId, manager),
-        this.workspace.capture(eventId, manager),
-      ]);
+      const publicSnapshot = await this.publicContent.build(eventId, manager);
+      const workspaceSnapshot = await this.workspace.capture(eventId, manager);
       const checksum = digest(workspaceSnapshot);
       if (expectedChecksum && checksum !== expectedChecksum)
         throw new ConflictException('Draf telah diperbarui pengguna lain');

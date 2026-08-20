@@ -229,6 +229,11 @@ function auditPublicRuntime(runtimeSource) {
   const runtimeContext = {
     URL,
     TalentaConfig: { apiBaseUrl: "/api/v1" },
+    TalentaPublic: {
+      bootstrap: async () => {},
+      mediaUrl: (source) =>
+        `${new URL(source, "https://event.example.test").href}?preview_token=event-token`,
+    },
     applyGlobalThemeTokens(_target, settings) {
       appliedTheme = settings.theme?.primaryColor || "";
     },
@@ -271,12 +276,12 @@ function auditPublicRuntime(runtimeSource) {
   assert.equal(appliedTheme, "#16803c", "tema Event aktif diterapkan");
   assert.equal(
     document.navbarLogo.children[0]?.src,
-    "https://event.example.test/api/v1/public/media/event-logo",
+    "https://event.example.test/api/v1/public/media/event-logo?preview_token=event-token",
     "logo Event memakai origin gateway ketika API base relatif",
   );
   assert.equal(
     document.querySelector('link[rel="icon"][data-talenta-event-icon]')?.href,
-    "https://event.example.test/api/v1/public/media/event-logo",
+    "https://event.example.test/api/v1/public/media/event-logo?preview_token=event-token",
     "favicon Event memakai logo bootstrap yang sama",
   );
 

@@ -12,12 +12,7 @@
   function publicAssetUrl(url, assetId) {
     const source = url || (assetId ? `/api/v1/public/media/${assetId}` : "");
     if (!source) return "";
-    const base =
-      window.TalentaConfig?.apiBaseUrl &&
-      window.TalentaConfig.apiBaseUrl.startsWith("http")
-        ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-        : location.origin;
-    return new URL(source, base).href;
+    return TalentaPublic.mediaUrl(source);
   }
 
   function apiState(data) {
@@ -57,30 +52,12 @@
               description: data.decree.description || "",
               url: (() => {
                 let url = "";
-                if (data.decree.url) {
-                  const base =
-                    window.TalentaConfig?.apiBaseUrl &&
-                    window.TalentaConfig.apiBaseUrl.startsWith("http")
-                      ? window.TalentaConfig.apiBaseUrl.replace(
-                          /\/api\/v1\/?$/,
-                          "",
-                        )
-                      : location.origin;
-                  url = new URL(data.decree.url, base).href;
-                } else if (data.decree.assetId) {
-                  const base =
-                    window.TalentaConfig?.apiBaseUrl &&
-                    window.TalentaConfig.apiBaseUrl.startsWith("http")
-                      ? window.TalentaConfig.apiBaseUrl.replace(
-                          /\/api\/v1\/?$/,
-                          "",
-                        )
-                      : location.origin;
-                  url = new URL(
+                if (data.decree.url)
+                  url = TalentaPublic.mediaUrl(data.decree.url);
+                else if (data.decree.assetId)
+                  url = TalentaPublic.mediaUrl(
                     `/api/v1/public/media/${data.decree.assetId}`,
-                    base,
-                  ).href;
-                }
+                  );
                 return url;
               })(),
             }
@@ -114,7 +91,9 @@
         icon: event.fallbackIcon || event.icon || "archive",
         iconMode: event.mascotAssetId ? "upload" : "library",
         uploadedIcon: event.mascotAssetId
-          ? TalentaMedia.url(event.mascotAssetId)
+          ? TalentaPublic.mediaUrl(
+              `/api/v1/public/media/${event.mascotAssetId}`,
+            )
           : "",
         iconAlt: `Logo atau maskot ${event.name || "lomba"}`,
       })),

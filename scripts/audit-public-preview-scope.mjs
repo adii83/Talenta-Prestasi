@@ -2,6 +2,16 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import vm from "node:vm";
 
+const homeRenderer = await readFile(
+  "apps/public-site/assets/js/home-renderer.js",
+  "utf8",
+);
+assert.match(
+  homeRenderer,
+  /TalentaPublic\.mediaUrl\(source\)/,
+  "Hero Beranda harus memakai URL media preview bertoken.",
+);
+
 async function runPublicApi(hash, initialStorage = []) {
   const calls = [];
   const events = [];
@@ -203,6 +213,13 @@ async function runPublicApi(hash, initialStorage = []) {
   assert.ok(
     result.calls.some((call) => call.path === "/public/preview/session"),
     "Preview Event umum harus tetap membuat sesi preview.",
+  );
+  assert.equal(
+    result.context.window.TalentaPublic.mediaUrl(
+      "/api/v1/public/media/11111111-1111-4111-8111-111111111111",
+    ),
+    "http://127.0.0.1:4173/api/v1/public/media/11111111-1111-4111-8111-111111111111?preview_token=event-token",
+    "Media workspace Event harus membawa token tanpa bergantung pada cookie lintas origin.",
   );
   assert.equal(
     result.context.window.TalentaPublic.mediaUrl(

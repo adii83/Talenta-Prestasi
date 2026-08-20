@@ -39,6 +39,8 @@
   function assetUrl(value = "", fallback = "") {
     const source = String(value || fallback).trim();
     if (/^(?:data:|blob:)/i.test(source)) return source;
+    if (/^\/api\/v1\/public\/media\//i.test(source))
+      return TalentaPublic.mediaUrl(source);
     const base =
       window.TalentaConfig?.apiBaseUrl &&
       window.TalentaConfig.apiBaseUrl.startsWith("http")
@@ -48,10 +50,9 @@
       try {
         const parsed = new URL(source);
         if (/^\/api\/v1\/public\/media\/[0-9a-f-]+$/i.test(parsed.pathname))
-          return new URL(
+          return TalentaPublic.mediaUrl(
             `${parsed.pathname}${parsed.search}${parsed.hash}`,
-            base,
-          ).href;
+          );
       } catch {}
       return source;
     }

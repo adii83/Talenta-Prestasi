@@ -17,6 +17,58 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-20 — Konsistensi Akses Media Admin dan Public Preview
+
+- **Tanggal/Judul**: 2026-08-20 — Konsistensi Akses Media Admin dan Public Preview
+- **Permintaan**: Menganalisis dan memperbaiki broken image yang muncul tidak konsisten pada editor Admin dan Lihat Preview untuk seluruh media terkait, bukan hanya halaman Pemenang.
+- **Proses/Keputusan**: Pemeriksaan database memastikan referensi utama memiliki row asset aktif, Organization sesuai, dan file storage tersedia; asset published sudah masuk allowlist, sedangkan asset Beranda draft yang belum allowlisted memang harus memakai akses Admin atau token Preview. Foto Pemenang, Highlight, dan preview Global Admin kini memakai `adminPreviewUrl` dengan Event ID eksplisit. Foto baru serta ikon upload Beranda memakai Blob terautentikasi dan mencabut Blob lama. Halaman Pemenang, SK Pemenang, maskot Arsip, dan dokumen Unduh pada Public Preview kini memakai `TalentaPublic.mediaUrl`, yang menambahkan token hanya selama preview dan tetap menghasilkan URL bersih saat published.
+- **File**:
+  - `apps/admin/js/features/home/editor.js`
+  - `apps/admin/js/features/home/winner-highlight-editor.js`
+  - `apps/admin/js/features/winners/api.js`
+  - `apps/admin/js/features/winners/manager.js`
+  - `apps/admin/js/shell/settings-editor.js`
+  - `apps/public-site/assets/js/archive-list.js`
+  - `apps/public-site/assets/js/download-renderer.js`
+  - `apps/public-site/assets/js/winner-renderer.js`
+  - `scripts/audit-media-context.mjs`
+  - `scripts/audit-winner-relations.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: TDD — audit media context diamati gagal pada resolver foto Admin sebelum implementasi, lalu lulus. `npm run check:js` lulus 45 file; `npm run test:winner-relations`, `npm run test:event-publication`, dan `npm run test:event-logo` lulus; Prettier memvalidasi sepuluh file media terkait; `git diff --check` lulus dengan peringatan normal konversi LF/CRLF. Puppeteer berhasil membuka frontend, login memakai akun lokal, dan memuat Admin; acceptance browser penuh dihentikan atas permintaan pengguna sebelum navigasi seluruh halaman media.
+- **Kendala**: Sweep subagent tambahan gagal karena limit API `429`; audit utama tetap diselesaikan melalui Graphify, pencarian call-site, database read-only, dan suite lokal. Browser sempat mencoba route `portal.html` yang tidak tersedia dan memperoleh 404; route tersebut bukan route aplikasi yang digunakan.
+- **Tindak lanjut**: Pengguna dapat melakukan hard refresh lalu acceptance manual pada Pemenang, Highlight Beranda, Arsip, dan Unduh, terutama asset draft sebelum publikasi. Commit, push, dan deployment tidak dilakukan.
+
+### 2026-08-20 — Serialisasi Query Snapshot Publikasi Event
+
+- **Tanggal/Judul**: 2026-08-20 — Serialisasi Query Snapshot Publikasi Event
+- **Permintaan**: Menghilangkan `DeprecationWarning` driver `pg` ketika satu client transaksi menerima query baru sebelum query sebelumnya selesai.
+- **Proses/Keputusan**: Snapshot publik dan workspace pada transaksi publikasi kini dibuat berurutan. `PublicContentService` membungkus executor snapshot dengan antrean Promise lokal sehingga susunan query agregat tetap ringkas, tetapi pemanggilan aktual ke transaction manager tidak pernah overlap. Dependency `pg` tidak diubah.
+- **File**:
+  - `apps/backend/src/admin/event-publication.service.ts`
+  - `apps/backend/src/admin/event-publication.service.spec.ts`
+  - `apps/backend/src/public/public-content.service.ts`
+  - `apps/backend/src/public/public-content.service.spec.ts`
+  - `docs/WORK_LOG.md`
+- **Validasi**: TDD — dua regression test diamati gagal dengan `snapshot overlap` dan `query overlap`, lalu lulus setelah serialisasi. Seluruh unit test backend lulus 10 suite / 87 test; build NestJS lulus; Prettier memvalidasi empat file TypeScript; `git diff --check` lulus dengan peringatan normal konversi LF/CRLF.
+- **Kendala**: Reproduksi terminal dengan `--trace-deprecation` tidak dijalankan karena backend aktif milik pengguna tidak dihentikan atau diambil alih.
+- **Tindak lanjut**: Restart `npm run start:dev`, lakukan **Publikasikan perubahan**, dan pastikan warning tidak muncul lagi. Commit, push, dan deployment tidak dilakukan.
+
+### 2026-08-20 — Perbaikan Media Logo dan Hero pada Preview Lintas Origin
+
+- **Tanggal/Judul**: 2026-08-20 — Perbaikan Media Logo dan Hero pada Preview Lintas Origin
+- **Permintaan**: Memperbaiki respons `404 Media not found` yang kadang muncul pada Logo & Tema, gambar Hero Beranda, Lihat Preview, dan tampilan publik tanpa melakukan perubahan di luar masalah media tersebut.
+- **Proses/Keputusan**: Investigasi memastikan row asset aktif dan file fisik tersedia. Logo publik serta gambar Hero publik lama masuk `event_publication_assets`, sedangkan gambar Hero draf terbaru belum masuk allowlist sebelum publikasi. Penyebab Preview lintas origin ialah elemen gambar memakai URL media tanpa token dan bergantung pada cookie preview `SameSite=Lax`, yang tidak selalu dikirim pada permintaan gambar lintas-site. `TalentaPublic.mediaUrl` kini menambahkan `preview_token` hanya pada URL media internal selama preview Event aktif; runtime Logo dan resolver asset Hero memakai helper tersebut. URL publik terbit tetap bersih dan memakai allowlist.
+- **File**:
+  - `apps/public-site/assets/js/public-api.js`
+  - `apps/public-site/assets/js/runtime.js`
+  - `apps/public-site/assets/js/home-renderer.js`
+  - `scripts/audit-public-preview-scope.mjs`
+  - `scripts/audit-event-logo.mjs`
+  - `docs/WORK_LOG.md`
+- **Validasi**: TDD — regression URL media workspace diamati gagal karena token tidak ada; regression Logo dan Hero masing-masing juga diamati gagal sebelum perubahan production terkait. `npm run test:event-publication`, `npm run test:event-logo`, dan `npm run check:js` lulus. Prettier memvalidasi lima file JavaScript yang berubah. `git diff --check` lulus dengan peringatan normal konversi LF/CRLF.
+- **Kendala**: Tidak ada. CORS bukan penyebab respons ini karena permintaan telah mencapai backend dan ditolak oleh aturan akses media.
+- **Tindak lanjut**: Acceptance browser dapat mengunggah Logo dan Hero baru, menyimpan draf, lalu membuka Lihat Preview pada hostname berbeda sebelum publikasi. Commit, push, dan deployment tidak dilakukan.
+
 ### 2026-08-20 — Dua Mode Tampilan Pemenang
 
 - **Tanggal/Judul**: 2026-08-20 — Dua Mode Tampilan Pemenang

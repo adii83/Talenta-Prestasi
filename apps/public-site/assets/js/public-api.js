@@ -137,13 +137,14 @@
         ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
         : location.origin;
     const resolved = new URL(value, base);
+    const mediaToken =
+      page === "archiveDetail" ? archiveDetailToken : previewToken;
     if (
-      page === "archiveDetail" &&
-      archiveDetailToken &&
+      mediaToken &&
       value.startsWith("/") &&
       /^\/api\/v1\/public\/media\/[0-9a-f-]+$/i.test(resolved.pathname)
     )
-      resolved.searchParams.set("preview_token", archiveDetailToken);
+      resolved.searchParams.set("preview_token", mediaToken);
     return resolved.href;
   }
 
