@@ -23,6 +23,30 @@ function applyGlobalTheme(root) {
   applyGlobalThemeTokens(root);
 }
 async function save() {
+  let invalid = false;
+  wmState.categories.forEach((category) =>
+    category.winners.forEach((winner) => {
+      winner.modeError = winner.displayMode
+        ? ""
+        : "Pilih jenis tampilan pemenang.";
+      winner.designError =
+        winner.displayMode === "custom" && !winner.designAssetId
+          ? "Unggah gambar desain sendiri."
+          : "";
+      winner.nameError =
+        winner.displayMode === "built_in" && !winner.name?.trim()
+          ? "Nama lengkap wajib diisi."
+          : "";
+      invalid ||= Boolean(
+        winner.modeError || winner.designError || winner.nameError,
+      );
+    }),
+  );
+  if (invalid) {
+    renderCategories();
+    toast("Lengkapi data pemenang yang ditandai.", true);
+    return;
+  }
   try {
     const saved = await TalentaWinnerApi.save(wmState, wmDisplay);
     wmState.sk = saved.sk;
@@ -408,6 +432,15 @@ function fitWinnerPreview() {
   frame.style.height = `${Math.ceil(root.offsetHeight * scale + verticalPadding)}px`;
 }
 
+function reconcileWinnerRanks(category, previousOrder) {
+  const prefix = category.rankPrefix || "Juara";
+  category.winners.forEach((winner, newIndex) => {
+    const oldIndex = previousOrder.indexOf(winner);
+    if (oldIndex >= 0 && winner.rank === `${prefix} ${oldIndex + 1}`)
+      winner.rank = `${prefix} ${newIndex + 1}`;
+  });
+}
+
 function renderCategories() {
   const root = document.getElementById("wmCategoryEditor");
   applyGlobalTheme(root);
@@ -486,9 +519,14 @@ function renderCategories() {
       cat.winners.push({
         id: wid(),
         rank: `${cat.rankPrefix || "Juara"} ${cat.winners.length + 1}`,
+        displayMode: null,
+        designAssetId: null,
+        design: "",
+        photoAssetId: null,
         name: "",
         school: "",
         exam: "",
+        district: "",
         regency: "",
         province: "",
         photo: "",
@@ -497,39 +535,99 @@ function renderCategories() {
       renderCategories();
       renderPreview();
     };
-    // Render winners
     const wList = el.querySelector("[data-winners]");
     cat.winners.forEach((w, wi) => {
       const wEl = document.createElement("div");
-      wEl.className =
-        "wm-winner-card" + (w.active ? "" : " wm-winner-card--disabled");
-      wEl.innerHTML = `
-<div class="wm-winner-card__header">
-<div class="wm-winner-card__photo">${w.photo ? `<img src="${esc(TalentaMedia.url(w.photo))}" alt="${esc(w.name)}">` : initials(w.name)}</div>
-<div class="wm-winner-card__order"><button type="button" data-w-up ${wi === 0 ? "disabled" : ""}><i data-lucide="chevron-up"></i></button><span>${wi + 1}</span><button type="button" data-w-down ${wi === cat.winners.length - 1 ? "disabled" : ""}><i data-lucide="chevron-down"></i></button></div>
-<label class="admin-switch"><input type="checkbox" data-w-toggle ${w.active ? "checked" : ""}><span></span><em>${w.active ? "Aktif" : "Nonaktif"}</em></label>
-<button type="button" class="repeat-row__delete" data-w-delete><i data-lucide="trash-2"></i></button>
-</div>
-<div class="wm-winner-card__form admin-form-grid">
-<div class="admin-field"><label>Label rank <small>(editable)</small></label><input class="form-input" data-w="rank" value="${esc(w.rank)}"></div>
-<div class="admin-field"><label>Nama lengkap</label><input class="form-input" data-w="name" value="${esc(w.name)}" required></div>
+      const visual = w.displayMode === "custom" ? w.design : w.photo;
+      const visualAlt = w.displayMode === "custom" ? w.rank : w.name;
+      const builtInFields = `
+<div class="admin-field"><label>Label rank <small>(dapat diubah)</small></label><input class="form-input" data-w="rank" value="${esc(w.rank)}"></div>
+<div class="admin-field"><label>Nama lengkap</label><input class="form-input${w.nameError ? " is-invalid" : ""}" data-w="name" value="${esc(w.name)}" aria-invalid="${Boolean(w.nameError)}">${w.nameError ? `<p class="admin-field-error">${esc(w.nameError)}</p>` : ""}</div>
 <div class="admin-field"><label>Sekolah</label><input class="form-input" data-w="school" value="${esc(w.school)}"></div>
 <div class="admin-field"><label>No. Ujian</label><input class="form-input" data-w="exam" value="${esc(w.exam)}"></div>
 <div class="admin-field"><label>Kabupaten</label><input class="form-input" data-w="regency" value="${esc(w.regency)}"></div>
 <div class="admin-field"><label>Provinsi</label><input class="form-input" data-w="province" value="${esc(w.province)}"></div>
-<div class="admin-field"><label>Foto</label>${w.photo ? `<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;"><span class="badge badge--gold">Foto tersimpan</span><button type="button" class="btn btn--outline btn--sm is-danger" data-w-remove-photo><i data-lucide="trash-2"></i> Hapus</button></div>` : ""}<input type="file" class="form-input" data-w-photo accept="image/png,image/jpeg,image/webp"></div>
-</div>`;
+<div class="admin-field"><label>Foto</label>${w.photo ? `<div class="wm-upload-actions"><span class="badge badge--gold">Foto tersimpan</span><button type="button" class="btn btn--outline btn--sm is-danger" data-w-remove-photo><i data-lucide="trash-2"></i> Hapus</button></div>` : ""}<input type="file" class="form-input" data-w-photo accept="image/png,image/jpeg,image/webp"></div>`;
+      const customFields = `
+<div class="admin-field wm-winner-context"><label>Urutan</label><strong>${esc(w.rank)}</strong></div>
+<div class="admin-field admin-field--wide"><label>Desain sendiri</label>
+${w.design ? `<div class="wm-custom-design-preview"><img src="${esc(w.design)}" alt="${esc(w.rank)}"></div><div class="wm-upload-actions"><label class="btn btn--outline btn--sm" for="w-design-${esc(w.id)}">Ganti gambar</label><button type="button" class="btn btn--outline btn--sm is-danger" data-w-remove-design>Hapus gambar</button></div>` : `<label class="wm-custom-design-upload${w.designError ? " is-invalid" : ""}" for="w-design-${esc(w.id)}"><span class="wm-custom-design-upload__content"><i data-lucide="image-up"></i><strong>Unggah gambar</strong><span>JPG, PNG, atau WebP</span></span></label>`}
+<input id="w-design-${esc(w.id)}" type="file" data-w-design accept="image/png,image/jpeg,image/webp" hidden>
+${w.designError ? `<p class="admin-field-error">${esc(w.designError)}</p>` : ""}
+<p class="admin-field__hint">Rekomendasi 1080 × 1080 px (rasio 1:1). Format JPG, PNG, atau WebP. Maksimum upload 2 MB. Gambar dioptimalkan otomatis ke target 400 KB, dengan batas hasil 500 KB. Gambar dengan rasio berbeda akan dipotong otomatis dari tengah.</p></div>`;
+      wEl.className =
+        "wm-winner-card" + (w.active ? "" : " wm-winner-card--disabled");
+      wEl.innerHTML = `
+<div class="wm-winner-card__header">
+<div class="wm-winner-card__photo">${visual ? `<img src="${esc(visual)}" alt="${esc(visualAlt)}">` : initials(w.name)}</div>
+<div class="wm-winner-card__order"><button type="button" data-w-up ${wi === 0 ? "disabled" : ""}><i data-lucide="chevron-up"></i></button><span>${wi + 1}</span><button type="button" data-w-down ${wi === cat.winners.length - 1 ? "disabled" : ""}><i data-lucide="chevron-down"></i></button></div>
+<label class="admin-switch"><input type="checkbox" data-w-toggle ${w.active ? "checked" : ""}><span></span><em>${w.active ? "Aktif" : "Nonaktif"}</em></label>
+<button type="button" class="repeat-row__delete" data-w-delete><i data-lucide="trash-2"></i></button>
+</div>
+<fieldset class="wm-display-mode-selector${w.modeError ? " is-invalid" : ""}"><legend>Jenis tampilan</legend>
+<div class="wm-display-mode-selector__options"><label><input type="radio" name="winner-mode-${esc(w.id)}" data-w-mode value="built_in" ${w.displayMode === "built_in" ? "checked" : ""}><span><i data-lucide="layout-template"></i><strong>Gunakan desain bawaan</strong></span></label>
+<label><input type="radio" name="winner-mode-${esc(w.id)}" data-w-mode value="custom" ${w.displayMode === "custom" ? "checked" : ""}><span><i data-lucide="image-up"></i><strong>Unggah desain sendiri</strong></span></label></div>
+${w.modeError ? `<p class="admin-field-error">${esc(w.modeError)}</p>` : ""}</fieldset>
+${w.displayMode ? `<div class="wm-winner-card__form admin-form-grid">${w.displayMode === "custom" ? customFields : builtInFields}</div>` : ""}`;
       wEl.querySelectorAll("[data-w]").forEach(
         (inp) =>
           (inp.oninput = () => {
             w[inp.dataset.w] = inp.value;
-            if (inp.dataset.w === "name") {
-              const photo = wEl.querySelector(".wm-winner-card__photo");
-              if (!w.photo) photo.textContent = initials(w.name);
-            }
+            w.nameError = "";
             renderPreview();
           }),
       );
+      wEl.querySelectorAll("[data-w-mode]").forEach((radio) => {
+        radio.onchange = async () => {
+          const newMode = radio.value;
+          const oldMode = w.displayMode;
+          if (oldMode && oldMode !== newMode) {
+            const confirmed = await adminConfirm({
+              title: "Ganti jenis tampilan?",
+              message: "Data jenis tampilan lama akan dibuang. Lanjutkan?",
+              confirmLabel: "Ya, ganti",
+              variant: "warning",
+              icon: "alert-triangle",
+            });
+            if (!confirmed) {
+              renderCategories();
+              return;
+            }
+            if (newMode === "custom") {
+              Object.assign(w, {
+                name: "",
+                school: "",
+                exam: "",
+                district: "",
+                regency: "",
+                province: "",
+                photoAssetId: null,
+                photo: "",
+                nameError: "",
+              });
+            } else {
+              TalentaMedia.revokePreviewUrl(w.design);
+              Object.assign(w, {
+                designAssetId: null,
+                design: "",
+                name: "",
+                school: "",
+                exam: "",
+                district: "",
+                regency: "",
+                province: "",
+                photoAssetId: null,
+                photo: "",
+                designError: "",
+              });
+            }
+          }
+          w.displayMode = newMode;
+          w.modeError = "";
+          renderCategories();
+          renderPreview();
+        };
+      });
       wEl.querySelector("[data-w-toggle]").onchange = (e) => {
         w.active = e.target.checked;
         renderCategories();
@@ -537,20 +635,24 @@ function renderCategories() {
       };
       wEl.querySelector("[data-w-up]").onclick = () => {
         if (wi > 0) {
+          const previousOrder = [...cat.winners];
           [cat.winners[wi - 1], cat.winners[wi]] = [
             cat.winners[wi],
             cat.winners[wi - 1],
           ];
+          reconcileWinnerRanks(cat, previousOrder);
           renderCategories();
           renderPreview();
         }
       };
       wEl.querySelector("[data-w-down]").onclick = () => {
         if (wi < cat.winners.length - 1) {
+          const previousOrder = [...cat.winners];
           [cat.winners[wi], cat.winners[wi + 1]] = [
             cat.winners[wi + 1],
             cat.winners[wi],
           ];
+          reconcileWinnerRanks(cat, previousOrder);
           renderCategories();
           renderPreview();
         }
@@ -558,37 +660,83 @@ function renderCategories() {
       wEl.querySelector("[data-w-delete]").onclick = async () => {
         const confirmed = await adminConfirm({
           title: "Hapus data pemenang?",
-          message: `${w.name || "Pemenang tanpa nama"} akan dihapus dari kategori ${cat.name}.`,
+          message: `${w.name || w.rank || "Pemenang"} akan dihapus dari kategori ${cat.name}.`,
           confirmLabel: "Ya, hapus pemenang",
           variant: "danger",
           icon: "user-x",
         });
         if (!confirmed) return;
+        const oldWinners = [...cat.winners];
+        TalentaMedia.revokePreviewUrl(w.design);
         cat.winners.splice(wi, 1);
+        reconcileWinnerRanks(cat, oldWinners);
         renderCategories();
         renderPreview();
       };
-      wEl.querySelector("[data-w-photo]").onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        e.target.disabled = true;
-        try {
-          const asset = await TalentaMedia.upload(file, {
-            altText: `Foto ${w.name || "pemenang"}`,
-          });
-          w.photoAssetId = asset.assetId;
-          w.photo = TalentaMedia.url(asset);
-          renderCategories();
-          renderPreview();
-          toast("Foto berhasil diunggah.");
-        } catch (error) {
-          toast(error.message, true);
-        } finally {
-          e.target.disabled = false;
-        }
-      };
+      const photoInput = wEl.querySelector("[data-w-photo]");
+      if (photoInput)
+        photoInput.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          e.target.disabled = true;
+          try {
+            const asset = await TalentaMedia.upload(file, {
+              altText: `Foto ${w.name || "pemenang"}`,
+            });
+            w.photoAssetId = asset.assetId;
+            w.photo = TalentaMedia.url(asset);
+            renderCategories();
+            renderPreview();
+            toast("Foto berhasil diunggah.");
+          } catch (error) {
+            toast(error.message, true);
+          } finally {
+            e.target.value = "";
+            e.target.disabled = false;
+          }
+        };
+      const designInput = wEl.querySelector("[data-w-design]");
+      if (designInput)
+        designInput.onchange = async (e) => {
+          const file = e.target.files[0];
+          if (!file) return;
+          const allowed = new Set(["image/jpeg", "image/png", "image/webp"]);
+          if (!allowed.has(file.type)) {
+            w.designError = "Format harus JPG, PNG, atau WebP.";
+            e.target.value = "";
+            renderCategories();
+            return;
+          }
+          e.target.disabled = true;
+          try {
+            const compressed = await TalentaMedia.compressCustomDesign(file);
+            if (compressed.size > TalentaMedia.LIMITS.customDesignOutput)
+              throw new Error("Hasil optimasi maksimum 500 KB.");
+            const asset = await TalentaMedia.upload(compressed, {
+              siteId: wmState.competitionId,
+              altText: w.rank || "Pemenang",
+            });
+            const design = await TalentaMedia.adminPreviewUrl(asset.assetId, {
+              siteId: wmState.competitionId,
+            });
+            TalentaMedia.revokePreviewUrl(w.design);
+            w.designAssetId = asset.assetId;
+            w.design = design;
+            w.designError = "";
+            renderCategories();
+            renderPreview();
+            toast("Desain berhasil diunggah.");
+          } catch (error) {
+            w.designError = error.message;
+            renderCategories();
+            toast(error.message, true);
+          } finally {
+            e.target.value = "";
+            e.target.disabled = false;
+          }
+        };
       const removePhotoBtn = wEl.querySelector("[data-w-remove-photo]");
-      if (removePhotoBtn) {
+      if (removePhotoBtn)
         removePhotoBtn.onclick = () => {
           w.photoAssetId = null;
           w.photo = "";
@@ -596,7 +744,16 @@ function renderCategories() {
           renderPreview();
           toast("Foto berhasil dihapus.");
         };
-      }
+      const removeDesignBtn = wEl.querySelector("[data-w-remove-design]");
+      if (removeDesignBtn)
+        removeDesignBtn.onclick = () => {
+          TalentaMedia.revokePreviewUrl(w.design);
+          w.designAssetId = null;
+          w.design = "";
+          renderCategories();
+          renderPreview();
+          toast("Gambar desain berhasil dihapus.");
+        };
       wList.appendChild(wEl);
     });
     root.appendChild(el);
@@ -636,7 +793,11 @@ function renderPreview() {
       hash: "pemenang",
     });
   root.className = "section winner-public-preview scaled-public-preview";
-  root.innerHTML = buildWinnerPageMarkup(source, { archiveHref });
+  root.innerHTML = buildWinnerPageMarkup(source, {
+    archiveHref,
+    resolveAsset: (value) => value || "",
+  });
+  activateWinnerCardFallbacks(root);
   requestAnimationFrame(fitWinnerPreview);
   icons();
 }

@@ -156,6 +156,86 @@ describe('AdminService category flow', () => {
     expect(dataSource.transaction).not.toHaveBeenCalled();
   });
 
+  it('validates and canonicalizes the Hero media reference before saving home', async () => {
+    const eventId = '44444444-4444-4444-8444-444444444444';
+    const userId = '33333333-3333-4333-8333-333333333333';
+    const assetId = '55555555-5555-4555-8555-555555555555';
+    const manager = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce([{ id: assetId }])
+        .mockResolvedValue([]),
+    };
+    const queryBuilder = {
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue({ id: eventId }),
+    };
+    const dataSource = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce([{ id: eventId }])
+        .mockResolvedValueOnce([]),
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+    const service = new AdminService(
+      {} as never,
+      { createQueryBuilder: jest.fn(() => queryBuilder) } as never,
+      dataSource as never,
+      { get: jest.fn() } as unknown as ConfigService,
+    );
+
+    await service.putHome(eventId, userId, [
+      {
+        sectionType: 'hero',
+        isActive: true,
+        settings: {
+          image: `http://localhost:3000/api/v1/public/media/${assetId}`,
+        },
+      },
+    ]);
+
+    expect(manager.query.mock.calls[0][0]).toContain('FROM media_assets asset');
+    expect(manager.query.mock.calls[0][1]).toEqual([
+      eventId,
+      assetId,
+      ['image/png', 'image/jpeg', 'image/webp'],
+      2 * 1024 * 1024,
+    ]);
+    expect(manager.query.mock.calls[2][1][4]).toEqual({
+      image: `/api/v1/public/media/${assetId}`,
+    });
+  });
+
+  it('rejects a Hero media reference outside the Event organization or limits', async () => {
+    const eventId = '44444444-4444-4444-8444-444444444444';
+    const userId = '33333333-3333-4333-8333-333333333333';
+    const assetId = '55555555-5555-4555-8555-555555555555';
+    const manager = { query: jest.fn().mockResolvedValue([]) };
+    const dataSource = {
+      query: jest.fn().mockResolvedValue([{ id: eventId }]),
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+    const service = new AdminService(
+      {} as never,
+      {} as never,
+      dataSource as never,
+      { get: jest.fn() } as unknown as ConfigService,
+    );
+
+    await expect(
+      service.putHome(eventId, userId, [
+        {
+          sectionType: 'hero',
+          isActive: true,
+          settings: { image: `/api/v1/public/media/${assetId}` },
+        },
+      ]),
+    ).rejects.toThrow('Invalid Hero image');
+    expect(manager.query).toHaveBeenCalledTimes(1);
+  });
+
   it('updates event metadata without changing its slug', async () => {
     const manager = {
       query: jest

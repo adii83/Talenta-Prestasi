@@ -14,6 +14,22 @@ const winnerAdminApiSource = await readFile(
   "apps/admin/js/features/winners/api.js",
   "utf8",
 );
+const winnerAdminManagerSource = await readFile(
+  "apps/admin/js/features/winners/manager.js",
+  "utf8",
+);
+const homeWinnerEditorSource = await readFile(
+  "apps/admin/js/features/home/winner-highlight-editor.js",
+  "utf8",
+);
+const winnerRepositorySource = await readFile(
+  "packages/shared/js/data/repositories/winner-repository.js",
+  "utf8",
+);
+const homeRepositorySource = await readFile(
+  "packages/shared/js/data/repositories/home-repository.js",
+  "utf8",
+);
 assert.doesNotMatch(
   homeRendererSource,
   /photoAssetId\)\s*\{\s*return `\/api\/v1\/public\/media\/\$\{winner\.photoAssetId\}`/,
@@ -49,6 +65,169 @@ assert.match(
   winnerRendererSource,
   /TalentaMedia\.url\(event\.mascotAssetId\)/,
   "Public kartu Arsip Pemenang harus resolve media canonical melalui TalentaMedia.",
+);
+assert.match(
+  winnerAdminApiSource,
+  /displayMode:\s*winner\.displayMode\s*\|\|\s*"built_in"/,
+  "Data existing Admin harus dinormalisasi ke mode built_in.",
+);
+assert.match(
+  winnerAdminApiSource,
+  /designAssetId:\s*winner\.designAssetId\s*\|\|\s*null/,
+);
+assert.match(
+  winnerAdminApiSource,
+  /TalentaMedia\.adminPreviewUrl\(winner\.designAssetId/,
+  "Desain custom Admin harus memakai Blob terautentikasi.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /displayMode:\s*null/,
+  "Pemenang baru wajib mulai tanpa pilihan jenis tampilan.",
+);
+assert.doesNotMatch(
+  winnerAdminManagerSource,
+  /value="built_in"[^>]*\$\{!w\.displayMode[^}]*checked/,
+  "Radio desain bawaan tidak boleh otomatis terpilih untuk pemenang baru.",
+);
+assert.match(winnerAdminManagerSource, /Pilih jenis tampilan pemenang\./);
+assert.match(winnerAdminManagerSource, /image\/jpeg/);
+assert.match(winnerAdminManagerSource, /image\/png/);
+assert.match(winnerAdminManagerSource, /image\/webp/);
+assert.match(
+  winnerAdminManagerSource,
+  /const compressed = await TalentaMedia\.compressCustomDesign\(file\)/,
+);
+assert.match(
+  winnerAdminManagerSource,
+  /compressed\.size > TalentaMedia\.LIMITS\.customDesignOutput/,
+  "Upload desain harus menegakkan batas hasil 500 KB.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /Maksimum upload 2 MB\.[\s\S]*target 400 KB/,
+  "Petunjuk upload harus menjelaskan batas sumber dan target optimasi.",
+);
+assert.match(
+  winnerRepositorySource,
+  /class="champion-card__design"[^>]*loading="lazy"[^>]*decoding="async"/,
+  "Desain custom public harus lazy-load dan decode async.",
+);
+assert.match(
+  homeWinnerEditorSource,
+  /displayMode:\s*winner\.displayMode\s*\|\|\s*"built_in"/,
+);
+assert.match(
+  homeWinnerEditorSource,
+  /designAssetId:\s*winner\.designAssetId\s*\|\|\s*null/,
+);
+assert.match(
+  homeWinnerEditorSource,
+  /TalentaMedia\.adminPreviewUrl\(\s*winner\.designAssetId/,
+  "Highlight Admin harus memakai desain custom dari editor Pemenang.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /const design = await TalentaMedia\.adminPreviewUrl[\s\S]*TalentaMedia\.revokePreviewUrl\(w\.design\);[\s\S]*w\.designAssetId = asset\.assetId/,
+  "Upload pengganti harus mempertahankan gambar lama sampai upload dan preview baru berhasil.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /reconcileWinnerRanks\(cat, previousOrder\)/,
+  "Perubahan urutan harus ikut memperbarui label rank otomatis.",
+);
+assert.match(
+  winnerRepositorySource,
+  /function buildWinnerCardMarkup\(winner, page, options = \{\}\)/,
+  "Renderer item Pemenang harus menerima resolver asset bersama.",
+);
+assert.match(winnerRepositorySource, /champion-card--custom/);
+assert.match(winnerRepositorySource, /champion-card__design/);
+assert.match(
+  winnerRepositorySource,
+  /<span class="champion-card__fallback">\$\{winnerEscape\(rank\)\}<\/span>[\s\S]*<img[\s\S]*alt="\$\{winnerEscape\(rank\)\}"/,
+  "Fallback custom harus tersedia sebelum gambar dan alt memakai rank final.",
+);
+assert.match(
+  homeRepositorySource,
+  /buildWinnerCardMarkup\(item, display, options\)/,
+  "Highlight Beranda harus memakai renderer item yang sama.",
+);
+
+const homeListeners = new Map();
+const homeSections = Object.fromEntries(
+  ["hero", "jadwal", "biaya", "benefit", "pemenang-highlight", "mitra"].map(
+    (id) => [
+      id,
+      {
+        className: "",
+        innerHTML: "",
+        insertAdjacentElement() {},
+      },
+    ],
+  ),
+);
+let resolveWinnerRequest;
+const winnerRequest = new Promise((resolve) => {
+  resolveWinnerRequest = resolve;
+});
+const homeRendererContext = vm.createContext({
+  console,
+  URL,
+  URLSearchParams,
+  location: { origin: "https://example.test", href: "https://example.test/" },
+  document: { getElementById: (id) => homeSections[id] },
+  getHomeAdminState: () => ({
+    hero: { active: true },
+    schedule: { active: true },
+    pricing: { active: true },
+    benefit: { active: true },
+    winnerHighlight: { active: false, background: "navy" },
+    partners: { active: true },
+  }),
+  getHomeWinnerCategories: () => [],
+  getHomeWinnerDisplay: () => ({}),
+  buildHomeHeroMarkup: () => "",
+  buildHomeScheduleMarkup: () => "",
+  buildHomePricingMarkup: () => "",
+  buildHomeBenefitMarkup: () => "",
+  buildHomeWinnerMarkup: () => "",
+  buildHomePartnerMarkup: () => "",
+  activateWinnerCardFallbacks() {},
+  TalentaPublic: {
+    load: (page) =>
+      page === "winners" ? winnerRequest : new Promise(() => {}),
+  },
+});
+homeRendererContext.window = {
+  addEventListener: (type, listener) => homeListeners.set(type, listener),
+  TalentaConfig: {},
+};
+vm.runInContext(homeRendererSource, homeRendererContext, {
+  filename: "apps/public-site/assets/js/home-renderer.js",
+});
+homeListeners.get("talenta:public:home")({
+  detail: {
+    sections: [
+      {
+        type: "winnerHighlight",
+        isActive: true,
+        settings: { background: "navy" },
+      },
+    ],
+  },
+});
+assert.doesNotMatch(
+  homeSections["pemenang-highlight"].className,
+  /section--disabled/,
+  "Highlight harus tampil setelah konfigurasi Home API diterapkan.",
+);
+resolveWinnerRequest({ categories: [] });
+await new Promise((resolve) => setImmediate(resolve));
+assert.doesNotMatch(
+  homeSections["pemenang-highlight"].className,
+  /section--disabled/,
+  "Respons data Pemenang tidak boleh menimpa konfigurasi Highlight dari Home API.",
 );
 
 const storage = new Map();

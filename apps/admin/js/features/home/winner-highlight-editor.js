@@ -39,21 +39,38 @@ async function fetchRealWinnerData() {
       TalentaApi.request(`/admin/events/${site.id}/winners`),
     ]);
     winnerDisplayData = pagesReq.data.metadataVisibility || winnerDisplayData;
-    winnerCategoriesData = catReq.data
-      .filter((c) => c.isActive)
-      .map((c) => ({
-        ...c,
-        winners: winReq.data
-          .filter((w) => w.categoryId === c.id && w.isActive)
-          .map((w) => ({
-            ...w,
-            name: w.fullName,
-            rank: w.rankLabel,
-            exam: w.examNumber,
-            photo: w.photoAssetId ? TalentaMedia.url(w.photoAssetId) : "",
+    winnerCategoriesData = (
+      await Promise.all(
+        catReq.data
+          .filter((category) => category.isActive)
+          .map(async (category) => ({
+            ...category,
+            winners: await Promise.all(
+              winReq.data
+                .filter(
+                  (winner) =>
+                    winner.categoryId === category.id && winner.isActive,
+                )
+                .map(async (winner) => ({
+                  ...winner,
+                  name: winner.fullName || "",
+                  rank: winner.rankLabel || "",
+                  exam: winner.examNumber || "",
+                  displayMode: winner.displayMode || "built_in",
+                  designAssetId: winner.designAssetId || null,
+                  design: winner.designAssetId
+                    ? await TalentaMedia.adminPreviewUrl(winner.designAssetId, {
+                        siteId: site.id,
+                      })
+                    : "",
+                  photo: winner.photoAssetId
+                    ? TalentaMedia.url(winner.photoAssetId)
+                    : "",
+                })),
+            ),
           })),
-      }))
-      .filter((c) => c.winners.length > 0);
+      )
+    ).filter((category) => category.winners.length > 0);
   } catch (e) {
     console.warn("Gagal memuat data pemenang untuk pratinjau", e);
   }
@@ -145,7 +162,10 @@ function renderWinner() {
       ? " section--soft"
       : " section--navy section--winner-gradient"
   }`;
-  root.innerHTML = buildHomeWinnerMarkup(w, cats, display);
+  root.innerHTML = buildHomeWinnerMarkup(w, cats, display, {
+    resolveAsset: (value) => value || "",
+  });
+  activateWinnerCardFallbacks(root);
   requestAnimationFrame(() => fitScaledPreview("winnerPreviewFrame"));
   icons();
 }

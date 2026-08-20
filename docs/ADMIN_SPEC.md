@@ -100,7 +100,20 @@ Dokumen dimiliki Event (`event_documents`). Editor Unduh mengatur tab Event (`do
 
 ## Pemenang dan SK
 
-Kategori pemenang dan pemenang dimiliki Event. Data pemenang mencakup peringkat, nama, sekolah, nomor ujian, kabupaten, provinsi, foto, status, dan urutan. Tidak ada impor Excel.
+Kategori pemenang dan pemenang dimiliki Event. Setiap pemenang memilih satu jenis tampilan:
+
+1. **Gunakan desain bawaan** menampilkan status Aktif, label peringkat, nama, sekolah, nomor ujian, kabupaten, provinsi, dan foto melalui visual sistem.
+2. **Unggah desain sendiri** memakai satu gambar final sebagai seluruh visual. Form hanya menampilkan peringkat sebagai konteks, status Aktif, upload/preview, **Ganti gambar**, dan **Hapus gambar**; sistem tidak menambahkan metadata, badge, label peringkat visual, overlay, atau padding internal.
+
+Pemenang existing dimuat sebagai desain bawaan. Pemenang baru belum memiliki pilihan awal; Admin wajib memilih salah satu radio sebelum menyimpan. Pilihan berlaku per pemenang sehingga satu kategori dapat mencampur kedua mode. Editor Highlight Pemenang Beranda tidak menyediakan radio atau upload kedua: data, mode, dan desain selalu berasal dari editor Pemenang.
+
+Pergantian mode memakai dialog konfirmasi. Beralih ke desain sendiri membersihkan metadata serta referensi foto; beralih ke desain bawaan membersihkan referensi desain dan membuka form kosong. Pembersihan hanya melepas referensi dari pemenang, tidak menghapus asset fisik. Upload pengganti baru mengambil alih setelah upload dan Blob preview berhasil sehingga kegagalan tetap mempertahankan gambar lama.
+
+Desain sendiri menerima JPG/JPEG, PNG, atau WebP aktif milik Organization Event, maksimum 5 MB, dengan rekomendasi 1080 × 1080 piksel. SVG dan PDF ditolak sebagai desain pemenang. Gambar asli tidak dimodifikasi permanen; tampilan persegi memakai `object-fit: cover` dan `object-position: center`.
+
+Urutan daftar menentukan nomor otomatis. Menonaktifkan pemenang tidak mengubah nomor; menghapus atau memindahkan pemenang memadatkan urutan dan memperbarui label otomatis. Label khusus seperti `Medali Emas` tetap dipertahankan. Sistem tidak melakukan OCR atau memblokir publikasi ketika nomor yang tergambar pada desain custom tidak sesuai; Admin mengganti gambar sendiri.
+
+Halaman Pemenang dan Highlight Beranda memakai renderer item bersama. Semua tampilan pemenang 1:1: satu item per baris pada mobile 390 px serta tiga item per baris pada tablet 768 px dan desktop 1440 px. Grid tablet/desktop memiliki inset responsif, tetap berada dalam container global, dan tidak menimbulkan overflow horizontal. Jika gambar custom gagal dimuat, fallback aman memakai peringkat final; alt text custom juga memakai peringkat final, misalnya `Juara 1`.
 
 SK Pemenang adalah Event Document yang direferensikan oleh `event_detail_settings`; upload PDF maksimal 10 MB. Dokumen yang sama dapat ditampilkan pada Unduh tanpa menggandakan file.
 

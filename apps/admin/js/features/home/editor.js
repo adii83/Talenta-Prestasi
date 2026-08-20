@@ -130,7 +130,6 @@ async function hydrateHeroImagePreview(value = state.hero.image) {
     replaceHeroImagePreviewUrl("");
     return true;
   }
-  if (assetId !== heroImagePreviewAssetId) replaceHeroImagePreviewUrl("");
   const url = await TalentaMedia.adminPreviewUrl(assetId);
   if (generation !== heroImagePreviewGeneration) {
     TalentaMedia.revokePreviewUrl(url);
@@ -217,17 +216,7 @@ function bind() {
   );
   bindToggle("heroActive", state.hero, renderHero);
   bindToggle("scheduleActive", state.schedule, renderSchedule);
-  bindImage("heroImage", 2, async (asset) => {
-    state.hero.image = asset.url;
-    try {
-      await hydrateHeroImagePreview(asset.url);
-    } catch (error) {
-      releaseHeroImagePreview();
-      toast(error.message || "Gagal memuat pratinjau maskot", true);
-    }
-    sync();
-    renderHero();
-  });
+  bindImage("heroImage", uploadHeroImage);
   const delBtn = document.getElementById("heroImageDelete");
   if (delBtn) {
     delBtn.onclick = () => {
@@ -324,24 +313,33 @@ function bindToggle(id, obj, render) {
     render();
   };
 }
-function bindImage(id, maxMb, done) {
+async function uploadHeroImage(file) {
+  const compressed = await TalentaMedia.compressCustomDesign(file);
+  if (compressed.size > TalentaMedia.LIMITS.customDesignOutput)
+    throw new Error("Hasil optimasi maksimum 500 KB.");
+  const asset = await TalentaMedia.upload(compressed, {
+    altText: state.hero.imageAlt || "Maskot Event",
+  });
+  await hydrateHeroImagePreview(asset.url);
+  state.hero.image = asset.url;
+  sync();
+  renderHero();
+  return asset;
+}
+function bindImage(id, upload) {
   document.getElementById(id).onchange = async (e) => {
     const input = e.target;
     const file = input.files[0];
     if (!file) return;
-    if (file.size > maxMb * 1024 * 1024) {
-      toast(`Maksimal ukuran gambar adalah ${maxMb}MB`, true);
-      return;
-    }
     input.disabled = true;
     try {
-      const asset = await TalentaMedia.upload(file);
-      await done({ ...asset, url: TalentaMedia.url(asset) });
+      await upload(file);
       toast("Gambar berhasil diunggah");
     } catch (error) {
       toast(error.message || "Gagal mengunggah gambar", true);
     } finally {
       input.disabled = false;
+      input.value = "";
     }
   };
 }

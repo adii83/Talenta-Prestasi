@@ -116,7 +116,7 @@ export class MediaService {
                  )
              ) OR
              EXISTS(SELECT 1 FROM event_documents document WHERE document.event_site_id=event.id AND document.asset_id=asset.id) OR
-             EXISTS(SELECT 1 FROM winners winner WHERE winner.event_site_id=event.id AND winner.photo_asset_id=asset.id) OR
+             EXISTS(SELECT 1 FROM winners winner WHERE winner.event_site_id=event.id AND (winner.photo_asset_id=asset.id OR winner.design_asset_id=asset.id)) OR
              EXISTS(SELECT 1 FROM competition_categories category WHERE category.id=event.category_id AND (category.logo_asset_id=asset.id OR category.favicon_asset_id=asset.id)) OR
              EXISTS(SELECT 1 FROM partner_items partner JOIN home_sections section ON section.id=partner.section_id WHERE section.event_site_id=event.id AND partner.logo_asset_id=asset.id) OR
              EXISTS(SELECT 1 FROM home_sections section WHERE section.event_site_id=event.id AND section.settings::text LIKE '%'||asset.id::text||'%') OR

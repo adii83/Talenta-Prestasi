@@ -9,6 +9,17 @@
       hash: "pemenang",
     });
 
+  function publicAssetUrl(url, assetId) {
+    const source = url || (assetId ? `/api/v1/public/media/${assetId}` : "");
+    if (!source) return "";
+    const base =
+      window.TalentaConfig?.apiBaseUrl &&
+      window.TalentaConfig.apiBaseUrl.startsWith("http")
+        ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+        : location.origin;
+    return new URL(source, base).href;
+  }
+
   function apiState(data) {
     const baseline = getPublicWinnerState();
     const visibility = data.settings?.metadataVisibility || {};
@@ -18,36 +29,26 @@
         categories: (data.categories || []).map((category) => ({
           name: category.name,
           icon: category.icon,
-          winners: (category.winners || []).map((winner) => {
-            let photo = winner.photo || "";
-            if (winner.photoUrl) {
-              const base =
-                window.TalentaConfig?.apiBaseUrl &&
-                window.TalentaConfig.apiBaseUrl.startsWith("http")
-                  ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-                  : location.origin;
-              photo = new URL(winner.photoUrl, base).href;
-            } else if (winner.photoAssetId) {
-              const base =
-                window.TalentaConfig?.apiBaseUrl &&
-                window.TalentaConfig.apiBaseUrl.startsWith("http")
-                  ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-                  : location.origin;
-              photo = new URL(
-                `/api/v1/public/media/${winner.photoAssetId}`,
-                base,
-              ).href;
-            }
-            return {
-              name: winner.fullName || winner.name || "",
-              rank: winner.rankLabel || winner.rank || "",
-              school: winner.school || "",
-              exam: winner.examNumber || winner.exam || "",
-              regency: winner.regency || "",
-              province: winner.province || "",
-              photo,
-            };
-          }),
+          winners: (category.winners || []).map((winner) => ({
+            name: winner.fullName || winner.name || "",
+            rank: winner.rankLabel || winner.rank || "",
+            school: winner.school || "",
+            exam: winner.examNumber || winner.exam || "",
+            district: winner.district || "",
+            regency: winner.regency || "",
+            province: winner.province || "",
+            displayMode: winner.displayMode || "built_in",
+            designAssetId: winner.designAssetId || null,
+            design: publicAssetUrl(
+              winner.designUrl || winner.design,
+              winner.designAssetId,
+            ),
+            photoAssetId: winner.photoAssetId || null,
+            photo: publicAssetUrl(
+              winner.photoUrl || winner.photo,
+              winner.photoAssetId,
+            ),
+          })),
         })),
         sk: data.decree
           ? {
@@ -122,7 +123,11 @@
 
   function render(source = getPublicWinnerState()) {
     root.className = `section${source.page.active ? "" : " section--disabled"}`;
-    root.innerHTML = buildWinnerPageMarkup(source, { archiveHref });
+    root.innerHTML = buildWinnerPageMarkup(source, {
+      archiveHref,
+      resolveAsset: (value) => value || "",
+    });
+    activateWinnerCardFallbacks(root);
     if (window.lucide) lucide.createIcons();
   }
 

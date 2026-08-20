@@ -201,6 +201,70 @@ assert(
   "Hero Public Site dan preview Admin harus memakai builder markup bersama",
 );
 
+const homeSection = () => ({
+  className: "",
+  innerHTML: "",
+  insertAdjacentElement() {},
+});
+const publicHomeContext = {
+  console,
+  URL,
+  location: {
+    origin: "https://oips.example.test",
+    href: "https://oips.example.test/",
+  },
+  window: {
+    TalentaConfig: { apiBaseUrl: "https://api.example.test/api/v1" },
+    addEventListener() {},
+  },
+  document: { getElementById: () => homeSection() },
+  TalentaConfig: { apiBaseUrl: "https://api.example.test/api/v1" },
+  TalentaPaths: { to: () => "https://oips.example.test/" },
+  TalentaPublic: { load: () => new Promise(() => {}) },
+  getHomeAdminState: () => ({
+    hero: {},
+    schedule: {},
+    pricing: {},
+    benefit: {},
+    winnerHighlight: {},
+    partners: {},
+  }),
+  getHomeWinnerCategories: () => [],
+  getHomeWinnerDisplay: () => ({}),
+  buildHomeHeroMarkup: () => "",
+  buildHomeScheduleMarkup: () => "",
+  buildHomePricingMarkup: () => "",
+  buildHomeBenefitMarkup: () => "",
+  buildHomeWinnerMarkup: () => "",
+  buildHomePartnerMarkup: () => "",
+  activateWinnerCardFallbacks() {},
+  lucide: { createIcons() {} },
+};
+publicHomeContext.window.window = publicHomeContext.window;
+vm.createContext(publicHomeContext);
+vm.runInContext(
+  read("apps/public-site/assets/js/home-renderer.js").replace(
+    "window.TalentaHome = Object.freeze({ render: renderHome });",
+    "window.TalentaHome = Object.freeze({ render: renderHome, assetUrl });",
+  ),
+  publicHomeContext,
+  { filename: "home-renderer.js" },
+);
+const publicAssetUrl = publicHomeContext.window.TalentaHome.assetUrl;
+const legacyHeroAsset = "11111111-2222-4333-8444-555555555555";
+assert.equal(
+  publicAssetUrl(
+    `http://localhost:3000/api/v1/public/media/${legacyHeroAsset}`,
+  ),
+  `https://api.example.test/api/v1/public/media/${legacyHeroAsset}`,
+  "URL media internal lama harus memakai API origin runtime, bukan localhost pengunjung.",
+);
+assert.equal(
+  publicAssetUrl("https://cdn.example.test/maskot.webp"),
+  "https://cdn.example.test/maskot.webp",
+  "URL gambar eksternal tidak boleh diubah.",
+);
+
 const storage = new Map();
 const listeners = new Map();
 let selectedEventId = "event-2026";
@@ -453,6 +517,18 @@ const heroPreviewContext = {
   subscribeGlobalSettings() {},
   lucide: { createIcons() {} },
   TalentaMedia: {
+    LIMITS: { customDesignOutput: 500 * 1024 },
+    async compressCustomDesign(file) {
+      heroPreviewContext.__uploadCalls.push(["compress", file]);
+      return { name: "maskot.webp", size: 400 * 1024 };
+    },
+    async upload(file) {
+      heroPreviewContext.__uploadCalls.push(["upload", file]);
+      return {
+        assetId: "66666666-7777-4888-8999-aaaaaaaaaaaa",
+        url: "/api/v1/public/media/66666666-7777-4888-8999-aaaaaaaaaaaa",
+      };
+    },
     async adminPreviewUrl(assetId) {
       return `blob:hero-${assetId}`;
     },
@@ -460,6 +536,7 @@ const heroPreviewContext = {
       revokedHeroUrls.push(url);
     },
   },
+  __uploadCalls: [],
 };
 vm.createContext(heroPreviewContext);
 vm.runInContext(
@@ -472,6 +549,7 @@ globalThis.__heroPreviewAudit =
         setImage(value) { state.hero.image = value; },
         stateImage() { return state.hero.image; },
         hydrate: hydrateHeroImagePreview,
+        upload: uploadHeroImage,
         source: heroImagePreviewSource,
         renderHero,
         sync,
@@ -502,6 +580,23 @@ assert.equal(
   `blob:hero-${heroAssetId}`,
   "preview Hero Admin harus memakai Blob terautentikasi",
 );
+const heroSourceFile = { name: "maskot.png", size: 1_500_000 };
+await heroPreviewAudit.upload(heroSourceFile);
+assert.equal(heroPreviewContext.__uploadCalls[0][0], "compress");
+assert.equal(heroPreviewContext.__uploadCalls[0][1], heroSourceFile);
+assert.equal(heroPreviewContext.__uploadCalls[1][0], "upload");
+assert.equal(
+  heroPreviewContext.__uploadCalls[1][1].name,
+  "maskot.webp",
+  "Hero harus mengunggah hasil kompresi, bukan file sumber.",
+);
+assert.equal(
+  heroPreviewAudit.stateImage(),
+  "/api/v1/public/media/66666666-7777-4888-8999-aaaaaaaaaaaa",
+  "Hero harus menyimpan path media canonical dari backend.",
+);
+heroPreviewAudit.setImage(publicHeroUrl);
+await heroPreviewAudit.hydrate(publicHeroUrl);
 heroPreviewAudit.sync();
 assert.match(
   heroPreviewElements.get("heroImagePreview").innerHTML,
@@ -517,8 +612,12 @@ assert.match(
 heroPreviewAudit.release();
 assert.deepEqual(
   revokedHeroUrls,
-  [`blob:hero-${heroAssetId}`],
-  "Object URL maskot harus dicabut saat preview dilepas",
+  [
+    `blob:hero-${heroAssetId}`,
+    "blob:hero-66666666-7777-4888-8999-aaaaaaaaaaaa",
+    `blob:hero-${heroAssetId}`,
+  ],
+  "Setiap Object URL maskot lama dan aktif harus dicabut saat diganti atau dilepas",
 );
 
 console.log(

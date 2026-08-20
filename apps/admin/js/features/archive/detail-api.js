@@ -22,7 +22,44 @@
     const documentVisibility = new Map(
       detailConfig.documents.map((item) => [item.documentId, item]),
     );
+    const documentsById = new Map(documents.map((item) => [item.id, item]));
+    const seenDocumentIds = new Set();
+    const orderedDocuments = [];
+    detailConfig.documents.forEach((item) => {
+      const document = documentsById.get(item.documentId);
+      if (!document || seenDocumentIds.has(document.id)) return;
+      seenDocumentIds.add(document.id);
+      orderedDocuments.push(document);
+    });
+    documents.forEach((document) => {
+      if (seenDocumentIds.has(document.id)) return;
+      seenDocumentIds.add(document.id);
+      orderedDocuments.push(document);
+    });
     const metadata = settings.metadataVisibility || {};
+    const mappedWinners = await Promise.all(
+      winners.map(async (winner) => ({
+        ...winner,
+        name: winner.fullName || "",
+        rank: winner.rankLabel || "",
+        exam: winner.examNumber || "",
+        district: winner.district || "",
+        displayMode: winner.displayMode || "built_in",
+        designAssetId: winner.designAssetId || null,
+        design: winner.designAssetId
+          ? await TalentaMedia.adminPreviewUrl(winner.designAssetId, {
+              siteId: eventId,
+            })
+          : "",
+        photoAssetId: winner.photoAssetId || null,
+        photo: winner.photoAssetId
+          ? await TalentaMedia.adminPreviewUrl(winner.photoAssetId, {
+              siteId: eventId,
+            })
+          : "",
+        active: winner.isActive,
+      })),
+    );
     return {
       ...event,
       archiveDisplayName: settings.archiveDisplayName,
@@ -33,6 +70,7 @@
         active: settings.isActive ?? true,
         winnersActive: settings.winnersActive ?? true,
         documentsActive: settings.documentsActive ?? true,
+        showSk: metadata.showSk ?? true,
         showPhoto: metadata.showPhoto ?? true,
         showSchool: metadata.showSchool ?? true,
         showExam: metadata.showExam ?? true,
@@ -41,7 +79,7 @@
         hiddenCategoryIds: categories
           .filter((item) => categoryVisibility.get(item.id) === false)
           .map((item) => item.id),
-        hiddenDocumentIds: documents
+        hiddenDocumentIds: orderedDocuments
           .filter(
             (item) => documentVisibility.get(item.id)?.isVisible === false,
           )
@@ -52,7 +90,7 @@
             .map((item) => [item.documentId, item.labelOverride]),
         ),
       },
-      documents: documents.map((item) => ({
+      documents: orderedDocuments.map((item) => ({
         ...item,
         active: item.isActive,
         type: item.fileType || "PDF",
@@ -63,18 +101,9 @@
       winnerCategories: categories.map((category) => ({
         ...category,
         active: category.isActive,
-        winners: winners
-          .filter((winner) => winner.categoryId === category.id)
-          .map((winner) => ({
-            ...winner,
-            name: winner.fullName,
-            rank: winner.rankLabel,
-            exam: winner.examNumber,
-            photo: winner.photoAssetId
-              ? TalentaMedia.url(winner.photoAssetId)
-              : "",
-            active: winner.isActive,
-          })),
+        winners: mappedWinners.filter(
+          (winner) => winner.categoryId === category.id,
+        ),
       })),
       skDocument: decreeDocument
         ? {
@@ -106,6 +135,7 @@
         winnersActive: event.detail.winnersActive,
         documentsActive: event.detail.documentsActive,
         metadataVisibility: {
+          showSk: event.detail.showSk,
           showPhoto: event.detail.showPhoto,
           showSchool: event.detail.showSchool,
           showExam: event.detail.showExam,

@@ -29,23 +29,39 @@ export class Winner {
   @Column({ name: 'rank_label', default: '' })
   rankLabel!: string;
 
-  @Column({ name: 'full_name' })
-  fullName!: string;
+  @Column({ name: 'full_name', type: 'varchar', nullable: true })
+  fullName!: string | null;
 
-  @Column({ default: '' })
-  school!: string;
+  @Column({ type: 'varchar', default: '', nullable: true })
+  school!: string | null;
 
-  @Column({ name: 'exam_number', default: '' })
-  examNumber!: string;
+  @Column({
+    name: 'exam_number',
+    type: 'varchar',
+    default: '',
+    nullable: true,
+  })
+  examNumber!: string | null;
 
-  @Column({ default: '' })
-  district!: string;
+  @Column({ type: 'varchar', default: '', nullable: true })
+  district!: string | null;
 
-  @Column({ default: '' })
-  regency!: string;
+  @Column({ type: 'varchar', default: '', nullable: true })
+  regency!: string | null;
 
-  @Column({ default: '' })
-  province!: string;
+  @Column({ type: 'varchar', default: '', nullable: true })
+  province!: string | null;
+
+  @Column({
+    name: 'display_mode',
+    type: 'varchar',
+    length: 16,
+    default: 'built_in',
+  })
+  displayMode!: 'built_in' | 'custom';
+
+  @Column({ name: 'design_asset_id', type: 'uuid', nullable: true })
+  designAssetId!: string | null;
 
   @Column({ name: 'is_active', default: true })
   isActive!: boolean;
@@ -67,4 +83,8 @@ export class Winner {
   @ManyToOne(() => MediaAsset, { nullable: true })
   @JoinColumn({ name: 'photo_asset_id' })
   photoAsset!: MediaAsset | null;
+
+  @ManyToOne(() => MediaAsset, { nullable: true })
+  @JoinColumn({ name: 'design_asset_id' })
+  designAsset!: MediaAsset | null;
 }

@@ -882,11 +882,48 @@ export class AdminService {
     if (new Set(sections.map((s) => s.sectionType)).size !== sections.length)
       throw new BadRequestException('Home section types must be unique');
     await this.dataSource.transaction(async (manager) => {
+      const normalizedSections = sections.map((section) => ({
+        ...section,
+        settings: { ...section.settings },
+      }));
+      const hero = normalizedSections.find(
+        (section) => section.sectionType === 'hero',
+      );
+      const heroImage =
+        typeof hero?.settings.image === 'string'
+          ? hero.settings.image.trim()
+          : '';
+      if (heroImage) {
+        let parsed: URL | null = null;
+        try {
+          parsed = new URL(heroImage, 'http://internal');
+        } catch {}
+        const assetId = parsed?.pathname.match(
+          /^\/api\/v1\/public\/media\/([0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i,
+        )?.[1];
+        if (assetId) {
+          const assets = await manager.query<{ id: string }[]>(
+            `SELECT asset.id FROM media_assets asset
+             JOIN event_sites event ON event.organization_id=asset.organization_id
+             WHERE event.id=$1 AND asset.id=$2 AND asset.status='active'
+               AND asset.mime_type=ANY($3::text[]) AND asset.byte_size<=$4`,
+            [
+              eventId,
+              assetId,
+              ['image/png', 'image/jpeg', 'image/webp'],
+              2 * 1024 * 1024,
+            ],
+          );
+          if (!assets[0]) throw new BadRequestException('Invalid Hero image');
+          if (hero)
+            hero.settings.image = `/api/v1/public/media/${assetId}`;
+        }
+      }
       await manager.query(
         `DELETE FROM home_sections WHERE event_site_id=$1 AND NOT(section_type=ANY($2::text[]))`,
-        [eventId, sections.map((s) => s.sectionType)],
+        [eventId, normalizedSections.map((s) => s.sectionType)],
       );
-      for (const [sortOrder, section] of sections.entries()) {
+      for (const [sortOrder, section] of normalizedSections.entries()) {
         await manager.query(
           `INSERT INTO home_sections(event_site_id,section_type,is_active,sort_order,settings) VALUES($1,$2,$3,$4,$5) ON CONFLICT(event_site_id,section_type) DO UPDATE SET is_active=EXCLUDED.is_active,sort_order=EXCLUDED.sort_order,settings=EXCLUDED.settings`,
           [

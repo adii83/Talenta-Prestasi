@@ -56,14 +56,19 @@ class WinnerCategoryDto {
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
 }
 class WinnerDto {
-  @IsUUID() categoryId!: string;
-  @IsString() @MinLength(1) @MaxLength(200) fullName!: string;
+  @IsOptional() @IsUUID() categoryId?: string;
+  @IsOptional() @IsIn(['built_in', 'custom']) displayMode?:
+    | 'built_in'
+    | 'custom';
+  @IsOptional() @IsUUID() designAssetId?: string | null;
+  @IsOptional() @IsString() @MaxLength(200) fullName?: string | null;
   @IsOptional() @IsString() @MaxLength(80) rankLabel?: string;
-  @IsOptional() @IsString() @MaxLength(200) school?: string;
-  @IsOptional() @IsString() @MaxLength(80) examNumber?: string;
-  @IsOptional() @IsString() @MaxLength(160) regency?: string;
-  @IsOptional() @IsString() @MaxLength(160) province?: string;
-  @IsOptional() @IsUUID() photoAssetId?: string;
+  @IsOptional() @IsString() @MaxLength(200) school?: string | null;
+  @IsOptional() @IsString() @MaxLength(80) examNumber?: string | null;
+  @IsOptional() @IsString() @MaxLength(160) district?: string | null;
+  @IsOptional() @IsString() @MaxLength(160) regency?: string | null;
+  @IsOptional() @IsString() @MaxLength(160) province?: string | null;
+  @IsOptional() @IsUUID() photoAssetId?: string | null;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
 }
@@ -230,7 +235,7 @@ export class AdminContentController {
     @Param('resourceId', ParseUUIDPipe) resourceId: string,
     @CurrentUser() u: AuthenticatedUser,
   ) {
-    return this.content.remove('winners', eventId, resourceId, u.userId);
+    return this.content.deleteWinner(eventId, resourceId, u.userId);
   }
 
   @Get('pages/:pageType') page(

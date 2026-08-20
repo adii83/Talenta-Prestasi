@@ -12,6 +12,7 @@ npm run test:category-events
 npm run test:event-publication
 npm run test:download-relations
 npm run test:winner-relations
+npm run test:winner-layout
 npm run test:archive-relations
 npm run test:faq-relations
 npm run test:admin-dialogs
@@ -131,10 +132,26 @@ E2E memerlukan PostgreSQL writable dengan schema migration terbaru. Test membuat
 
 ## Pemenang dan SK
 
-- Tambah kategori pemenang dan pemenang lengkap; simpan/refresh.
-- Nonaktifkan kategori/pemenang; data hilang dari Public Site.
-- Upload foto dan PDF SK valid.
-- SK direferensikan sebagai Event Document dan dapat muncul di Unduh tanpa file duplikat.
+### Unit dan kontrak otomatis
+
+- `admin-content.service.spec.ts` memverifikasi create/update desain bawaan dan custom, PATCH parsial berbasis final state, pembersihan field saat pindah mode, kepemilikan/status/MIME/ukuran asset, serta delete/reindex tanpa mengubah label khusus.
+- `public-content.service.spec.ts`, `event-publication.service.spec.ts`, dan `media.service.spec.ts` memverifikasi `displayMode`, `designAssetId`, URL desain, allowlist snapshot, serta akses media melalui token preview.
+- `reset-category-event-schema.spec.ts` menjaga migration, invariant mode, index desain, nullable metadata, dan rollback aman.
+- `npm run test:winner-relations` menjaga mapping Admin/Public, renderer bersama halaman Pemenang dan Highlight Beranda, alt/fallback, serta resolusi URL media.
+- `npm run test:winner-layout` memakai Microsoft Edge headless dan fixture campuran pada 390, 768, serta 1440 piksel. Audit memeriksa layout 1/3/3, rasio 1:1, inset, container, overflow, crop tengah, full-bleed tanpa padding/overlay, fallback gambar gagal, parity preview Admin, radio custom, dan area upload 1:1. Static server root harus tersedia pada `TALENTA_TEST_ORIGIN` atau default `http://127.0.0.1:4173`.
+
+### Skenario acceptance
+
+- Tambah pemenang baru; pastikan kedua radio belum dipilih dan penyimpanan ditolak sampai Admin memilih satu mode.
+- Pilih **Gunakan desain bawaan**, isi nama serta metadata, simpan/refresh, lalu cocokkan preview Admin dengan Public Site.
+- Pilih **Unggah desain sendiri**, unggah JPG/PNG/WebP maksimal 5 MB, dan pastikan gambar menjadi seluruh visual tanpa metadata atau overlay sistem.
+- Coba SVG, PDF, file di atas 5 MB, asset nonaktif, dan asset tenant lain; backend harus menolak.
+- Ganti gambar custom dengan upload yang sengaja gagal; gambar serta referensi lama harus tetap ada.
+- Beralih mode lalu batalkan dialog; seluruh state lama harus tetap ada. Setujui dialog; hanya field mode lama yang dibersihkan dan asset fisik tidak dihapus.
+- Campur desain bawaan dan custom dalam satu kategori; simpan draf, buka **Lihat preview**, publikasikan, lalu periksa halaman Pemenang serta Highlight Beranda.
+- Nonaktifkan pemenang tengah; nomor tidak berubah. Hapus pemenang tengah; urutan memadat, label otomatis berubah, dan label khusus tetap.
+- Gunakan gambar nonpersegi; tampilan harus crop tengah 1:1 tanpa mengubah file sumber. Simulasikan URL gambar gagal; fallback peringkat final tetap terlihat.
+- Upload foto dan PDF SK valid. SK direferensikan sebagai Event Document dan dapat muncul di Unduh tanpa file duplikat.
 - Pemenang Sebelumnya hanya berasal dari Event arsip dalam kategori yang sama.
 - Kartu Event Arsip pada Pemenang memakai ikon pustaka atau maskot upload yang sama dengan kartu halaman Arsip pada preview Admin, Lihat preview, dan Public Site.
 - Nama presentasi Arsip yang disimpan digunakan verbatim pada kartu Pemenang Sebelumnya.

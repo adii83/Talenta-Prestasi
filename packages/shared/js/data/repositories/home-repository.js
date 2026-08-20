@@ -35,34 +35,13 @@ function buildHomeWinnerMarkup(winner, categories, display, options = {}) {
       (character) =>
         ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character],
     );
-  const resolveAsset = options.resolveAsset || ((value) => value || "");
-  const initials = (name = "") =>
-    String(name || "?")
-      .trim()
-      .split(/\s+/)
-      .slice(0, 2)
-      .map((part) => part[0] || "")
-      .join("")
-      .toUpperCase();
-  const meta = (item) =>
-    [
-      display.showExam && item.exam
-        ? `<span><span class="meta-label">No. Ujian:</span> ${escape(item.exam)}</span>`
-        : "",
-      display.showRegency && item.regency
-        ? `<span><span class="meta-label">Kabupaten:</span> ${escape(item.regency)}</span>`
-        : "",
-      display.showProvince && item.province
-        ? `<span><span class="meta-label">Provinsi:</span> ${escape(item.province)}</span>`
-        : "",
-    ].join("");
   const headerClass =
     winner.alignment === "left" ? " section__header--left" : "";
   const groups = categories.length
     ? categories
         .map(
           (category) =>
-            `<section class="home-winner-group"><h3 class="winner-group__title"><i data-lucide="${escape(category.icon || "trophy")}"></i>${escape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((item) => `<article class="champion-card">${display.showPhoto ? `<div class="champion-card__photo">${item.photo ? `<img src="${escape(resolveAsset(typeof TalentaMedia !== 'undefined' ? TalentaMedia.url(item.photo) : item.photo))}" alt="Foto ${escape(item.name)}" />` : escape(initials(item.name))}</div>` : ""}<p class="champion-card__rank t-mono">${escape(item.rank)}</p><p class="champion-card__name">${escape(item.name)}</p>${display.showSchool ? `<p class="champion-card__school">${escape(item.school)}</p>` : ""}<div class="champion-card__meta">${meta(item)}</div></article>`).join("")}</div></section>`,
+            `<section class="home-winner-group"><h3 class="winner-group__title"><i data-lucide="${escape(category.icon || "trophy")}"></i>${escape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((item) => buildWinnerCardMarkup(item, display, options)).join("")}</div></section>`,
         )
         .join("")
     : '<div class="public-empty-state home-winner-empty"><i data-lucide="trophy"></i><p>Belum ada data pemenang aktif.</p></div>';

@@ -17,6 +17,44 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-20 — Dua Mode Tampilan Pemenang
+
+- **Tanggal/Judul**: 2026-08-20 — Dua Mode Tampilan Pemenang
+- **Permintaan**: Menambahkan pilihan per pemenang antara desain bawaan existing dan unggahan satu gambar desain final, menyamakan tampilan halaman Pemenang dengan Highlight Beranda, serta menjaga seluruh item persegi dengan layout mobile satu kolom dan tablet/desktop tiga kolom.
+- **Proses/Keputusan**: Migration menambahkan `display_mode` dan `design_asset_id` beserta invariant database. Backend menggabungkan PATCH parsial dengan row terkunci lalu menulis final state secara atomik; desain custom divalidasi sebagai JPG/PNG/WebP aktif milik Organization Event maksimal 5 MB. Editor mewajibkan radio untuk item baru, membersihkan referensi mode lama setelah konfirmasi tanpa menghapus asset fisik, dan mempertahankan desain lama sampai replacement upload beserta Blob preview baru berhasil. Delete memadatkan urutan serta hanya mengubah label otomatis exact-match. Halaman Pemenang dan Highlight Beranda memakai renderer item bersama; custom hanya merender fallback peringkat dan gambar full-bleed dengan listener load/error tanpa inline handler. CSS menjaga rasio 1:1, crop tengah, inset responsif, serta grid 1/3/3.
+- **File**:
+  - `apps/backend/src/database/migrations/1786845600000-AddWinnerDisplayMode.ts`
+  - `apps/backend/src/database/migrations/reset-category-event-schema.spec.ts`
+  - `apps/backend/src/entities/winner.entity.ts`
+  - `apps/backend/src/admin/admin-content.controller.ts`
+  - `apps/backend/src/admin/admin-content.service.ts`
+  - `apps/backend/src/admin/admin-content.service.spec.ts`
+  - `apps/backend/src/public/public-content.service.ts`
+  - `apps/backend/src/public/public-content.service.spec.ts`
+  - `apps/backend/src/admin/event-publication.service.spec.ts`
+  - `apps/backend/src/media/media.service.ts`
+  - `apps/backend/src/media/media.service.spec.ts`
+  - `apps/admin/js/features/winners/api.js`
+  - `apps/admin/js/features/winners/manager.js`
+  - `apps/admin/js/features/home/winner-highlight-editor.js`
+  - `packages/shared/js/data/repositories/winner-repository.js`
+  - `packages/shared/js/data/repositories/home-repository.js`
+  - `apps/public-site/assets/js/winner-renderer.js`
+  - `apps/public-site/assets/js/home-renderer.js`
+  - `apps/public-site/assets/css/main.css`
+  - `scripts/audit-winner-relations.mjs`
+  - `scripts/browser-winner-layout-audit.mjs`
+  - `package.json`
+  - `docs/DATA_MODEL.md`
+  - `docs/ADMIN_SPEC.md`
+  - `docs/TESTING.md`
+  - `docs/superpowers/specs/2026-08-20-tampilan-pemenang-desain-sendiri-design.md`
+  - `docs/superpowers/plans/2026-08-20-tampilan-pemenang-desain-sendiri.md`
+  - `docs/WORK_LOG.md`
+- **Validasi**: Lima suite backend terfokus lulus 41 test (`admin-content.service`, `public-content.service`, `event-publication.service`, `media.service`, dan regression migration); build NestJS lulus; `npm run check:js` lulus 45 file; `npm run test:winner-relations` lulus; `npm run test:winner-layout` lulus pada 390, 768, dan 1440 piksel untuk layout 1/3/3, rasio 1:1, crop tengah, fallback gambar, inset, preview Admin, serta overflow; `npm run test:event-publication` lulus setelah assertion audit lama dilonggarkan dari sintaks khusus `JOIN` menjadi kontrak akses `FROM event_publication_assets` yang sesuai query `EXISTS` production.
+- **Kendala**: Percobaan menghidupkan static server baru berhenti dengan `EADDRINUSE` karena port 4173 sudah dipakai; audit browser memakai server existing tanpa menghentikan proses tersebut. Assertion full-bleed disesuaikan terhadap content box karena border kartu 1 piksel menghasilkan selisih total 2 piksel. Fixture radio audit dibuat mandiri agar tidak bergantung pada seed atau sesi Admin.
+- **Tindak lanjut**: Migration belum dijalankan pada database aktif. Penerapan migration dan acceptance data nyata memerlukan izin operasional terpisah. Commit, push, dan deployment tidak dilakukan.
+
 ### 2026-08-19 — Template Event Terbaru pada Pembuatan Periode
 
 - **Tanggal/Judul**: 2026-08-19 — Template Event Terbaru pada Pembuatan Periode

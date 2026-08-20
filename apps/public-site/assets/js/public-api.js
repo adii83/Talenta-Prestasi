@@ -1,5 +1,6 @@
 (() => {
   const PREVIEW_KEY = "talenta_event_preview_token";
+  const PREVIEW_SCOPE_KEY = "talenta_preview_scope";
   let bootstrapPromise = null;
   let previewError = null;
   const slugPattern = /^[a-z0-9]+(?:-[a-z0-9]+)*$/i;
@@ -10,19 +11,41 @@
 
   function capturePreview() {
     const hash = new URLSearchParams(location.hash.slice(1));
-    const token = hash.get("preview");
+    const token = hash.get("preview") || "";
+    const archiveToken = hash.get("archivePreview") || "";
+    const scope = hash.get("previewScope") || "";
     if (token) {
-      sessionStorage.setItem(PREVIEW_KEY, token);
+      if (scope === "archiveDetail" && !archiveToken) {
+        sessionStorage.removeItem(PREVIEW_KEY);
+        sessionStorage.setItem(PREVIEW_SCOPE_KEY, scope);
+      } else {
+        sessionStorage.setItem(PREVIEW_KEY, token);
+        sessionStorage.removeItem(PREVIEW_SCOPE_KEY);
+      }
       history.replaceState(
         history.state,
         "",
         `${location.pathname}${location.search}`,
       );
     }
-    return token || sessionStorage.getItem(PREVIEW_KEY) || "";
+    const isolatedArchiveScope =
+      (scope === "archiveDetail" && !archiveToken) ||
+      sessionStorage.getItem(PREVIEW_SCOPE_KEY) === "archiveDetail";
+    return {
+      globalToken: isolatedArchiveScope
+        ? ""
+        : token || sessionStorage.getItem(PREVIEW_KEY) || "",
+      archiveDetailToken:
+        scope === "archiveDetail" ? archiveToken || token : "",
+      isolatedArchiveScope,
+    };
   }
 
-  const previewToken = capturePreview();
+  const {
+    globalToken: previewToken,
+    archiveDetailToken,
+    isolatedArchiveScope,
+  } = capturePreview();
 
   async function establishPreview() {
     if (!previewToken) return;
@@ -48,11 +71,12 @@
   }
 
   const previewReady = establishPreview();
-  const request = (path) => {
+  const request = (path, token = previewToken) => {
     if (previewError) throw previewError;
     return TalentaApi.request(path, {
       auth: false,
-      previewToken: previewToken || undefined,
+      previewToken: token || undefined,
+      credentials: isolatedArchiveScope ? "omit" : undefined,
     });
   };
 
@@ -104,6 +128,25 @@
     return bootstrapPromise;
   }
 
+  function mediaUrl(source, page = "") {
+    const value = String(source || "").trim();
+    if (!value) return "";
+    const base =
+      window.TalentaConfig?.apiBaseUrl &&
+      window.TalentaConfig.apiBaseUrl.startsWith("http")
+        ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+        : location.origin;
+    const resolved = new URL(value, base);
+    if (
+      page === "archiveDetail" &&
+      archiveDetailToken &&
+      value.startsWith("/") &&
+      /^\/api\/v1\/public\/media\/[0-9a-f-]+$/i.test(resolved.pathname)
+    )
+      resolved.searchParams.set("preview_token", archiveDetailToken);
+    return resolved.href;
+  }
+
   async function load(page, detailSlug = "") {
     const boot = await resolveBootstrap();
     const targetSlug =
@@ -123,6 +166,9 @@
     if (!suffix) throw new Error(`Halaman publik tidak dikenal: ${page}`);
     const payload = await request(
       `/public/sites/${encodeURIComponent(targetSlug)}/${suffix}`,
+      page === "archiveDetail" && archiveDetailToken
+        ? archiveDetailToken
+        : previewToken,
     );
     window.dispatchEvent(
       new CustomEvent(`talenta:public:${page}`, { detail: payload.data }),
@@ -133,6 +179,7 @@
   window.TalentaPublic = Object.freeze({
     load,
     bootstrap: resolveBootstrap,
+    mediaUrl,
     preview: () => ({ active: Boolean(previewToken) && !previewError }),
   });
   void resolveBootstrap().catch((error) => {

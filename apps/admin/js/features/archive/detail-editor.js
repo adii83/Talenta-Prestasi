@@ -2,6 +2,7 @@
 const detailParams = new URLSearchParams(location.search);
 const compId = detailParams.get("id");
 const detailEmbedded = detailParams.get("embedded") === "1";
+if (compId) window.TalentaEditor = Object.freeze({ eventId: compId });
 const archiveBackUrl = detailEmbedded
   ? TalentaPaths.to("admin.archiveEditor", { query: { embedded: 1 } })
   : TalentaPaths.to("admin.shell", { query: { page: "archive" } });
@@ -55,22 +56,8 @@ function formatArchiveDisplayName(item) {
 function archiveDisplayName(item) {
   return item.archiveDisplayName || formatArchiveDisplayName(item);
 }
-function initials(name) {
-  return (name || "?")
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((x) => x[0])
-    .join("")
-    .toUpperCase();
-}
-
-function syncForm() {
-  if (!comp) return;
-  const det = comp.detail;
-  const displayName = archiveDisplayName(comp);
-  document.getElementById("detailTopTitle").textContent = displayName;
-  document.getElementById("detailContextTitle").textContent = displayName;
-  const publicUrl = new URL(
+function detailPublicUrl(archiveToken, currentToken = "") {
+  const url = new URL(
     TalentaPaths.to("publicSite.archiveDetail", {
       query: { event: comp.slug },
     }),
@@ -90,9 +77,35 @@ function syncForm() {
         !host.search &&
         !host.hash
       )
-        publicUrl.href = `https://${host.hostname}/arsip/detail/?event=${encodeURIComponent(comp.slug)}`;
+        url.href = `https://${host.hostname}/arsip/detail/?event=${encodeURIComponent(comp.slug)}`;
     } catch (_error) {}
-  } else if (category?.slug) publicUrl.searchParams.set("site", category.slug);
+  } else if (category?.slug) url.searchParams.set("site", category.slug);
+  if (archiveToken)
+    url.hash = new URLSearchParams({
+      preview: currentToken,
+      archivePreview: archiveToken,
+      previewScope: "archiveDetail",
+    }).toString();
+  return url.href;
+}
+function markDetailDirty() {
+  document.dispatchEvent(new CustomEvent("talenta:editor-dirty"));
+}
+function initials(name) {
+  return (name || "?")
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((x) => x[0])
+    .join("")
+    .toUpperCase();
+}
+
+function syncForm() {
+  if (!comp) return;
+  const det = comp.detail;
+  const displayName = archiveDisplayName(comp);
+  document.getElementById("detailTopTitle").textContent = displayName;
+  document.getElementById("detailContextTitle").textContent = displayName;
   const openDetailPreview = async (event) => {
     event.preventDefault();
     const link = event.currentTarget;
@@ -102,8 +115,17 @@ function syncForm() {
         `/admin/events/${comp.id}/preview-token`,
         { method: "POST" },
       );
-      publicUrl.hash = new URLSearchParams({ preview: data.token }).toString();
-      open(publicUrl.href, "_blank", "noopener");
+      const currentEvent = window.parent?.TalentaAdminAuth?.currentEvent?.();
+      const currentToken =
+        currentEvent?.id && currentEvent.id !== comp.id
+          ? (
+              await TalentaApi.request(
+                `/admin/events/${currentEvent.id}/preview-token`,
+                { method: "POST" },
+              )
+            ).data.token
+          : data.token;
+      open(detailPublicUrl(data.token, currentToken), "_blank", "noopener");
     } catch (error) {
       toast(error.message);
     } finally {
@@ -112,7 +134,7 @@ function syncForm() {
   };
   ["detailPublicLink", "detailToolbarPublicLink"].forEach((id) => {
     const link = document.getElementById(id);
-    link.href = publicUrl.href;
+    link.href = detailPublicUrl();
     link.onclick = openDetailPreview;
   });
   const map = {
@@ -179,6 +201,18 @@ function renderCategorySummary() {
   icons();
 }
 
+function moveDetailDocument(index, direction) {
+  const target = index + direction;
+  if (target < 0 || target >= comp.documents.length) return;
+  [comp.documents[index], comp.documents[target]] = [
+    comp.documents[target],
+    comp.documents[index],
+  ];
+  renderDocumentList();
+  renderPreview();
+  markDetailDirty();
+}
+
 function renderDocumentList() {
   const root = document.getElementById("detailDocumentList");
   const docs = comp.documents || [];
@@ -190,15 +224,30 @@ function renderDocumentList() {
   }
   const det = comp.detail;
   root.innerHTML = docs
-    .map((d) => {
+    .map((d, index) => {
       const shown = d.active !== false && !det.hiddenDocumentIds.includes(d.id);
-      return `<div class="archive-linked-doc" data-doc-id="${esc(d.id)}"><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><input class="form-input" value="${esc(det.documentLabelOverrides[d.id] || "")}" placeholder="Label custom (opsional)"><label class="btn btn--outline btn--sm">${d.assetId ? "Ganti PDF" : "Upload PDF"}<input type="file" data-document-upload accept="application/pdf" hidden></label></div><button type="button" data-reset-label title="Kembalikan nama asli"><i data-lucide="rotate-ccw"></i></button></div>`;
+      return `<div class="archive-linked-doc detail-document-row" data-doc-id="${esc(d.id)}" data-document-index="${index}"><div class="detail-document-row__order"><button type="button" data-detail-up ${index === 0 ? "disabled" : ""} aria-label="Naikkan urutan ${esc(d.title)}" title="Naikkan urutan"><i data-lucide="arrow-up"></i></button><span>${String(index + 1).padStart(2, "0")}</span><button type="button" data-detail-down ${index === docs.length - 1 ? "disabled" : ""} aria-label="Turunkan urutan ${esc(d.title)}" title="Turunkan urutan"><i data-lucide="arrow-down"></i></button></div><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><input class="form-input" value="${esc(det.documentLabelOverrides[d.id] || "")}" placeholder="Label custom (opsional)"><label class="btn btn--outline btn--sm">${d.assetId ? "Ganti PDF" : "Upload PDF"}<input type="file" data-document-upload accept="application/pdf" hidden></label></div><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><button type="button" data-reset-label title="Kembalikan nama asli" aria-label="Kembalikan label ${esc(d.title)}"><i data-lucide="rotate-ccw"></i></button></div>`;
     })
     .join("");
   root.querySelectorAll(".archive-linked-doc").forEach((row) => {
     const docId = row.dataset.docId,
+      index = Number(row.dataset.documentIndex),
       check = row.querySelector("[type=checkbox]"),
       input = row.querySelector(".form-input");
+    const up = row.querySelector("[data-detail-up]");
+    const down = row.querySelector("[data-detail-down]");
+    up.onclick = () => moveDetailDocument(index, -1);
+    down.onclick = () => moveDetailDocument(index, 1);
+    up.onkeydown = (event) => {
+      if (event.key !== "ArrowUp") return;
+      event.preventDefault();
+      moveDetailDocument(index, -1);
+    };
+    down.onkeydown = (event) => {
+      if (event.key !== "ArrowDown") return;
+      event.preventDefault();
+      moveDetailDocument(index, 1);
+    };
     check.onchange = () => {
       comp.detail.hiddenDocumentIds = check.checked
         ? comp.detail.hiddenDocumentIds.filter((x) => x !== docId)
@@ -334,24 +383,34 @@ function bindForm() {
       }),
   );
   const form = document.getElementById("archiveDetailForm");
+  const submit = form.querySelector('button[type="submit"]');
   const revertArchiveDetail = () => location.reload();
-  form.onsubmit = async (e) => {
-    e.preventDefault();
-    const submit = e.submitter;
+  const saveArchiveDetail = async () => {
     if (submit) submit.disabled = true;
     try {
       await TalentaArchiveDetailApi.save(comp);
+      document.dispatchEvent(new CustomEvent("talenta:editor-saved"));
       toast("Detail tersimpan ke database.");
     } catch (error) {
       toast(error.message);
+      throw error;
     } finally {
       if (submit) submit.disabled = false;
     }
   };
+  form.onsubmit = (event) => {
+    event.preventDefault();
+    void saveArchiveDetail().catch(() => {});
+  };
+  const currentEvent = window.parent?.TalentaAdminAuth?.currentEvent?.();
   window.TalentaEditor = Object.freeze({
-    save: () => form.requestSubmit(),
+    eventId: comp.id,
+    currentEventId: currentEvent?.id || comp.id,
+    publicUrl: detailPublicUrl,
+    save: saveArchiveDetail,
     revert: revertArchiveDetail,
   });
+  document.dispatchEvent(new CustomEvent("talenta:editor-ready"));
   document.getElementById("archiveDetailReset").onclick = async () => {
     const confirmed = await adminConfirm({
       title: "Urungkan edit Detail Arsip?",
@@ -487,6 +546,7 @@ function renderPreview() {
   root.innerHTML = buildArchiveDetailMarkup(
     resolveArchiveDetailState(normalizedCompetition),
   );
+  activateWinnerCardFallbacks(root);
   requestAnimationFrame(fitArchiveDetailPreview);
   icons();
 }

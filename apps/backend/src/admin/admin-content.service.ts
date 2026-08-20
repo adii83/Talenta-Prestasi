@@ -25,17 +25,42 @@ type Cat = {
   isActive?: boolean;
   sortOrder?: number;
 };
+type WinnerDisplayMode = 'built_in' | 'custom';
 type Win = {
-  categoryId: string;
-  fullName: string;
+  categoryId?: string;
+  displayMode?: WinnerDisplayMode;
+  designAssetId?: string | null;
+  fullName?: string | null;
   rankLabel?: string;
-  school?: string;
-  examNumber?: string;
-  regency?: string;
-  province?: string;
-  photoAssetId?: string;
+  school?: string | null;
+  examNumber?: string | null;
+  district?: string | null;
+  regency?: string | null;
+  province?: string | null;
+  photoAssetId?: string | null;
   isActive?: boolean;
   sortOrder?: number;
+};
+type WinnerState = Required<
+  Pick<Win, 'categoryId' | 'displayMode' | 'isActive' | 'sortOrder'>
+> & {
+  designAssetId: string | null;
+  fullName: string | null;
+  rankLabel: string;
+  school: string | null;
+  examNumber: string | null;
+  district: string | null;
+  regency: string | null;
+  province: string | null;
+  photoAssetId: string | null;
+};
+type WinnerOrderRow = {
+  id: string;
+  categoryId: string;
+  rankPrefix: string;
+  rankLabel: string;
+  sortOrder: number;
+  isActive: boolean;
 };
 type Page = {
   isActive?: boolean;
@@ -81,7 +106,7 @@ export class AdminContentService {
     eventId: string,
     userId: string,
     input: {
-      archiveDisplayName?: string;
+      archiveDisplayName?: string | null;
       description?: string;
       decreeDocumentId?: string;
       decreeTitle?: string;
@@ -99,10 +124,7 @@ export class AdminContentService {
     },
   ) {
     await this.eventAccess(eventId, userId, true);
-    if (
-      input.archiveDisplayName !== undefined &&
-      !input.archiveDisplayName.trim()
-    )
+    if (typeof input.archiveDisplayName === 'string' && !input.archiveDisplayName.trim())
       throw new BadRequestException('Archive display name is required');
     await this.db.transaction(async (manager) => {
       if (typeof input.description === 'string') {
@@ -121,7 +143,7 @@ export class AdminContentService {
             'Decree document does not belong to event',
           );
       }
-      const hasArchiveDisplayName = input.archiveDisplayName !== undefined;
+      const hasArchiveDisplayName = typeof input.archiveDisplayName === 'string';
       await manager.query(
         `INSERT INTO event_detail_settings(event_site_id,archive_display_name,decree_document_id,decree_title,decree_description,is_active,winners_active,documents_active,metadata_visibility) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(event_site_id) DO UPDATE SET archive_display_name=CASE WHEN $10 THEN EXCLUDED.archive_display_name ELSE event_detail_settings.archive_display_name END,decree_document_id=EXCLUDED.decree_document_id,decree_title=EXCLUDED.decree_title,decree_description=EXCLUDED.decree_description,is_active=EXCLUDED.is_active,winners_active=EXCLUDED.winners_active,documents_active=EXCLUDED.documents_active,metadata_visibility=EXCLUDED.metadata_visibility`,
         [
@@ -338,7 +360,7 @@ export class AdminContentService {
     const columns = {
       event_documents: `id,title,category,document_role AS "documentRole",file_type AS "fileType",display_size AS "displaySize",asset_id AS "assetId",is_active AS "isActive",sort_order AS "sortOrder"`,
       winner_categories: `id,name,rank_prefix AS "rankPrefix",icon,is_active AS "isActive",sort_order AS "sortOrder"`,
-      winners: `id,category_id AS "categoryId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",regency,province,photo_asset_id AS "photoAssetId",is_active AS "isActive",sort_order AS "sortOrder"`,
+      winners: `id,category_id AS "categoryId",display_mode AS "displayMode",design_asset_id AS "designAssetId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",district,regency,province,photo_asset_id AS "photoAssetId",is_active AS "isActive",sort_order AS "sortOrder"`,
     }[table];
     const rows = await this.db.query(
       `SELECT ${columns} FROM ${table} WHERE event_site_id=$1 ORDER BY sort_order,id`,
@@ -444,58 +466,90 @@ export class AdminContentService {
     );
   }
   async createWinner(e: string, u: string, d: Win) {
-    return this.write(
-      e,
-      u,
-      'create',
-      'winner',
-      async (m) =>
-        (
-          await m.query(
-            `INSERT INTO winners(event_site_id,category_id,full_name,rank_label,school,exam_number,regency,province,photo_asset_id,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-            [
-              e,
-              d.categoryId,
-              d.fullName.trim(),
-              d.rankLabel ?? '',
-              d.school ?? '',
-              d.examNumber ?? '',
-              d.regency ?? '',
-              d.province ?? '',
-              d.photoAssetId ?? null,
-              d.isActive ?? true,
-              d.sortOrder ?? 0,
-            ],
-          )
-        )[0],
-    );
+    return this.write(e, u, 'create', 'winner', async (m) => {
+      const state = await this.winnerState(d, undefined, e, m);
+      return (
+        await m.query(
+          `INSERT INTO winners(event_site_id,category_id,full_name,rank_label,school,exam_number,district,regency,province,photo_asset_id,design_asset_id,display_mode,is_active,sort_order)
+           VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+           RETURNING id,category_id AS "categoryId",display_mode AS "displayMode",design_asset_id AS "designAssetId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",district,regency,province,photo_asset_id AS "photoAssetId",is_active AS "isActive",sort_order AS "sortOrder"`,
+          this.winnerParams(e, state),
+        )
+      )[0];
+    });
   }
+
   async updateWinner(e: string, id: string, u: string, d: Win) {
     return this.write(
       e,
       u,
       'update',
       'winner',
-      async (m) =>
-        (
+      async (m) => {
+        const rows = await m.query(
+          `SELECT id,category_id AS "categoryId",display_mode AS "displayMode",design_asset_id AS "designAssetId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",district,regency,province,photo_asset_id AS "photoAssetId",is_active AS "isActive",sort_order AS "sortOrder"
+             FROM winners WHERE id=$1 AND event_site_id=$2 FOR UPDATE`,
+          [id, e],
+        );
+        if (!rows[0]) throw new NotFoundException('Winner not found');
+        const state = await this.winnerState(d, rows[0], e, m);
+        return (
           await m.query(
-            `UPDATE winners SET category_id=$3,full_name=$4,rank_label=$5,school=$6,exam_number=$7,regency=$8,province=$9,photo_asset_id=$10,is_active=$11,sort_order=$12 WHERE id=$1 AND event_site_id=$2 RETURNING *`,
-            [
-              id,
-              e,
-              d.categoryId,
-              d.fullName.trim(),
-              d.rankLabel ?? '',
-              d.school ?? '',
-              d.examNumber ?? '',
-              d.regency ?? '',
-              d.province ?? '',
-              d.photoAssetId ?? null,
-              d.isActive ?? true,
-              d.sortOrder ?? 0,
-            ],
+            `UPDATE winners
+                SET category_id=$3,full_name=$4,rank_label=$5,school=$6,exam_number=$7,district=$8,regency=$9,province=$10,photo_asset_id=$11,design_asset_id=$12,display_mode=$13,is_active=$14,sort_order=$15
+              WHERE id=$1 AND event_site_id=$2
+              RETURNING id,category_id AS "categoryId",display_mode AS "displayMode",design_asset_id AS "designAssetId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",district,regency,province,photo_asset_id AS "photoAssetId",is_active AS "isActive",sort_order AS "sortOrder"`,
+            [id, ...this.winnerParams(e, state)],
           )
-        )[0],
+        )[0];
+      },
+      id,
+    );
+  }
+
+  async deleteWinner(e: string, id: string, u: string) {
+    return this.write(
+      e,
+      u,
+      'delete',
+      'winner',
+      async (m) => {
+        const winners = (await m.query(
+          `SELECT winner.id,winner.category_id AS "categoryId",category.rank_prefix AS "rankPrefix",winner.rank_label AS "rankLabel",winner.sort_order AS "sortOrder",winner.is_active AS "isActive"
+             FROM winners winner
+             JOIN winner_categories category
+               ON category.id=winner.category_id
+              AND category.event_site_id=winner.event_site_id
+            WHERE winner.event_site_id=$1
+              AND winner.category_id=(SELECT category_id FROM winners WHERE id=$2 AND event_site_id=$1)
+            ORDER BY winner.sort_order,winner.id
+            FOR UPDATE OF winner`,
+          [e, id],
+        )) as WinnerOrderRow[];
+        if (!winners.some((winner) => winner.id === id))
+          throw new NotFoundException('Winner not found');
+
+        await m.query(
+          `DELETE FROM winners WHERE id=$1 AND event_site_id=$2 RETURNING id`,
+          [id, e],
+        );
+
+        const remaining = winners.filter((winner) => winner.id !== id);
+        for (const [newIndex, winner] of remaining.entries()) {
+          const oldIndex = winners.indexOf(winner);
+          const oldAutomaticLabel = `${winner.rankPrefix || 'Juara'} ${oldIndex + 1}`;
+          const rankLabel =
+            winner.rankLabel === oldAutomaticLabel
+              ? `${winner.rankPrefix || 'Juara'} ${newIndex + 1}`
+              : winner.rankLabel;
+          await m.query(
+            `UPDATE winners SET sort_order=$3,rank_label=$4 WHERE id=$1 AND event_site_id=$2 RETURNING id`,
+            [winner.id, e, newIndex, rankLabel],
+          );
+        }
+
+        return { id, categoryId: winners[0].categoryId };
+      },
       id,
     );
   }
@@ -569,6 +623,122 @@ export class AdminContentService {
         );
     });
     return this.page(eventId, pageType, userId);
+  }
+
+  private async winnerState(
+    input: Win,
+    existing: WinnerState | undefined,
+    eventId: string,
+    manager: any,
+  ): Promise<WinnerState> {
+    const has = (key: keyof Win) =>
+      Object.prototype.hasOwnProperty.call(input, key);
+    const value = <K extends keyof Win>(key: K): Win[K] | undefined =>
+      has(key) ? input[key] : existing?.[key];
+    const categoryId = value('categoryId');
+    if (!categoryId)
+      throw new BadRequestException('Winner category is required');
+
+    const categories = await manager.query(
+      `SELECT id FROM winner_categories WHERE id=$1 AND event_site_id=$2`,
+      [categoryId, eventId],
+    );
+    if (!categories[0])
+      throw new NotFoundException('Winner category does not belong to event');
+
+    const displayMode = value('displayMode') ?? 'built_in';
+    if (displayMode !== 'built_in' && displayMode !== 'custom')
+      throw new BadRequestException('Invalid winner display mode');
+
+    const rankLabel = this.trimmed(value('rankLabel')) ?? '';
+    const isActive = value('isActive') ?? true;
+    const sortOrder = value('sortOrder') ?? 0;
+
+    if (displayMode === 'custom') {
+      const designAssetId = value('designAssetId') ?? null;
+      if (!designAssetId)
+        throw new BadRequestException('Custom mode requires designAssetId');
+      await this.customDesignAsset(designAssetId, eventId, manager);
+      return {
+        categoryId,
+        displayMode,
+        designAssetId,
+        fullName: null,
+        rankLabel,
+        school: null,
+        examNumber: null,
+        district: null,
+        regency: null,
+        province: null,
+        photoAssetId: null,
+        isActive,
+        sortOrder,
+      };
+    }
+
+    const fullName = this.trimmed(value('fullName'));
+    if (!fullName)
+      throw new BadRequestException('Built-in mode requires fullName');
+    const photoAssetId = value('photoAssetId') ?? null;
+    await this.assetOwnership(photoAssetId ?? undefined, eventId, manager);
+    return {
+      categoryId,
+      displayMode,
+      designAssetId: null,
+      fullName,
+      rankLabel,
+      school: this.trimmed(value('school')),
+      examNumber: this.trimmed(value('examNumber')),
+      district: this.trimmed(value('district')),
+      regency: this.trimmed(value('regency')),
+      province: this.trimmed(value('province')),
+      photoAssetId,
+      isActive,
+      sortOrder,
+    };
+  }
+
+  private winnerParams(eventId: string, state: WinnerState) {
+    return [
+      eventId,
+      state.categoryId,
+      state.fullName,
+      state.rankLabel,
+      state.school,
+      state.examNumber,
+      state.district,
+      state.regency,
+      state.province,
+      state.photoAssetId,
+      state.designAssetId,
+      state.displayMode,
+      state.isActive,
+      state.sortOrder,
+    ];
+  }
+
+  private trimmed(value: unknown): string | null {
+    if (value === null || value === undefined) return null;
+    const result = String(value).trim();
+    return result || null;
+  }
+
+  private async customDesignAsset(assetId: string, eventId: string, m: any) {
+    const rows = await m.query(
+      `SELECT asset.mime_type AS "mimeType",asset.byte_size AS "byteSize",asset.status
+         FROM media_assets asset
+         JOIN event_sites event ON event.id=$2
+        WHERE asset.id=$1 AND asset.organization_id=event.organization_id`,
+      [assetId, eventId],
+    );
+    if (!rows[0])
+      throw new ForbiddenException('Media asset ownership mismatch');
+    if (rows[0].status !== 'active')
+      throw new BadRequestException('Design asset must be active');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(rows[0].mimeType))
+      throw new BadRequestException('Design must be JPG, PNG, or WebP');
+    if (BigInt(rows[0].byteSize) > 2_097_152n)
+      throw new BadRequestException('Design file must not exceed 2 MB');
   }
 
   private async write(

@@ -172,6 +172,69 @@ const customSkMarkup = evaluate("buildArchiveDetailMarkup(__customSkState)");
 assert.match(customSkMarkup, />Unduh SK<\/a>/);
 assert.doesNotMatch(customSkMarkup, /Unduh PDF/);
 
+const designAssetId = "11111111-1111-4111-8111-111111111111";
+context.__customWinnerCompetition = {
+  ...source,
+  winnerCategories: [
+    {
+      ...category,
+      winners: [
+        {
+          ...winner,
+          displayMode: "custom",
+          designAssetId,
+          design: "https://assets.test/custom-winner.webp",
+          photoAssetId: null,
+          photo: "",
+        },
+      ],
+    },
+  ],
+};
+const normalizedCustomWinner = clone(
+  evaluate("normalizeArchiveCompetition(__customWinnerCompetition)"),
+).winnerCategories[0].winners[0];
+assert.equal(normalizedCustomWinner.displayMode, "custom");
+assert.equal(normalizedCustomWinner.designAssetId, designAssetId);
+assert.equal(
+  normalizedCustomWinner.design,
+  "https://assets.test/custom-winner.webp",
+);
+assert.equal(normalizedCustomWinner.photoAssetId, null);
+assert.equal(normalizedCustomWinner.photo, "");
+context.__customWinnerState = clone(
+  evaluate(
+    "resolveArchiveDetailState(normalizeArchiveCompetition(__customWinnerCompetition))",
+  ),
+);
+const customWinnerMarkup = evaluate(
+  "buildArchiveDetailMarkup(__customWinnerState)",
+);
+assert.match(customWinnerMarkup, /champion-card--custom/);
+assert.match(
+  customWinnerMarkup,
+  /src="https:\/\/assets\.test\/custom-winner\.webp"/,
+);
+assert.match(
+  customWinnerMarkup,
+  new RegExp(`alt="${winner.rank.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}"`),
+);
+assert.doesNotMatch(
+  customWinnerMarkup,
+  new RegExp(`champion-card__name[^>]*>${winner.name}`),
+);
+
+context.__builtInWinnerCompetition = source;
+context.__builtInWinnerState = clone(
+  evaluate(
+    "resolveArchiveDetailState(normalizeArchiveCompetition(__builtInWinnerCompetition))",
+  ),
+);
+const builtInWinnerMarkup = evaluate(
+  "buildArchiveDetailMarkup(__builtInWinnerState)",
+);
+assert.match(builtInWinnerMarkup, /champion-card__name/);
+
 const state = clone(evaluate("getArchiveAdminState()"));
 const removedId = archived[0].id;
 state.removedCompetitionIds = [removedId];
@@ -213,14 +276,25 @@ const publicIds = clone(
 assert.ok(!publicIds.includes(draftId));
 assert.ok(!publicIds.includes(disabledDetailId));
 
-const [detailHtml, detailApi, detailEditor, manager, publicList] =
-  await Promise.all([
-    readSource("apps/admin/editors/arsip/detail/index.html"),
-    readSource("apps/admin/js/features/archive/detail-api.js"),
-    readSource("apps/admin/js/features/archive/detail-editor.js"),
-    readSource("apps/admin/js/features/archive/manager.js"),
-    readSource("apps/public-site/assets/js/archive-list.js"),
-  ]);
+const [
+  detailHtml,
+  detailApi,
+  detailEditor,
+  manager,
+  publicList,
+  publicDetail,
+  publicDetailHtml,
+  mainCss,
+] = await Promise.all([
+  readSource("apps/admin/editors/arsip/detail/index.html"),
+  readSource("apps/admin/js/features/archive/detail-api.js"),
+  readSource("apps/admin/js/features/archive/detail-editor.js"),
+  readSource("apps/admin/js/features/archive/manager.js"),
+  readSource("apps/public-site/assets/js/archive-list.js"),
+  readSource("apps/public-site/assets/js/archive-detail.js"),
+  readSource("apps/public-site/arsip/detail/index.html"),
+  readSource("apps/public-site/assets/css/main.css"),
+]);
 assert.doesNotMatch(
   detailHtml,
   /id="detailShortName"|>Nama pendek</,
@@ -228,6 +302,33 @@ assert.doesNotMatch(
 );
 assert.match(detailHtml, /id="detailSkTitle"/);
 assert.match(detailHtml, /id="detailSkDescription"/);
+const winnerSectionHtml = detailHtml.slice(
+  detailHtml.indexOf("<h2>Hasil dan Pemenang</h2>"),
+  detailHtml.indexOf("<h2>Dokumen Terkait</h2>"),
+);
+const documentSectionHtml = detailHtml.slice(
+  detailHtml.indexOf("<h2>Dokumen Terkait</h2>"),
+  detailHtml.indexOf("<h2>Preview Keseluruhan Detail</h2>"),
+);
+assert.doesNotMatch(
+  winnerSectionHtml,
+  /id="detailShowSk"/,
+  "Kontrol Banner SK tidak boleh tetap berada di Hasil dan Pemenang.",
+);
+assert.match(
+  documentSectionHtml,
+  /class="[^"]*admin-switch[^"]*"[\s\S]*?id="detailShowSk"[\s\S]*?<em>Tampilkan banner SK<\/em>/,
+  "Banner SK harus memakai toggle di kelompok Dokumen Terkait.",
+);
+assert.match(documentSectionHtml, /class="detail-sk-settings"/);
+assert.match(detailEditor, /data-detail-up/);
+assert.match(detailEditor, /data-detail-down/);
+assert.match(detailEditor, /function moveDetailDocument\(/);
+assert.match(detailEditor, /event\.key !== "ArrowUp"/);
+assert.match(detailEditor, /event\.key !== "ArrowDown"/);
+assert.match(mainCss, /\.detail-sk-settings\s*\{/);
+assert.match(mainCss, /\.detail-document-row\s*\{/);
+assert.match(mainCss, /\.detail-document-row__order\s*\{/);
 assert.match(
   detailApi,
   /documentRole === "winner_decree"/,
@@ -243,7 +344,19 @@ assert.match(
 assert.match(detailHtml, /id="detailName"[^>]*required/);
 assert.match(detailHtml, /id="detailName"[^>]*maxlength="200"/);
 assert.match(detailApi, /archiveDisplayName: settings\.archiveDisplayName/);
+assert.match(detailApi, /showSk: metadata\.showSk \?\? true/);
+assert.match(detailApi, /showSk: event\.detail\.showSk/);
 assert.match(detailApi, /archiveDisplayName: event\.archiveDisplayName/);
+assert.match(
+  detailApi,
+  /documents: event\.documents\.map\(\(document\) => \(\{[\s\S]*?documentId: document\.id/,
+  "Urutan Detail Arsip harus dikirim sesuai susunan array dokumen Admin.",
+);
+assert.match(
+  detailApi,
+  /detailConfig\.documents\.forEach[\s\S]*?seenDocumentIds[\s\S]*?documents\.forEach/,
+  "Urutan tersimpan harus dipulihkan dan dokumen baru ditempatkan setelahnya.",
+);
 assert.doesNotMatch(
   detailApi,
   /body:\s*\{[^}]*name:\s*event\.(?:name|archiveDisplayName)/,
@@ -268,8 +381,8 @@ assert.match(
 );
 assert.match(
   detailEditor,
-  /publicUrl\.hash = new URLSearchParams\(\{ preview: data\.token \}\)/,
-  "Lihat halaman Detail Arsip harus membawa token preview melalui fragment.",
+  /url\.hash = new URLSearchParams\(\{[\s\S]*?preview: currentToken,[\s\S]*?archivePreview: archiveToken,[\s\S]*?previewScope: "archiveDetail"/,
+  "Lihat halaman Detail Arsip harus membawa token Event saat ini dan token Arsip secara terpisah.",
 );
 assert.match(detailEditor, /name: archiveDisplayName\(comp\)/);
 assert.match(
@@ -303,6 +416,59 @@ assert.match(
   /iconMode: event\.mascotAssetId \? "upload" : "library"/,
 );
 assert.match(publicList, /TalentaMedia\.url\(event\.mascotAssetId\)/);
+assert.match(
+  detailApi,
+  /Promise\.all\([\s\S]*?winners[\s\S]*?TalentaMedia\.adminPreviewUrl\(winner\.designAssetId,[\s\S]*?siteId: eventId/,
+  "Preview editor Arsip harus memuat desain custom sebagai Blob terautentikasi.",
+);
+assert.match(
+  detailApi,
+  /TalentaMedia\.adminPreviewUrl\(winner\.photoAssetId,[\s\S]*?siteId: eventId/,
+  "Preview editor Arsip harus memuat foto built-in sebagai Blob terautentikasi.",
+);
+assert.match(detailApi, /displayMode: winner\.displayMode \|\| "built_in"/);
+assert.match(detailApi, /designAssetId: winner\.designAssetId \|\| null/);
+assert.match(publicDetail, /displayMode: winner\.displayMode \|\| "built_in"/);
+assert.match(publicDetail, /showSk: visibility\.showSk \?\? true/);
+assert.match(publicDetail, /designAssetId: winner\.designAssetId \|\| null/);
+assert.match(publicDetail, /designUrl/);
+assert.match(
+  publicDetail,
+  /return source \? TalentaPublic\.mediaUrl\(source, "archiveDetail"\) : "";/,
+  "Seluruh media Detail Arsip harus memakai resolver token Arsip.",
+);
+assert.match(
+  publicDetail,
+  /url: mediaUrl\(document\.url, document\.assetId\)/,
+  "Dokumen Detail Arsip harus membawa token media Event Arsip.",
+);
+assert.match(
+  publicDetail,
+  /url: mediaUrl\(data\.decree\.url, data\.decree\.assetId\)/,
+  "SK Detail Arsip harus membawa token media Event Arsip.",
+);
+assert.match(publicDetail, /activateWinnerCardFallbacks\(root\)/);
+assert.match(detailEditor, /activateWinnerCardFallbacks\(root\)/);
+assert.match(
+  detailEditor,
+  /detailShowSk"\)\.onchange[\s\S]*?det\.showSk = e\.target\.checked[\s\S]*?renderPreview\(\)/,
+  "Toggle Banner SK hanya boleh mengubah visibilitas, bukan pilihan dokumen.",
+);
+assert.doesNotMatch(
+  detailEditor,
+  /detailShowSk"\)\.onchange[\s\S]{0,200}comp\.skDocument\s*=/,
+  "Mematikan Banner SK tidak boleh menghapus dokumen terpilih.",
+);
+assert.match(
+  publicDetailHtml,
+  /winner-repository\.js[\s\S]*archive-repository\.js/,
+  "Detail Arsip public harus memuat renderer Pemenang sebelum renderer Arsip.",
+);
+assert.match(
+  detailHtml,
+  /winner-repository\.js[\s\S]*archive-repository\.js/,
+  "Preview editor Detail Arsip harus memuat renderer Pemenang sebelum renderer Arsip.",
+);
 
 console.log(
   "Audit relasi Arsip lulus: owner lomba, kategori, pemenang, dokumen, SK, tombstone, serta dampak ke Unduh/Pemenang tervalidasi.",

@@ -10,6 +10,7 @@
   };
   if (Object.values(sections).some((section) => !section)) return;
   let apiWinnerCategories = null;
+  let renderedHomeState = getHomeAdminState();
 
   function esc(value = "") {
     return String(value).replace(
@@ -37,13 +38,24 @@
 
   function assetUrl(value = "", fallback = "") {
     const source = String(value || fallback).trim();
-    if (/^(?:data:|blob:|https?:\/\/)/i.test(source)) return source;
+    if (/^(?:data:|blob:)/i.test(source)) return source;
+    const base =
+      window.TalentaConfig?.apiBaseUrl &&
+      window.TalentaConfig.apiBaseUrl.startsWith("http")
+        ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
+        : location.origin;
+    if (/^https?:\/\//i.test(source)) {
+      try {
+        const parsed = new URL(source);
+        if (/^\/api\/v1\/public\/media\/[0-9a-f-]+$/i.test(parsed.pathname))
+          return new URL(
+            `${parsed.pathname}${parsed.search}${parsed.hash}`,
+            base,
+          ).href;
+      } catch {}
+      return source;
+    }
     if (source.startsWith("/api/")) {
-      const base =
-        window.TalentaConfig?.apiBaseUrl &&
-        window.TalentaConfig.apiBaseUrl.startsWith("http")
-          ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-          : location.origin;
       return new URL(source, base).href;
     }
     const match = source.match(
@@ -137,6 +149,7 @@
       display,
       { resolveAsset: assetUrl },
     );
+    activateWinnerCardFallbacks(sections.winner);
   }
 
   function renderPartners(partners) {
@@ -154,6 +167,7 @@
   }
 
   function renderHome(state = getHomeAdminState()) {
+    renderedHomeState = state;
     // Highlight Pemenang selalu menjadi section pertama setelah Hero.
     sections.hero.insertAdjacentElement("afterend", sections.winner);
     renderHero(state.hero);
@@ -192,29 +206,35 @@
         name: category.name,
         icon: category.icon,
         winners: (category.winners || []).map((winner) => ({
-          name: winner.fullName || winner.name,
-          rank: winner.rankLabel || winner.rank,
-          school: winner.school,
-          exam: winner.examNumber || winner.exam,
-          regency: winner.regency,
-          province: winner.province,
-          photo: (() => {
-            if (winner.photoUrl) {
-              const base =
-                window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
-                  ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-                  : location.origin;
-              return new URL(winner.photoUrl, base).href;
-            }
-            if (winner.photoAssetId) {
-              return assetUrl(`/api/v1/public/media/${winner.photoAssetId}`);
-            }
-            return winner.photo || "";
-          })(),
+          name: winner.fullName || winner.name || "",
+          rank: winner.rankLabel || winner.rank || "",
+          school: winner.school || "",
+          exam: winner.examNumber || winner.exam || "",
+          district: winner.district || "",
+          regency: winner.regency || "",
+          province: winner.province || "",
+          displayMode: winner.displayMode || "built_in",
+          designAssetId: winner.designAssetId || null,
+          design:
+            winner.designUrl || winner.design || winner.designAssetId
+              ? assetUrl(
+                  winner.designUrl ||
+                    winner.design ||
+                    `/api/v1/public/media/${winner.designAssetId}`,
+                )
+              : "",
+          photoAssetId: winner.photoAssetId || null,
+          photo:
+            winner.photoUrl || winner.photo || winner.photoAssetId
+              ? assetUrl(
+                  winner.photoUrl ||
+                    winner.photo ||
+                    `/api/v1/public/media/${winner.photoAssetId}`,
+                )
+              : "",
         })),
       }));
-      const currentState = getHomeAdminState();
-      renderWinner(currentState.winnerHighlight);
+      renderWinner(renderedHomeState.winnerHighlight);
     })
     .catch((error) =>
       console.error("Winner Highlight API tidak tersedia.", error),

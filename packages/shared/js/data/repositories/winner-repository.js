@@ -155,11 +155,16 @@ function normalizeWinnerManagerState(source) {
         .map((winner) => ({
           id: winnerString(winner.id),
           rank: winnerString(winner.rank),
+          displayMode: winner.displayMode === "custom" ? "custom" : "built_in",
+          designAssetId: winnerString(winner.designAssetId) || null,
+          design: winnerString(winner.design || winner.designUrl),
           name: winnerString(winner.name),
           school: winnerString(winner.school),
           exam: winnerString(winner.exam),
+          district: winnerString(winner.district),
           regency: winnerString(winner.regency),
           province: winnerString(winner.province),
+          photoAssetId: winnerString(winner.photoAssetId) || null,
           photo: winnerString(winner.photo),
           active: winner.active !== false,
         })),
@@ -334,9 +339,33 @@ function buildWinnerMetaMarkup(winner, page) {
   ].join("");
 }
 
-function buildWinnerCardMarkup(winner, page) {
-  const photoUrl = typeof TalentaMedia !== 'undefined' && winner.photo ? TalentaMedia.url(winner.photo) : winner.photo;
-  return `<article class="champion-card">${page.showPhoto ? `<div class="champion-card__photo">${winner.photo ? `<img src="${winnerEscape(winnerSafeUrl(photoUrl))}" alt="Foto ${winnerEscape(winner.name)}" />` : winnerEscape(winnerInitials(winner.name))}</div>` : ""}<p class="champion-card__rank t-mono">${winnerEscape(winner.rank)}</p><p class="champion-card__name">${winnerEscape(winner.name || "—")}</p>${page.showSchool ? `<p class="champion-card__school">${winnerEscape(winner.school)}</p>` : ""}<div class="champion-card__meta">${buildWinnerMetaMarkup(winner, page)}</div></article>`;
+function buildWinnerCardMarkup(winner, page, options = {}) {
+  const resolveAsset = options.resolveAsset || ((value) => value || "");
+  const rank = winner.rank || "Pemenang";
+  if (winner.displayMode === "custom") {
+    const designUrl = resolveAsset(
+      winner.design || winner.designUrl || winner.designAssetId,
+    );
+    return `<article class="champion-card champion-card--custom"><span class="champion-card__fallback">${winnerEscape(rank)}</span>${designUrl ? `<img class="champion-card__design" loading="lazy" decoding="async" src="${winnerEscape(winnerSafeUrl(designUrl))}" alt="${winnerEscape(rank)}">` : ""}</article>`;
+  }
+  const photoUrl = resolveAsset(winner.photo || winner.photoAssetId);
+  return `<article class="champion-card champion-card--built-in">${page.showPhoto ? `<div class="champion-card__photo">${photoUrl ? `<img src="${winnerEscape(winnerSafeUrl(photoUrl))}" alt="Foto ${winnerEscape(winner.name)}" />` : winnerEscape(winnerInitials(winner.name))}</div>` : ""}<p class="champion-card__rank t-mono">${winnerEscape(rank)}</p><p class="champion-card__name">${winnerEscape(winner.name || "—")}</p>${page.showSchool ? `<p class="champion-card__school">${winnerEscape(winner.school)}</p>` : ""}<div class="champion-card__meta">${buildWinnerMetaMarkup(winner, page)}</div></article>`;
+}
+
+function activateWinnerCardFallbacks(root) {
+  root.querySelectorAll(".champion-card--custom").forEach((card) => {
+    const image = card.querySelector(".champion-card__design");
+    if (!image) return;
+    const ready = () => card.classList.add("is-image-ready");
+    const failed = () => image.remove();
+    if (image.complete) {
+      if (image.naturalWidth) ready();
+      else failed();
+      return;
+    }
+    image.addEventListener("load", ready, { once: true });
+    image.addEventListener("error", failed, { once: true });
+  });
 }
 
 function buildWinnerArchiveMarkup(page, archives, options = {}) {
@@ -355,7 +384,7 @@ function buildWinnerPageMarkup(source, options = {}) {
       ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${winnerEscape(manager.sk.title)}</h3><p>${winnerEscape(manager.sk.description)}</p></div></div><a href="${winnerEscape(winnerSafeUrl(manager.sk.url))}" class="btn btn--primary" style="border:1px solid rgba(255,255,255,.2)"${manager.sk.url ? ' target="_blank" rel="noopener"' : ""}><i data-lucide="download" style="width:16px;height:16px"></i> Unduh PDF</a></div>`
       : "";
   const categories = manager.categories.length
-    ? `<div class="winner-section">${manager.categories.map((category) => `<div class="winner-group"><h3 class="winner-group__title"><i data-lucide="${winnerEscape(category.icon || "trophy")}" style="width:20px;height:20px;stroke-width:1.75;color:var(--c-primary)"></i>${winnerEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildWinnerCardMarkup(winner, page)).join("")}</div></div>`).join("")}</div>`
+    ? `<div class="winner-section">${manager.categories.map((category) => `<div class="winner-group"><h3 class="winner-group__title"><i data-lucide="${winnerEscape(category.icon || "trophy")}" style="width:20px;height:20px;stroke-width:1.75;color:var(--c-primary)"></i>${winnerEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildWinnerCardMarkup(winner, page, options)).join("")}</div></div>`).join("")}</div>`
     : '<div class="public-empty-state"><i data-lucide="trophy"></i><h2 class="t-h3">Belum ada pemenang</h2><p>Data pemenang belum dipublikasikan.</p></div>';
   return `<div class="container"><div class="section__header${headerClass}"><p class="t-eyebrow">${winnerEscape(page.eyebrow)}</p><h1 class="t-h1">${winnerEscape(page.title)}</h1><p>${winnerEscape(page.description)}</p></div>${sk}${categories}${buildWinnerArchiveMarkup(page, archives, options)}</div>`;
 }

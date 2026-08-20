@@ -120,12 +120,18 @@ function normalizeArchiveCompetition(source) {
         .map((winner) => ({
           id: archiveString(winner.id),
           rank: archiveString(winner.rank),
+          displayMode:
+            winner.displayMode === "custom" ? "custom" : "built_in",
+          designAssetId: archiveString(winner.designAssetId) || null,
+          design: archiveSafeUrl(winner.design || winner.designUrl || "", ""),
           name: archiveString(winner.name),
           school: archiveString(winner.school),
           exam: archiveString(winner.exam),
+          district: archiveString(winner.district),
           regency: archiveString(winner.regency),
           province: archiveString(winner.province),
-          photo: archiveSafeUrl(winner.photo || "", ""),
+          photoAssetId: archiveString(winner.photoAssetId) || null,
+          photo: archiveSafeUrl(winner.photo || winner.photoUrl || "", ""),
           active: winner.active !== false,
         })),
     }));
@@ -467,12 +473,14 @@ function buildArchiveListMarkup(page, competitions, options = {}) {
   return `<section class="section" id="arsip"><div class="container"><div class="section__header${leftClass}"><p class="t-eyebrow">${archiveEscape(page.eyebrow)}</p><h1 class="t-h1">${archiveEscape(page.title)}</h1><p>${archiveEscape(page.description)}</p></div>${competitions.length ? `<div class="grid grid--3">${competitions.map((competition) => `<a href="${archiveEscape(archiveSafeUrl(archiveHref(competition)))}" class="lomba-card"><div class="lomba-card__thumb">${buildArchiveIconMarkup(competition)}</div><div class="lomba-card__body"><h2 class="lomba-card__title">${archiveEscape(competition.name)}</h2><span class="lomba-card__action">${archiveEscape(page.action)} <i data-lucide="arrow-right"></i></span></div></a>`).join("")}</div>` : '<div class="public-empty-state"><i data-lucide="archive-x"></i><h2 class="t-h2">Belum ada arsip</h2><p>Belum ada ajang terdahulu yang dipublikasikan.</p></div>'}</div></section>`;
 }
 
-function buildArchiveWinnerMetaMarkup(winner, detail) {
-  return `<div class="champion-card__meta">${detail.showExam ? `<span><span class="meta-label">No. Ujian:</span> ${archiveEscape(winner.exam || "-")}</span>` : ""}${detail.showRegency ? `<span><span class="meta-label">Kabupaten:</span> ${archiveEscape(winner.regency || "-")}</span>` : ""}${detail.showProvince ? `<span><span class="meta-label">Provinsi:</span> ${archiveEscape(winner.province || "-")}</span>` : ""}</div>`;
-}
-
 function buildArchiveWinnerCardMarkup(winner, detail) {
-  return `<article class="champion-card">${detail.showPhoto ? `<div class="champion-card__photo">${winner.photo && winner.photo !== "#" ? `<img src="${archiveEscape(typeof TalentaMedia !== "undefined" ? TalentaMedia.url(winner.photo) : winner.photo)}" alt="Foto ${archiveEscape(winner.name)}">` : archiveInitials(winner.name)}</div>` : ""}<p class="champion-card__rank t-mono">${archiveEscape(winner.rank)}</p><p class="champion-card__name">${archiveEscape(winner.name)}</p>${detail.showSchool ? `<p class="champion-card__school">${archiveEscape(winner.school || "-")}</p>` : ""}${buildArchiveWinnerMetaMarkup(winner, detail)}</article>`;
+  return buildWinnerCardMarkup(winner, {
+    showPhoto: detail.showPhoto,
+    showSchool: detail.showSchool,
+    showExam: detail.showExam,
+    showRegency: detail.showRegency,
+    showProvince: detail.showProvince,
+  });
 }
 
 function buildArchiveDetailMarkup(source, options = {}) {

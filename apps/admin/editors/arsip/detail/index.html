@@ -132,13 +132,6 @@
                   <label for="detailWinnersTitle">Judul section</label
                   ><input class="form-input" id="detailWinnersTitle" />
                 </div>
-                <div class="admin-field">
-                  <label>Banner SK</label
-                  ><label class="editor-check"
-                    ><input type="checkbox" id="detailShowSk" /> Tampilkan bila
-                    tersedia</label
-                  >
-                </div>
               </div>
               <div class="wm-metadata-options" id="detailMetaOptions">
                 <label
@@ -195,25 +188,39 @@
                   <label for="detailDocumentsTitle">Judul section</label
                   ><input class="form-input" id="detailDocumentsTitle" />
                 </div>
-                <div class="admin-field">
-                  <label for="detailSkDocument">Dokumen untuk banner SK</label
-                  ><select class="form-input" id="detailSkDocument"></select>
+              </div>
+              <div class="detail-sk-settings">
+                <div class="detail-sk-settings__head">
+                  <div>
+                    <strong>Banner SK</strong>
+                    <small>Banner hanya tampil bila dokumen dipilih.</small>
+                  </div>
+                  <label class="admin-switch admin-switch--label"
+                    ><input id="detailShowSk" type="checkbox" /><span></span
+                    ><em>Tampilkan banner SK</em></label
+                  >
                 </div>
-                <div class="admin-field">
-                  <label for="detailSkTitle">Judul banner SK</label
-                  ><input
-                    class="form-input"
-                    id="detailSkTitle"
-                    placeholder="SK Penetapan Pemenang"
-                  />
-                </div>
-                <div class="admin-field admin-field--wide">
-                  <label for="detailSkDescription">Deskripsi banner SK</label
-                  ><textarea
-                    class="form-input editor-textarea"
-                    id="detailSkDescription"
-                    placeholder="Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah."
-                  ></textarea>
+                <div class="admin-form-grid">
+                  <div class="admin-field">
+                    <label for="detailSkDocument">Dokumen untuk banner SK</label
+                    ><select class="form-input" id="detailSkDocument"></select>
+                  </div>
+                  <div class="admin-field">
+                    <label for="detailSkTitle">Judul banner SK</label
+                    ><input
+                      class="form-input"
+                      id="detailSkTitle"
+                      placeholder="SK Penetapan Pemenang"
+                    />
+                  </div>
+                  <div class="admin-field admin-field--wide">
+                    <label for="detailSkDescription">Deskripsi banner SK</label
+                    ><textarea
+                      class="form-input editor-textarea"
+                      id="detailSkDescription"
+                      placeholder="Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah."
+                    ></textarea>
+                  </div>
                 </div>
               </div>
               <div
@@ -291,6 +298,7 @@
     <script src="../../../../../packages/shared/js/core/media-client.js"></script>
     <script src="../../../../../packages/shared/js/data/mock-archive-database.js"></script>
     <script src="../../../../../packages/shared/js/data/repositories/settings-repository.js"></script>
+    <script src="../../../../../packages/shared/js/data/repositories/winner-repository.js"></script>
     <script src="../../../../../packages/shared/js/data/repositories/archive-repository.js"></script>
     <script src="../../../js/shared/dialog.js"></script>
     <script src="../../../js/features/archive/detail-api.js"></script>

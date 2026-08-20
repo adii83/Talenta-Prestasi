@@ -53,19 +53,28 @@
   function activeDocument() {
     return editor.hidden ? document : frame.contentDocument;
   }
+  function editorContext() {
+    return activeDocument()?.defaultView?.TalentaEditor;
+  }
   function nativeActions() {
     const doc = activeDocument();
     const bar = doc && doc.querySelector(".admin-savebar");
+    const context = editorContext();
     return {
       save:
-        doc?.defaultView?.TalentaEditor?.save ||
+        context?.save ||
         (() => bar?.querySelector('button[type="submit"]')?.click()),
       revert:
-        doc?.defaultView?.TalentaEditor?.revert ||
+        context?.revert ||
         (() => {
           if (!editor.hidden) frame.contentWindow.location.reload();
         }),
     };
+  }
+  function publicationEventId() {
+    return (
+      editorContext()?.eventId || TalentaAdminAuth.currentEvent()?.id || null
+    );
   }
   function syncActions() {
     const actions = nativeActions();
@@ -117,12 +126,15 @@
     return url.href;
   }
   async function refreshPublication() {
-    const event = TalentaAdminAuth.currentEvent();
-    if (!event?.id) return;
+    const eventId = publicationEventId();
+    if (!eventId) return;
     try {
-      publication = (
-        await TalentaApi.request(`/admin/events/${event.id}/publication-status`)
+      const requestedEventId = eventId;
+      const nextPublication = (
+        await TalentaApi.request(`/admin/events/${eventId}/publication-status`)
       ).data;
+      if (requestedEventId !== publicationEventId()) return;
+      publication = nextPublication;
       const labels = {
         unpublished: "Belum pernah dipublikasikan",
         draft: "Ada perubahan draf",
@@ -148,9 +160,14 @@
     doc.documentElement.dataset.dirtyBound = "true";
     doc.addEventListener("input", () => (dirty = true));
     doc.addEventListener("change", () => (dirty = true));
-    doc.addEventListener("submit", () => {
+    doc.addEventListener("talenta:editor-dirty", () => (dirty = true));
+    doc.addEventListener("talenta:editor-saved", () => {
       dirty = false;
-      setTimeout(refreshPublication, 400);
+      void refreshPublication();
+    });
+    doc.addEventListener("talenta:editor-ready", () => {
+      syncActions();
+      void refreshPublication();
     });
   }
   async function canLeave() {
@@ -199,15 +216,30 @@
     await refreshPublication();
   }
   async function openPreview() {
-    const event = TalentaAdminAuth.currentEvent();
-    if (!event?.id) return;
+    const eventId = publicationEventId();
+    if (!eventId) return;
     previewButton.disabled = true;
     try {
       const { data } = await TalentaApi.request(
-        `/admin/events/${event.id}/preview-token`,
+        `/admin/events/${eventId}/preview-token`,
         { method: "POST" },
       );
-      open(publicUrl(routeName(), data.token), "_blank", "noopener");
+      const actions = editorContext();
+      const currentPreviewToken =
+        actions?.currentEventId && actions.currentEventId !== eventId
+          ? (
+              await TalentaApi.request(
+                `/admin/events/${actions.currentEventId}/preview-token`,
+                { method: "POST" },
+              )
+            ).data.token
+          : data.token;
+      open(
+        actions?.publicUrl?.(data.token, currentPreviewToken) ||
+          publicUrl(routeName(), data.token),
+        "_blank",
+        "noopener",
+      );
     } catch (error) {
       window.showToast?.(error.message, true);
     } finally {
@@ -215,7 +247,8 @@
     }
   }
   async function publishDraft() {
-    const event = TalentaAdminAuth.currentEvent();
+    const eventId = publicationEventId();
+    if (!eventId) return;
     const modules = publication?.changedModules?.join(", ") || "seluruh Event";
     if (
       !(await adminConfirm({
@@ -227,7 +260,7 @@
     )
       return;
     try {
-      await TalentaApi.request(`/admin/events/${event.id}/publish`, {
+      await TalentaApi.request(`/admin/events/${eventId}/publish`, {
         method: "POST",
         body: {
           expectedVersion: publication?.eventVersion,
@@ -241,7 +274,8 @@
     }
   }
   async function discardDraft() {
-    const event = TalentaAdminAuth.currentEvent();
+    const eventId = publicationEventId();
+    if (!eventId) return;
     if (
       !(await adminConfirm({
         title: "Batalkan seluruh perubahan draf?",
@@ -254,7 +288,7 @@
     )
       return;
     try {
-      await TalentaApi.request(`/admin/events/${event.id}/discard-draft`, {
+      await TalentaApi.request(`/admin/events/${eventId}/discard-draft`, {
         method: "POST",
         body: {
           expectedVersion: publication?.eventVersion,
@@ -301,7 +335,7 @@
       try {
         await nativeActions().save?.();
         dirty = false;
-        setTimeout(refreshPublication, 400);
+        await refreshPublication();
       } catch (error) {
         window.showToast?.(error.message, true);
       }
@@ -313,6 +347,7 @@
       view.classList.remove("admin-route-view--loading");
       bindDirty(frame.contentDocument);
       syncActions();
+      void refreshPublication();
     });
     addEventListener("popstate", () => void render(routeName()));
     addEventListener("beforeunload", (event) => {

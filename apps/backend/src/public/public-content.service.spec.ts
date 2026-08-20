@@ -155,6 +155,83 @@ describe('PublicContentService', () => {
     );
   });
 
+  it('includes custom winner mode and design media in public aggregates', async () => {
+    const db = {
+      query: jest.fn((sql: string) => {
+        if (
+          sql.includes('FROM event_sites event') &&
+          sql.includes('event.id=$1')
+        )
+          return Promise.resolve([
+            {
+              eventId: 'event-1',
+              categoryId: 'category-1',
+              categoryName: 'Octal',
+              categorySlug: 'octal',
+              eventName: 'Octal',
+              eventSlug: '2027',
+              periodYear: 2027,
+              batchNumber: null,
+              batchLabel: null,
+              organizerName: 'Talenta',
+              logoAssetId: null,
+              navbarLogoSize: 36,
+              primaryColor: '#123456',
+              navigation: {},
+              contact: {},
+              footer: {},
+              seo: {},
+              description: '',
+              mascotAssetId: null,
+              fallbackIcon: 'star',
+            },
+          ]);
+        if (sql.includes('FROM winner_categories')) {
+          expect(sql).toContain("'displayMode',winner.display_mode");
+          expect(sql).toContain("'designAssetId',winner.design_asset_id");
+          expect(sql).toContain("'designUrl',CASE");
+          expect(sql).toContain("'district',winner.district");
+          return Promise.resolve([
+            {
+              name: 'Sains',
+              winners: [
+                {
+                  rankLabel: 'Juara 1',
+                  displayMode: 'custom',
+                  designAssetId: 'design-1',
+                  designUrl: '/api/v1/public/media/design-1',
+                },
+              ],
+            },
+          ]);
+        }
+        if (sql.includes('FROM home_sections')) return Promise.resolve([]);
+        if (sql.includes('FROM download_tabs')) return Promise.resolve([]);
+        if (sql.includes('FROM faq_categories')) return Promise.resolve([]);
+        if (sql.includes('FROM winner_page_settings')) return Promise.resolve([]);
+        if (sql.includes('FROM event_detail_settings')) return Promise.resolve([]);
+        if (sql.includes('FROM event_documents')) return Promise.resolve([]);
+        if (sql.includes('FROM page_settings')) return Promise.resolve([]);
+        throw new Error(`Unexpected query: ${sql}`);
+      }),
+    };
+
+    const result = await new PublicContentService(db as never).build('event-1');
+
+    expect(result.winners.categories).toEqual(result.archiveDetail.categories);
+    expect(result.winners.categories).toEqual([
+      expect.objectContaining({
+        winners: [
+          expect.objectContaining({
+            displayMode: 'custom',
+            designAssetId: 'design-1',
+            designUrl: '/api/v1/public/media/design-1',
+          }),
+        ],
+      }),
+    ]);
+  });
+
   it('rejects restoring a snapshot for another Event', async () => {
     const service = new WorkspaceSnapshotService({} as never);
     await expect(
@@ -205,6 +282,57 @@ describe('PublicContentService', () => {
       calls.findIndex((sql) => sql.includes('INSERT INTO faq_categories')),
     ).toBeLessThan(
       calls.findIndex((sql) => sql.includes('INSERT INTO faq_questions')),
+    );
+  });
+
+  it('captures and restores custom winner columns generically', async () => {
+    const capturedWinner = {
+      id: 'winner-1',
+      event_site_id: 'event-1',
+      display_mode: 'custom',
+      design_asset_id: 'design-1',
+    };
+    const db = {
+      query: jest.fn((sql: string) =>
+        Promise.resolve(
+          sql.includes('FROM event_sites')
+            ? [
+                {
+                  id: 'event-1',
+                  name: 'Octal',
+                  description: '',
+                  logo_asset_id: null,
+                  mascot_asset_id: null,
+                  fallback_icon: 'star',
+                },
+              ]
+            : sql.includes('FROM winners row')
+              ? [{ rows: [capturedWinner] }]
+              : [{ rows: [] }],
+        ),
+      ),
+    };
+    const service = new WorkspaceSnapshotService(db as never);
+
+    const snapshot = await service.capture('event-1');
+    expect(snapshot.rows.winners).toEqual([capturedWinner]);
+
+    const calls: Array<{ sql: string; parameters?: unknown[] }> = [];
+    await service.restore('event-1', snapshot, {
+      query: jest.fn((sql: string, parameters?: unknown[]) => {
+        calls.push({ sql, parameters });
+        return Promise.resolve([]);
+      }),
+    });
+    const winnerInsert = calls.find(({ sql }) =>
+      sql.includes('INSERT INTO winners'),
+    );
+    expect(winnerInsert?.sql).toContain(
+      'jsonb_populate_recordset(NULL::winners',
+    );
+    expect(winnerInsert?.parameters?.[0]).toContain('"display_mode":"custom"');
+    expect(winnerInsert?.parameters?.[0]).toContain(
+      '"design_asset_id":"design-1"',
     );
   });
 

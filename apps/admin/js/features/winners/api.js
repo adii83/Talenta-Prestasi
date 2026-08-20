@@ -28,6 +28,29 @@
       call(`/admin/events/${event.id}/winner-categories`),
       call(`/admin/events/${event.id}/winners`),
     ]);
+    const mappedWinners = await Promise.all(
+      winners.map(async (winner) => ({
+        ...winner,
+        name: winner.fullName || "",
+        rank: winner.rankLabel || "",
+        exam: winner.examNumber || "",
+        district: winner.district || "",
+        photoAssetId: winner.photoAssetId || null,
+        photo:
+          winner.photoUrl ||
+          (winner.photoAssetId
+            ? TalentaMedia.url(winner.photoAssetId)
+            : winner.photo || ""),
+        displayMode: winner.displayMode || "built_in",
+        designAssetId: winner.designAssetId || null,
+        design: winner.designAssetId
+          ? await TalentaMedia.adminPreviewUrl(winner.designAssetId, {
+              siteId: event.id,
+            })
+          : "",
+        active: winner.isActive,
+      })),
+    );
     return {
       ...event,
       name: event.archiveDisplayName || formatWinnerEventName(event),
@@ -45,21 +68,9 @@
       winnerCategories: categories.map((category) => ({
         ...category,
         active: category.isActive,
-        winners: winners
-          .filter((winner) => winner.categoryId === category.id)
-          .map((winner) => ({
-            ...winner,
-            name: winner.fullName,
-            rank: winner.rankLabel,
-            exam: winner.examNumber,
-            photoAssetId: winner.photoAssetId,
-            photo:
-              winner.photoUrl ||
-              (winner.photoAssetId
-                ? TalentaMedia.url(winner.photoAssetId)
-                : winner.photo || ""),
-            active: winner.isActive,
-          })),
+        winners: mappedWinners.filter(
+          (winner) => winner.categoryId === category.id,
+        ),
       })),
     };
   }
@@ -144,6 +155,22 @@
 
   async function save(state, page) {
     if (!eventId) throw new TalentaApi.ApiError("Event belum dipilih", 400);
+    for (const category of state.categories) {
+      for (const winner of category.winners) {
+        if (!winner.displayMode)
+          throw new TalentaApi.ApiError("Pilih jenis tampilan pemenang.", 400);
+        if (winner.displayMode === "custom" && !winner.designAssetId)
+          throw new TalentaApi.ApiError(
+            `${winner.rank || "Pemenang"}: unggah gambar desain sendiri.`,
+            400,
+          );
+        if (winner.displayMode === "built_in" && !winner.name?.trim())
+          throw new TalentaApi.ApiError(
+            `${winner.rank || "Pemenang"}: nama lengkap wajib diisi.`,
+            400,
+          );
+      }
+    }
     const currentCategories = new Set(
       state.categories
         .filter((item) => originalCategoryIds.has(item.id))
@@ -199,13 +226,16 @@
       for (const [winnerIndex, winner] of category.winners.entries()) {
         const winnerBody = {
           categoryId: category.id,
-          fullName: winner.name,
+          displayMode: winner.displayMode,
+          designAssetId: winner.designAssetId ?? null,
+          fullName: winner.name || null,
           rankLabel: winner.rank || "",
-          school: winner.school || "",
-          examNumber: winner.exam || "",
-          regency: winner.regency || "",
-          province: winner.province || "",
-          photoAssetId: winner.photoAssetId || undefined,
+          school: winner.school || null,
+          examNumber: winner.exam || null,
+          district: winner.district || null,
+          regency: winner.regency || null,
+          province: winner.province || null,
+          photoAssetId: winner.photoAssetId ?? null,
           isActive: winner.active !== false,
           sortOrder: winnerIndex,
         };

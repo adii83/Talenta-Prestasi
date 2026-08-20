@@ -89,6 +89,15 @@ Logo Event berbeda dari `mascot_asset_id` dan dari `competition_categories.logo_
 
 `winner_categories` dan `winners` dimiliki Event. Pemenang mereferensikan kategori dengan pasangan `(category_id, event_site_id)`.
 
+Setiap row `winners` memiliki salah satu mode tampilan:
+
+- `display_mode='built_in'`: `full_name` wajib terisi, `design_asset_id` wajib `NULL`, dan `photo_asset_id` boleh mereferensikan foto. Metadata sekolah, nomor ujian, kecamatan/kabupaten, serta provinsi tetap dapat disimpan.
+- `display_mode='custom'`: `design_asset_id` wajib mereferensikan `media_assets`, sedangkan `full_name`, seluruh metadata wilayah/sekolah/ujian, dan `photo_asset_id` wajib `NULL`. `rank_label`, `is_active`, dan `sort_order` tetap disimpan untuk urutan, fallback, serta alt text.
+
+Kolom `display_mode varchar(16) NOT NULL DEFAULT 'built_in'` menormalisasi pemenang existing ke desain bawaan. Kolom `design_asset_id uuid NULL` memiliki foreign key ke `media_assets` dan index parsial `idx_winners_design_asset`. Constraint `chk_winner_display_mode` membatasi nilai ke `built_in` atau `custom`; `chk_winner_mode_consistency` menjaga invariant antarkolom sebagai lapisan terakhir setelah normalisasi atomik backend.
+
+Penghapusan pemenang memadatkan `sort_order`. Label otomatis berformat tepat `<rank_prefix> <nomor>` ikut dinomori ulang, sedangkan label khusus seperti `Medali Emas` dipertahankan. Status nonaktif tidak mengubah nomor.
+
 SK Pemenang disimpan sebagai Event Document dan direferensikan oleh `event_detail_settings.decree_document_id`. Metadata/visibilitas detail arsip berada pada `archive_category_settings` dan `archive_document_settings` dengan ownership Event yang sama.
 
 ## Unduh

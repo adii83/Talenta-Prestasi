@@ -3,6 +3,10 @@
   const root = document.getElementById("archiveDetailPublicRoot");
   if (!root) return;
   const slug = new URLSearchParams(location.search).get("event");
+  const mediaUrl = (url, assetId) => {
+    const source = url || (assetId ? `/api/v1/public/media/${assetId}` : "");
+    return source ? TalentaPublic.mediaUrl(source, "archiveDetail") : "";
+  };
 
   function apiState(data) {
     const visibility = data.settings?.metadataVisibility || {};
@@ -13,6 +17,7 @@
         active: data.settings?.isActive ?? true,
         winnersActive: data.settings?.winnersActive ?? true,
         documentsActive: data.settings?.documentsActive ?? true,
+        showSk: visibility.showSk ?? true,
         showPhoto: visibility.showPhoto ?? true,
         showSchool: visibility.showSchool ?? true,
         showExam: visibility.showExam ?? true,
@@ -22,66 +27,41 @@
       categories: data.categories.map((category) => ({
         name: category.name,
         icon: category.icon,
-        winners: category.winners.map((winner) => {
-          let photo = "";
-          if (winner.photoUrl) {
-            const base =
-              window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
-                ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-                : location.origin;
-            photo = new URL(winner.photoUrl, base).href;
-          } else if (winner.photoAssetId) {
-            const base =
-              window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
-                ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-                : location.origin;
-            photo = new URL(`/api/v1/public/media/${winner.photoAssetId}`, base).href;
-          }
-          return {
-            name: winner.fullName,
-            rank: winner.rankLabel,
-            school: winner.school,
-            exam: winner.examNumber,
-            regency: winner.regency,
-            province: winner.province,
-            photo,
-          };
-        }),
+        winners: category.winners.map((winner) => ({
+          name: winner.fullName,
+          rank: winner.rankLabel,
+          school: winner.school,
+          exam: winner.examNumber,
+          district: winner.district,
+          regency: winner.regency,
+          province: winner.province,
+          displayMode: winner.displayMode || "built_in",
+          designAssetId: winner.designAssetId || null,
+          design: mediaUrl(winner.designUrl, winner.designAssetId),
+          photoAssetId: winner.photoAssetId || null,
+          photo: mediaUrl(winner.photoUrl, winner.photoAssetId),
+        })),
       })),
-      documents: data.documents.map((document) => {
-        let url = "";
-        if (document.url) {
-          const base =
-            window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
-              ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-              : location.origin;
-          url = new URL(document.url, base).href;
-        }
-        return {
-          id: document.id,
-          title: document.title,
-          category: document.category,
-          type: document.fileType || "PDF",
-          size: document.displaySize || "-",
-          url,
-        };
-      }),
+      documents: data.documents.map((document) => ({
+        id: document.id,
+        title: document.title,
+        category: document.category,
+        type: document.fileType || "PDF",
+        size: document.displaySize || "-",
+        url: mediaUrl(document.url, document.assetId),
+      })),
       sk: (() => {
         if (data.decree && (data.decree.url || data.decree.assetId)) {
-          const decreeUrl = data.decree.url
-            ? data.decree.url
-            : `/api/v1/public/media/${data.decree.assetId}`;
-          const base =
-            window.TalentaConfig?.apiBaseUrl && window.TalentaConfig.apiBaseUrl.startsWith("http")
-              ? window.TalentaConfig.apiBaseUrl.replace(/\/api\/v1\/?$/, "")
-              : location.origin;
           return {
-            title: data.decree.title || data.settings?.decreeTitle || "SK Penetapan Pemenang",
+            title:
+              data.decree.title ||
+              data.settings?.decreeTitle ||
+              "SK Penetapan Pemenang",
             description:
               data.decree.description ||
               data.settings?.decreeDescription ||
               "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
-            url: new URL(decreeUrl, base).href,
+            url: mediaUrl(data.decree.url, data.decree.assetId),
             type: data.decree.fileType || "PDF",
             size: data.decree.displaySize || "-",
           };
@@ -91,13 +71,14 @@
         );
         if (!document) return null;
         return {
-          title: data.settings?.decreeTitle || document.title || "SK Penetapan Pemenang",
+          title:
+            data.settings?.decreeTitle ||
+            document.title ||
+            "SK Penetapan Pemenang",
           description:
             data.settings?.decreeDescription ||
             "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
-          url: document.url
-            ? new URL(document.url, location.origin).href
-            : "",
+          url: mediaUrl(document.url, document.assetId),
           type: document.fileType || "PDF",
           size: document.displaySize || "-",
         };
@@ -122,6 +103,7 @@
     root.innerHTML = buildArchiveDetailMarkup(source, {
       archiveHref: () => TalentaPaths.to("publicSite.archive"),
     });
+    activateWinnerCardFallbacks(root);
     lucide.createIcons();
     if (location.hash)
       requestAnimationFrame(() =>
@@ -147,6 +129,7 @@
         winnersActive: state.detail.winnersActive,
         documentsActive: state.detail.documentsActive,
         metadataVisibility: {
+          showSk: state.detail.showSk,
           showPhoto: state.detail.showPhoto,
           showSchool: state.detail.showSchool,
           showExam: state.detail.showExam,
@@ -164,8 +147,13 @@
           rankLabel: winner.rank,
           school: winner.school,
           examNumber: winner.exam,
+          district: winner.district,
           regency: winner.regency,
           province: winner.province,
+          displayMode: winner.displayMode || "built_in",
+          designAssetId: winner.designAssetId || null,
+          designUrl: winner.design,
+          photoAssetId: winner.photoAssetId || null,
           photoUrl: winner.photo,
         })),
       })),

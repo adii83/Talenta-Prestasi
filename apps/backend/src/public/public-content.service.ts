@@ -229,9 +229,12 @@ export class PublicContentService {
               COALESCE(jsonb_agg(jsonb_build_object(
                 'rankLabel',winner.rank_label,'fullName',winner.full_name,
                 'school',winner.school,'examNumber',winner.exam_number,
-                'regency',winner.regency,'province',winner.province,
+                'district',winner.district,'regency',winner.regency,'province',winner.province,
                 'photoAssetId',winner.photo_asset_id,
-                'photoUrl',CASE WHEN winner.photo_asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||winner.photo_asset_id::text END
+                'photoUrl',CASE WHEN winner.photo_asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||winner.photo_asset_id::text END,
+                'displayMode',winner.display_mode,
+                'designAssetId',winner.design_asset_id,
+                'designUrl',CASE WHEN winner.design_asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||winner.design_asset_id::text END
               ) ORDER BY winner.sort_order,winner.id) FILTER (WHERE winner.id IS NOT NULL),'[]') AS winners
        FROM winner_categories category
        LEFT JOIN winners winner ON winner.category_id=category.id AND winner.event_site_id=category.event_site_id AND winner.is_active=true

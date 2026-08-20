@@ -14,6 +14,24 @@ describe('EventPublicationService', () => {
     ).toEqual([id]);
   });
 
+  it('collects custom winner design assets for publication', () => {
+    const designId = '22222222-2222-4222-8222-222222222222';
+    expect(
+      collectAssetIds({
+        winners: {
+          categories: [
+            {
+              winners: [
+                { displayMode: 'built_in', designAssetId: null },
+                { displayMode: 'custom', designAssetId: designId },
+              ],
+            },
+          ],
+        },
+      }),
+    ).toContain(designId);
+  });
+
   it('publishes public and workspace snapshots in one transaction', async () => {
     const manager = {
       query: jest.fn((sql: string) => {

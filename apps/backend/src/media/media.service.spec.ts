@@ -117,6 +117,41 @@ describe('MediaService adminFile', () => {
     );
   });
 
+  it('allows a custom winner design for a valid preview token', async () => {
+    const asset = {
+      id: '22222222-2222-4222-8222-222222222222',
+      storageKey: 'organization-1/winner.webp',
+      status: 'active',
+    };
+    const claims = {
+      eventId: '11111111-1111-4111-8111-111111111111',
+      categoryId: '44444444-4444-4444-8444-444444444444',
+      organizationId: '55555555-5555-4555-8555-555555555555',
+      sub: '33333333-3333-4333-8333-333333333333',
+    };
+    await mkdir(resolve(root, 'organization-1'), { recursive: true });
+    await writeFile(resolve(root, asset.storageKey), Buffer.from('winner'));
+
+    const assets = { findOneBy: jest.fn().mockResolvedValue(asset) };
+    const db = { query: jest.fn().mockResolvedValue([{ id: asset.id }]) };
+    const service = new MediaService(
+      assets as never,
+      db as never,
+      { get: jest.fn().mockReturnValue(root) } as never,
+      { verify: jest.fn().mockResolvedValue(claims) } as never,
+    );
+
+    const result = await service.file(asset.id, 'preview-token');
+
+    expect(result.buffer.toString()).toBe('winner');
+    expect(db.query.mock.calls[0][0]).toContain(
+      'winner.design_asset_id=asset.id',
+    );
+    expect(db.query.mock.calls[0][0]).toContain(
+      'winner.photo_asset_id=asset.id',
+    );
+  });
+
   it('allows an older Event mascot in the active Event archive preview', async () => {
     const asset = {
       id: '22222222-2222-4222-8222-222222222222',
