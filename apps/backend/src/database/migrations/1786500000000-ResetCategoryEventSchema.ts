@@ -31,15 +31,16 @@ export class ResetCategoryEventSchema1786500000000
     await runner.query(`
       CREATE TABLE users (
         id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-        email varchar NOT NULL,
+        username varchar(64) NOT NULL,
         password_hash varchar NOT NULL,
         status varchar NOT NULL DEFAULT 'active',
         last_login_at timestamptz,
         created_at timestamp NOT NULL DEFAULT now(),
-        updated_at timestamp NOT NULL DEFAULT now()
+        updated_at timestamp NOT NULL DEFAULT now(),
+        CONSTRAINT chk_users_username CHECK (username ~ '^[a-z0-9._-]{3,64}$')
       )`);
     await runner.query(
-      `CREATE UNIQUE INDEX uq_users_email ON users (email)`,
+      `CREATE UNIQUE INDEX uq_users_username ON users (username)`,
     );
 
     await runner.query(`

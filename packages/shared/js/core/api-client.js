@@ -20,31 +20,32 @@
   }
 
   async function request(path, options = {}) {
+    await TalentaConfig.ready;
     const { responseType, timeoutMs, auth, previewToken, ...fetchOptions } =
       options;
     const revision =
       window.TalentaWorkspaceRevision ||
       window.parent?.TalentaWorkspaceRevision;
     const eventMatch = path.match(/^\/admin\/events\/([^/?]+)/);
-    const method = String(fetchOptions.method || 'GET').toUpperCase();
+    const method = String(fetchOptions.method || "GET").toUpperCase();
     const mutatesWorkspace =
       eventMatch &&
-      (['PUT', 'PATCH', 'DELETE'].includes(method) ||
-        (method === 'POST' &&
+      (["PUT", "PATCH", "DELETE"].includes(method) ||
+        (method === "POST" &&
           (/\/(documents|winner-categories|winners)$/.test(path) ||
-            path.endsWith('/publish') ||
-            path.endsWith('/discard-draft'))));
+            path.endsWith("/publish") ||
+            path.endsWith("/discard-draft"))));
     if (mutatesWorkspace && revision?.current) {
       const expectedRevision = revision.current(eventMatch[1]);
       if (expectedRevision) {
         if (fetchOptions.body instanceof FormData)
-          fetchOptions.body.set('expectedRevision', String(expectedRevision));
+          fetchOptions.body.set("expectedRevision", String(expectedRevision));
         else
           fetchOptions.body = revision.body(
             fetchOptions.body || {},
             expectedRevision,
           );
-        if (String(fetchOptions.method).toUpperCase() === 'DELETE')
+        if (String(fetchOptions.method).toUpperCase() === "DELETE")
           path = revision.query(path, expectedRevision);
       }
     }

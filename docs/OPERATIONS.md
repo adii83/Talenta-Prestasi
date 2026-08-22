@@ -32,7 +32,7 @@ Variabel backend opsional:
 
 Variabel khusus seed lokal:
 
-- `LOCAL_ADMIN_EMAIL`: email akun Admin lokal;
+- `LOCAL_ADMIN_USERNAME`: username akun Admin lokal;
 - `LOCAL_ADMIN_PASSWORD`: kata sandi akun Admin lokal, minimal 12 karakter.
 
 Gateway membaca variabel opsional berikut:
@@ -42,6 +42,10 @@ Gateway membaca variabel opsional berikut:
 - `BACKEND_PORT`: port backend, default `3000`.
 
 Jangan memasukkan nilai environment, token, atau credential ke dokumentasi dan Git.
+
+`PUBLIC_BASE_DOMAIN` menjadi sumber tunggal domain publik untuk backend, Admin, dan Public Site. Setelah nilainya diubah, restart backend dan muat ulang browser. Frontend mengambil nilai tersebut melalui `/api/v1/public/runtime-config`; source HTML/JavaScript tidak perlu diedit. DNS wildcard, sertifikat TLS wildcard, dan reverse proxy tetap disiapkan oleh tim infrastruktur. Cloudflare tidak wajib; proxy apa pun dapat digunakan selama meneruskan header `Host` asli.
+
+Kategori yang sudah memiliki hostname lama di database tetap memakai hostname tersebut sampai dipublikasikan ulang. Publikasi ulang kategori membentuk hostname baru dari slug kategori dan `PUBLIC_BASE_DOMAIN` aktif.
 
 ## Instalasi Pertama
 
@@ -185,7 +189,7 @@ Jangan memakai force-kill kecuali proses tidak merespons. Pastikan proses yang m
 ## Troubleshooting
 
 - **Backend gagal start:** periksa seluruh environment wajib, panjang `JWT_SECRET`, koneksi PostgreSQL, dan migration.
-- **Seed gagal:** periksa `LOCAL_ADMIN_EMAIL`, panjang `LOCAL_ADMIN_PASSWORD`, dan koneksi database.
+- **Seed gagal:** periksa `LOCAL_ADMIN_USERNAME`, panjang `LOCAL_ADMIN_PASSWORD`, dan koneksi database.
 - **Admin terkena CORS:** samakan origin browser dengan salah satu nilai `CORS_ORIGINS`, lalu restart backend.
 - **Gateway memberi `502`:** pastikan frontend dan backend hidup pada port yang sama dengan konfigurasi gateway.
 - **Gateway memberi `404` untuk kategori:** pastikan kategori berstatus published/aktif, Organization aktif, terdapat tepat satu Event aktif/operasional yang belum soft delete, dan Event tersebut sudah memiliki snapshot publik.

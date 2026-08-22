@@ -73,7 +73,7 @@ export class AdminService {
     private readonly config: ConfigService,
   ) {}
 
-  async session(userId: string, email: string) {
+  async session(userId: string, username: string) {
     const organizations = await this.dataSource.query<
       { id: string; name: string; role: string }[]
     >(
@@ -115,7 +115,7 @@ export class AdminService {
       [userId],
     );
     return {
-      data: { user: { id: userId, email }, organizations, categories: cats },
+      data: { user: { id: userId, username }, organizations, categories: cats },
       errors: [],
     };
   }

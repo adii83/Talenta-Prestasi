@@ -35,7 +35,7 @@ Variabel opsional:
 
 Variabel seed lokal:
 
-- `LOCAL_ADMIN_EMAIL`: email akun Admin lokal;
+- `LOCAL_ADMIN_USERNAME`: username akun Admin lokal;
 - `LOCAL_ADMIN_PASSWORD`: kata sandi akun Admin lokal, minimal 12 karakter.
 
 Simpan nilai lokal di environment atau `apps/backend/.env`; jangan masukkan credential ke Git.

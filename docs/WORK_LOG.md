@@ -17,6 +17,23 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-22 — Domain Publik Runtime Provider-Netral
+
+- **Permintaan**: Membuat domain production dapat dikonfigurasi tim client hanya melalui `PUBLIC_BASE_DOMAIN` tanpa mengedit source frontend dan tanpa ketergantungan wajib pada Cloudflare.
+- **Proses/Keputusan**: Menambahkan endpoint publik read-only `/api/v1/public/runtime-config`. Frontend memuat domain dari endpoint sebelum request Admin/Public pertama, mempertahankan URL API lokal pada `localhost`, dan tetap mengutamakan hostname kategori yang tersimpan. Cloudflare, Nginx, Caddy, Apache, Traefik, atau proxy lain dapat digunakan selama wildcard DNS/TLS tersedia dan header `Host` asli diteruskan.
+- **File**: Public controller backend, runtime config dan API client shared, audit runtime config, package script, panduan setup, serta dokumentasi operasional.
+- **Validasi**: E2E endpoint runtime config dan audit frontend dijalankan dengan siklus red-green. Validasi penuh dicatat setelah seluruh suite selesai.
+- **Kendala**: Hostname kategori lama di database tidak diubah otomatis; kategori perlu dipublikasikan ulang setelah domain berubah.
+
+### 2026-08-22 — Login Admin Berbasis Username
+
+- **Permintaan**: Mengganti identitas autentikasi Admin dari email menjadi username dan mengganti konfigurasi seed `LOCAL_ADMIN_EMAIL` menjadi `LOCAL_ADMIN_USERNAME`.
+- **Proses/Keputusan**: Login hanya menerima `username` dan `password`; field email lama ditolak. Username dinormalisasi menjadi huruf kecil dengan karakter `a-z`, `0-9`, `.`, `_`, `-` sepanjang 3–64 karakter. Migration mempertahankan UUID pengguna, mengambil bagian email sebelum `@`, dan menyelesaikan bentrok secara deterministik berdasarkan ID dengan akhiran `-2`, `-3`, dan seterusnya. JWT tetap memakai UUID sebagai `sub`; username hanya menjadi identitas tampilan. Migration dibuat kompatibel dengan database lama yang masih memiliki kolom `email` dan database baru yang reset schema-nya sudah memiliki kolom `username`.
+- **File**: Migration dan reset schema pengguna, entity `User`, controller/service/JWT/decorator autentikasi, session Admin, seed lokal, form login dan dashboard Admin, unit/E2E tests, README backend, panduan setup, serta dokumentasi operasional.
+- **Validasi**: Backend unit test 12 suite / 114 test lulus; backend build lulus; E2E autentikasi dan Admin 2 suite / 11 test lulus; `npm run check:js` lulus 46 file; `npm run check:routes` lulus 13 route; Prettier scope lulus.
+- **Kendala**: Migration dan seed tidak dijalankan pada database aktif sesuai batasan pekerjaan. Rollback migration menghasilkan alamat lokal `<username>@legacy.local`, bukan memulihkan email asli.
+- **Tindak lanjut**: Jalankan migration melalui prosedur operasional pada database target yang sudah dicadangkan, lalu login memakai `LOCAL_ADMIN_USERNAME` dan `LOCAL_ADMIN_PASSWORD`. Commit, push, dan deployment tidak dilakukan.
+
 ### 2026-08-21 — Multi-SK Pemenang dan Banner Arsip
 
 - **Permintaan**: Mengubah SK Pemenang tunggal menjadi beberapa SK per Event, dengan label tombol Banner yang dapat dikustom, Banner Arsip otomatis, override label khusus Arsip, dan SK tetap tampil sebagai dokumen biasa pada Dokumen Terkait.

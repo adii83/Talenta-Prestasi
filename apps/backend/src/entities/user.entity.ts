@@ -15,8 +15,8 @@ export class User {
   id!: string;
 
   @Index({ unique: true })
-  @Column()
-  email!: string;
+  @Column({ type: 'varchar', length: 64 })
+  username!: string;
 
   @Column({ name: 'password_hash' })
   passwordHash!: string;

@@ -13,8 +13,11 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<User> {
-    const user = await this.userRepo.findOne({ where: { email } });
+  async validateUser(username: string, password: string): Promise<User> {
+    const normalizedUsername = username.trim().toLowerCase();
+    const user = await this.userRepo.findOne({
+      where: { username: normalizedUsername },
+    });
     if (!user || user.status !== 'active') {
       throw new UnauthorizedException('Kredensial tidak valid');
     }
@@ -25,15 +28,15 @@ export class AuthService {
     return user;
   }
 
-  async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
+  async login(username: string, password: string) {
+    const user = await this.validateUser(username, password);
     user.lastLoginAt = new Date();
     await this.userRepo.save(user);
 
-    const payload = { sub: user.id, email: user.email };
+    const payload = { sub: user.id, username: user.username };
     return {
       access_token: this.jwtService.sign(payload),
-      user: { id: user.id, email: user.email },
+      user: { id: user.id, username: user.username },
     };
   }
 

@@ -9,8 +9,82 @@ import { AddWinnerDecreeLabels1787356800000 } from './1787356800000-AddWinnerDec
 import { AddWinnerDecreeBannerTitle1787443200000 } from './1787443200000-AddWinnerDecreeBannerTitle';
 import { FixEventDetailDecreeForeignKeyColumns1787616000000 } from './1787616000000-FixEventDetailDecreeForeignKeyColumns';
 import { ResetCategoryEventSchema1786500000000 } from './1786500000000-ResetCategoryEventSchema';
+import { ReplaceUserEmailWithUsername1787961600000 } from './1787961600000-ReplaceUserEmailWithUsername';
 
 describe('ResetCategoryEventSchema migration', () => {
+  it('creates username-only users in the reset schema', async () => {
+    const queries: string[] = [];
+    const runner = {
+      query: jest.fn((sql: string) => {
+        queries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    };
+
+    await new ResetCategoryEventSchema1786500000000().up(runner as never);
+
+    const source = queries.join('\n');
+    expect(source).toContain('username varchar(64) NOT NULL');
+    expect(source).toContain('CONSTRAINT chk_users_username');
+    expect(source).toContain("username ~ '^[a-z0-9._-]{3,64}$'");
+    expect(source).toContain('CREATE UNIQUE INDEX uq_users_username');
+    expect(source).not.toContain('uq_users_email');
+  });
+
+  it('replaces user email with normalized unique username without recreating users', async () => {
+    const queries: string[] = [];
+    const runner = {
+      query: jest.fn((sql: string) => {
+        queries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    };
+
+    await new ReplaceUserEmailWithUsername1787961600000().up(
+      runner as never,
+    );
+
+    const source = queries.join('\n');
+    expect(source).toContain("column_name = 'email'");
+    expect(source).toContain(
+      'ALTER TABLE "users" RENAME COLUMN "email" TO "username"',
+    );
+    expect(source).toContain('DROP INDEX IF EXISTS "uq_users_username"');
+    expect(source).toContain(
+      'ALTER TABLE "users" DROP CONSTRAINT IF EXISTS "chk_users_username"',
+    );
+    expect(source).toContain(
+      "split_part(lower(trim(user_row.username)), '@', 1)",
+    );
+    expect(source).toContain('SELECT id, username FROM users ORDER BY id');
+    expect(source).toContain("candidate := left(base_username, 64 - length(suffix::text) - 1)");
+    expect(source).toContain('chk_users_username');
+    expect(source).toContain("username ~ '^[a-z0-9._-]{3,64}$'");
+    expect(source).toContain('CREATE UNIQUE INDEX "uq_users_username"');
+    expect(source).not.toContain('DROP TABLE "users"');
+  });
+
+  it('rolls username back to a unique local email', async () => {
+    const queries: string[] = [];
+    const runner = {
+      query: jest.fn((sql: string) => {
+        queries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    };
+
+    await new ReplaceUserEmailWithUsername1787961600000().down(
+      runner as never,
+    );
+
+    const source = queries.join('\n');
+    expect(source).toContain("username || '@legacy.local'");
+    expect(source).toContain(
+      'ALTER TABLE "users" RENAME COLUMN "username" TO "email"',
+    );
+    expect(source).toContain('CREATE UNIQUE INDEX');
+  });
+
   it('does not drop the public schema that contains the TypeORM migration ledger', async () => {
     const queries: string[] = [];
     const runner = {

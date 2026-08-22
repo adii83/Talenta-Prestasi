@@ -7,6 +7,7 @@
     "tunnel": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run-cloudflare-tunnel.ps1",
     "check:routes": "node scripts/validate-routes.mjs",
     "check:js": "node scripts/check-js.mjs",
+    "test:runtime-config": "node scripts/audit-runtime-config.mjs",
     "check:theme": "node scripts/audit-theme-sync.mjs",
     "test:theme-browser": "node scripts/browser-theme-audit.mjs",
     "test:home-parity": "node scripts/browser-home-hero-parity.mjs",

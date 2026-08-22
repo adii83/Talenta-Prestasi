@@ -21,8 +21,8 @@
         <p style="margin:0 0 8px;color:#1e4b8c;font-weight:800;letter-spacing:.08em;text-transform:uppercase;font-size:.75rem">Talenta Prestasi</p>
         <h1 style="margin:0;color:#071a33;font-size:clamp(1.75rem,5vw,2.25rem)">Masuk ke Admin</h1>
         <p style="margin:10px 0 24px;color:#52657a;line-height:1.6">Gunakan akun pengelola portal untuk melanjutkan.</p>
-        <label for="adminLoginEmail" style="display:block;margin:0 0 8px;font-weight:700;color:#172b45">Email</label>
-        <input id="adminLoginEmail" name="email" type="email" autocomplete="username" required maxlength="254" style="box-sizing:border-box;width:100%;padding:12px 14px;border:1px solid #c8d3df;border-radius:10px;font:inherit" />
+        <label for="adminLoginUsername" style="display:block;margin:0 0 8px;font-weight:700;color:#172b45">Username</label>
+        <input id="adminLoginUsername" name="username" type="text" autocomplete="username" required minlength="3" maxlength="64" pattern="[a-z0-9._-]+" style="box-sizing:border-box;width:100%;padding:12px 14px;border:1px solid #c8d3df;border-radius:10px;font:inherit" />
         <label for="adminLoginPassword" style="display:block;margin:18px 0 8px;font-weight:700;color:#172b45">Kata sandi</label>
         <input id="adminLoginPassword" name="password" type="password" autocomplete="current-password" required minlength="8" maxlength="128" style="box-sizing:border-box;width:100%;padding:12px 14px;border:1px solid #c8d3df;border-radius:10px;font:inherit" />
         <p id="adminLoginError" role="alert" aria-live="polite" style="min-height:1.5em;margin:12px 0 0;color:#a1263a"></p>
@@ -51,15 +51,15 @@
     const form = document.getElementById("adminLoginForm");
     const error = document.getElementById("adminLoginError");
     const button = document.getElementById("adminLoginButton");
-    async function authenticate(email, password) {
+    async function authenticate(username, password) {
       button.disabled = true;
       button.textContent = "Memeriksa...";
       error.textContent = "";
       try {
-        if (email !== undefined) {
+        if (username !== undefined) {
           const login = await TalentaApi.request("/auth/login", {
             method: "POST",
-            body: { email, password },
+            body: { username, password },
           });
           TalentaApi.setToken(login.access_token);
           sessionStorage.removeItem(CATEGORY_KEY);
@@ -69,7 +69,7 @@
         gate.remove();
         document.dispatchEvent(
           new CustomEvent("talenta:admin-ready", {
-            detail: { session, interactive: email !== undefined },
+            detail: { session, interactive: username !== undefined },
           }),
         );
       } catch (reason) {
@@ -86,7 +86,7 @@
       event.preventDefault();
       const data = new FormData(form);
       authenticate(
-        String(data.get("email") || ""),
+        String(data.get("username") || ""),
         String(data.get("password") || ""),
       );
     });

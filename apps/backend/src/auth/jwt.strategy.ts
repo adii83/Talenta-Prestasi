@@ -20,11 +20,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  async validate(payload: { sub: string; email: string }) {
+  async validate(payload: { sub: string; username: string }) {
     const user = await this.users.findOne({ where: { id: payload.sub } });
     if (!user || user.status !== 'active') {
       throw new UnauthorizedException('User is no longer active');
     }
-    return { userId: user.id, email: user.email };
+    return { userId: user.id, username: user.username };
   }
 }

@@ -22,11 +22,15 @@ describe('Admin Category → Event flow (e2e)', () => {
   const suffix = Date.now().toString();
   const categorySlug = `category-${suffix}`;
 
-  async function createUser(email: string, organization: string, role: string) {
+  async function createUser(
+    username: string,
+    organization: string,
+    role: string,
+  ) {
     const password = 'StrongPassword123!';
     const result = await db.query<{ id: string }>(
-      `INSERT INTO users(email,password_hash) VALUES($1,$2) RETURNING id`,
-      [email, await hash(password, 4)],
+      `INSERT INTO users(username,password_hash) VALUES($1,$2) RETURNING id`,
+      [username, await hash(password, 4)],
     );
     await db.query(
       `INSERT INTO organization_memberships(organization_id,user_id,role) VALUES($1,$2,$3)`,
@@ -34,7 +38,7 @@ describe('Admin Category → Event flow (e2e)', () => {
     );
     const response = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
-      .send({ email, password })
+      .send({ username, password })
       .expect(201);
     return (response.body as { access_token: string }).access_token;
   }
@@ -84,22 +88,22 @@ describe('Admin Category → Event flow (e2e)', () => {
     await app.init();
 
     ownerToken = await createUser(
-      `owner-${suffix}@test.local`,
+      `owner-${suffix}`,
       organizationId,
       'owner',
     );
     editorToken = await createUser(
-      `editor-${suffix}@test.local`,
+      `editor-${suffix}`,
       organizationId,
       'editor',
     );
     viewerToken = await createUser(
-      `viewer-${suffix}@test.local`,
+      `viewer-${suffix}`,
       organizationId,
       'viewer',
     );
     outsiderToken = await createUser(
-      `outsider-${suffix}@test.local`,
+      `outsider-${suffix}`,
       otherOrganizationId,
       'owner',
     );
@@ -132,6 +136,10 @@ describe('Admin Category → Event flow (e2e)', () => {
       .get('/api/v1/admin/session')
       .set(auth(ownerToken))
       .expect(200);
+    expect(session.body.data.user).toMatchObject({
+      username: `owner-${suffix}`,
+    });
+    expect(session.body.data.user).not.toHaveProperty('email');
     expect(session.body.data.categories).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ id: categoryId, slug: categorySlug }),
@@ -320,6 +328,7 @@ describe('Admin Category → Event flow (e2e)', () => {
         expectedRevision: await workspaceRevision(archivedEventId),
         tabs: [
           {
+            sourceEventSiteId: archivedEventId,
             customTabName: 'Arsip',
             isDefault: true,
             isActive: true,

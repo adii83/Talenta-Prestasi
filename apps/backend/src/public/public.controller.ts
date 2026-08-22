@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { IsFQDN, IsString, Matches, MaxLength } from 'class-validator';
 import type { Request, Response } from 'express';
+import { ConfigService } from '@nestjs/config';
 import { PreviewTokenService } from './preview-token.service';
 import { PublicService } from './public.service';
 
@@ -38,7 +39,18 @@ export class PublicController {
   constructor(
     private readonly publicService: PublicService,
     private readonly previewTokens: PreviewTokenService,
+    private readonly config: ConfigService,
   ) {}
+
+  @Get('runtime-config')
+  runtimeConfig() {
+    const publicBaseDomain = this.config
+      .get<string>('PUBLIC_BASE_DOMAIN', 'nexaplaymetadata.online')
+      .trim()
+      .toLowerCase()
+      .replace(/^\.+|\.+$/g, '');
+    return { data: { publicBaseDomain }, errors: [] };
+  }
 
   @Post('preview/session')
   @Header('Cache-Control', 'private, no-store')

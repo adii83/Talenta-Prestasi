@@ -1,11 +1,13 @@
 import { Controller, Post, Body } from '@nestjs/common';
-import { IsEmail, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsString, Matches, MaxLength, MinLength } from 'class-validator';
 import { AuthService } from './auth.service';
 
 class LoginDto {
-  @IsEmail()
-  @MaxLength(254)
-  email!: string;
+  @IsString()
+  @MinLength(3)
+  @MaxLength(64)
+  @Matches(/^[a-z0-9._-]+$/)
+  username!: string;
 
   @IsString()
   @MinLength(8)
@@ -19,6 +21,6 @@ export class AuthController {
 
   @Post('login')
   login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+    return this.authService.login(dto.username, dto.password);
   }
 }

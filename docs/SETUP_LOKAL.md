@@ -113,7 +113,7 @@ PORT=3000
 CORS_ORIGINS=http://localhost:4173,http://127.0.0.1:4173
 PUBLIC_BASE_DOMAIN=nexaplaymetadata.online
 
-LOCAL_ADMIN_EMAIL=<EMAIL_ADMIN_LOKAL>
+LOCAL_ADMIN_USERNAME=admin
 LOCAL_ADMIN_PASSWORD=<PASSWORD_ADMIN_LOKAL_MINIMAL_12_KARAKTER>
 ```
 
@@ -124,6 +124,8 @@ Aturan keamanan:
 - gunakan `JWT_SECRET` acak minimal 32 karakter;
 - gunakan password Admin lokal minimal 12 karakter;
 - `apps/backend/.env` sudah diabaikan oleh `.gitignore`.
+
+`PUBLIC_BASE_DOMAIN` menjadi sumber tunggal domain publik backend dan frontend. Pada production, ganti nilainya dengan domain client, restart backend, lalu publikasikan ulang kategori yang masih menyimpan hostname lama. Tidak perlu mengedit HTML atau JavaScript. DNS wildcard, sertifikat TLS wildcard, dan reverse proxy tetap harus disiapkan terpisah; Cloudflare tidak wajib.
 
 ## 6. Jalankan Migration
 
@@ -163,7 +165,7 @@ Untuk database baru yang kosong, jalankan seed satu kali:
 npm run seed:local
 ```
 
-Seed menggunakan `LOCAL_ADMIN_EMAIL` dan `LOCAL_ADMIN_PASSWORD` dari `.env`, lalu membuat atau memperbarui data demonstrasi lokal secara idempotent.
+Seed menggunakan `LOCAL_ADMIN_USERNAME` dan `LOCAL_ADMIN_PASSWORD` dari `.env`, lalu membuat atau memperbarui data demonstrasi lokal secara idempotent.
 
 Jangan menjalankan seed pada database berisi data penting tanpa memahami dampaknya.
 
@@ -208,7 +210,7 @@ http://localhost:4173/apps/admin/
 
 Login menggunakan nilai berikut dari `.env` lokal:
 
-- email: `LOCAL_ADMIN_EMAIL`;
+- username: `LOCAL_ADMIN_USERNAME`;
 - password: `LOCAL_ADMIN_PASSWORD`.
 
 Jangan membagikan credential lokal tersebut melalui screenshot atau laporan testing.

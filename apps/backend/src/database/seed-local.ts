@@ -10,7 +10,7 @@ import { PublicContentService } from '../public/public-content.service';
 import { WorkspaceSnapshotService } from '../public/workspace-snapshot.service';
 
 async function main() {
-  const email = process.env.LOCAL_ADMIN_EMAIL;
+  const username = process.env.LOCAL_ADMIN_USERNAME?.trim().toLowerCase();
   const password = process.env.LOCAL_ADMIN_PASSWORD;
   const publicBaseDomain = (
     process.env.PUBLIC_BASE_DOMAIN || 'nexaplaymetadata.online'
@@ -18,9 +18,10 @@ async function main() {
     .trim()
     .toLowerCase()
     .replace(/^\.+|\.+$/g, '');
-  if (!email || !password || password.length < 12)
+  const validUsername = /^[a-z0-9._-]{3,64}$/.test(username ?? '');
+  if (!validUsername || !password || password.length < 12)
     throw new Error(
-      'Set LOCAL_ADMIN_EMAIL and LOCAL_ADMIN_PASSWORD (minimum 12 characters) before seeding',
+      'Set LOCAL_ADMIN_USERNAME (3-64 lowercase characters: a-z, 0-9, ., _, -) and LOCAL_ADMIN_PASSWORD (minimum 12 characters) before seeding',
     );
 
   const db = new Client({
@@ -107,11 +108,11 @@ async function main() {
       );
 
     const user = await db.query<{ id: string }>(
-      `INSERT INTO users(email,password_hash,status)
+      `INSERT INTO users(username,password_hash,status)
        VALUES($1,$2,'active')
-       ON CONFLICT(email) DO UPDATE SET password_hash=EXCLUDED.password_hash,status='active'
+       ON CONFLICT(username) DO UPDATE SET password_hash=EXCLUDED.password_hash,status='active'
        RETURNING id`,
-      [email.toLowerCase(), await hash(password, 10)],
+      [username, await hash(password, 10)],
     );
     await db.query(
       `INSERT INTO organization_memberships(organization_id,user_id,role)

@@ -183,7 +183,7 @@ export class AdminSessionController {
 
   @Get('session')
   session(@CurrentUser() user: AuthenticatedUser) {
-    return this.adminService.session(user.userId, user.email);
+    return this.adminService.session(user.userId, user.username);
   }
 
   @Get('categories')
