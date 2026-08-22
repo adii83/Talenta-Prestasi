@@ -60,7 +60,8 @@
 
   function renderCategories() {
     ensureUi();
-    document.getElementById("eventUserEmail").textContent = session.user.username;
+    document.getElementById("eventUserEmail").textContent =
+      session.user.username;
     document.getElementById("dashboardEyebrow").textContent = "Workspace Admin";
     document.getElementById("dashboardTitle").textContent = "Kategori Lomba";
     document.getElementById("dashboardDescription").textContent =

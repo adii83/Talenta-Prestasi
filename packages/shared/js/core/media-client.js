@@ -49,7 +49,8 @@
       let height = Math.max(1, Math.round(bitmap.height * scale));
       const canvas = document.createElement("canvas");
       const context = canvas.getContext("2d");
-      if (!context) throw new Error("Browser gagal menyiapkan kompresi gambar.");
+      if (!context)
+        throw new Error("Browser gagal menyiapkan kompresi gambar.");
       let best;
 
       while (width > 0 && height > 0) {
