@@ -8,8 +8,10 @@ import {
 } from '../admin/event-publication.service';
 import { PublicContentService } from '../public/public-content.service';
 import { WorkspaceSnapshotService } from '../public/workspace-snapshot.service';
+import { assertLocalSeedAllowed } from './seed-local.guard';
 
 async function main() {
+  assertLocalSeedAllowed(process.env.NODE_ENV);
   const username = process.env.LOCAL_ADMIN_USERNAME?.trim().toLowerCase();
   const password = process.env.LOCAL_ADMIN_PASSWORD;
   const publicBaseDomain = (

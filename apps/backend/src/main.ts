@@ -40,6 +40,9 @@ async function bootstrap() {
     .map((origin) => origin.trim());
   app.enableCors({ origin: allowedOrigins, credentials: true });
 
-  await app.listen(config.get<number>('PORT', 3000));
+  await app.listen(
+    config.get<number>('PORT', 3000),
+    config.get<string>('HOST', '127.0.0.1'),
+  );
 }
 void bootstrap();

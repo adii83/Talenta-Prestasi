@@ -15,7 +15,7 @@ Setelah semua langkah selesai, layanan lokal tersedia pada:
 Siapkan perangkat berikut:
 
 - Git;
-- Node.js 20 LTS atau versi lebih baru yang kompatibel;
+- Node.js 22 LTS minimal 22.13.0;
 - npm;
 - PostgreSQL;
 - terminal Git Bash, PowerShell, atau terminal bawaan IDE.
@@ -110,6 +110,7 @@ DB_DATABASE=talenta_prestasi_blackbox
 JWT_SECRET=<STRING_ACAK_MINIMAL_32_KARAKTER>
 JWT_EXPIRES_IN=7d
 PORT=3000
+HOST=127.0.0.1
 CORS_ORIGINS=http://localhost:4173,http://127.0.0.1:4173
 PUBLIC_BASE_DOMAIN=nexaplaymetadata.online
 

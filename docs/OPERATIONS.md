@@ -1,10 +1,12 @@
 # Operasional Talenta Prestasi
 
+Deployment VPS production lengkap tersedia di [PRODUCTION_SETUP.md](PRODUCTION_SETUP.md). Ringkasan setup development tersedia di [DEVELOPMENT_SETUP.md](DEVELOPMENT_SETUP.md). Dokumen ini berfokus pada operasi lokal, gateway production-like, dan Cloudflare Tunnel untuk testing.
+
 ## Prasyarat
 
 Siapkan:
 
-- Node.js dan npm;
+- Node.js 22 LTS minimal 22.13.0 dan npm;
 - PostgreSQL yang aktif serta database yang dapat dipakai aplikasi;
 - PowerShell untuk script Tunnel pada Windows;
 - `cloudflared` bila URL publik melalui Cloudflare Tunnel diperlukan.
@@ -27,8 +29,14 @@ Variabel backend wajib:
 Variabel backend opsional:
 
 - `PORT`: port HTTP backend;
+- `HOST`: alamat bind backend, default `127.0.0.1`;
 - `CORS_ORIGINS`: daftar origin browser yang diizinkan, dipisahkan koma;
-- `PUBLIC_BASE_DOMAIN`: domain dasar untuk hostname Kategori Lomba publik.
+- `PUBLIC_BASE_DOMAIN`: domain dasar untuk hostname Kategori Lomba publik;
+- `JWT_EXPIRES_IN`: masa berlaku JWT Admin, default source `7d`;
+- `LOCAL_STORAGE_PATH`: direktori media, default `storage/uploads` relatif terhadap backend;
+- `DB_SSL`: aktifkan TLS PostgreSQL dengan nilai `true`;
+- `DB_SSL_CA_PATH`: path CA khusus provider bila diperlukan;
+- `DB_MIGRATIONS_RUN`: opt-in migration saat startup, default `false`.
 
 Variabel khusus seed lokal:
 

@@ -34,21 +34,27 @@ Pendaftaran dan dashboard peserta dikelola melalui website eksternal terpisah.
 
 ## Menjalankan Secara Singkat
 
-Untuk instalasi pertama setelah clone—termasuk PostgreSQL, `.env`, migration, seed, dan login Admin—ikuti [Panduan Setup Lokal](docs/SETUP_LOKAL.md).
+Untuk instalasi pertama setelah clone—termasuk PostgreSQL, `.env`, migration, seed, dan login Admin—ikuti [Setup Lokal](docs/SETUP_LOKAL.md). Untuk command development harian dan validasi environment, gunakan [Development Setup](docs/DEVELOPMENT_SETUP.md).
 
 Setelah setup pertama selesai:
 
-1. Jalankan backend dari root proyek:
+1. Jalankan backend:
 
 ```bash
 cd apps/backend
 npm run start:dev
 ```
 
-2. Jalankan frontend dari root proyek:
+2. Dari terminal lain pada root proyek, jalankan frontend statis:
 
 ```bash
 npm run dev
+```
+
+3. Jika perlu menguji routing berbasis hostname seperti production, jalankan gateway lokal:
+
+```bash
+npm run gateway
 ```
 
 ## URL Development dan Gateway
@@ -57,17 +63,21 @@ npm run dev
 - Workspace Admin: `http://localhost:4173/apps/admin/`
 - Gateway production-like: `http://127.0.0.1:8080/`
 
+Deployment VPS tidak memakai server development tersebut. Ikuti [Production Setup](docs/PRODUCTION_SETUP.md) untuk PostgreSQL, migration, PM2, Nginx, HTTPS, wildcard DNS, media, backup, dan update release.
+
 ## Urutan Baca Dokumentasi
 
-1. [docs/SETUP_LOKAL.md](docs/SETUP_LOKAL.md) — Setup pertama setelah clone hingga aplikasi dapat digunakan.
-2. [PROGRESS.md](PROGRESS.md) — Status produk dan area yang telah selesai.
-3. [docs/AI_SESSION_PROMPT.md](docs/AI_SESSION_PROMPT.md) — Prompt orientasi sesi baru.
-4. [docs/WORK_LOG.md](docs/WORK_LOG.md) — Riwayat pekerjaan lintas sesi.
+1. [docs/DEVELOPMENT_SETUP.md](docs/DEVELOPMENT_SETUP.md) — Ringkasan setup dan command development harian.
+2. [docs/SETUP_LOKAL.md](docs/SETUP_LOKAL.md) — Setup lokal pertama setelah clone hingga aplikasi dapat digunakan.
+3. [docs/PRODUCTION_SETUP.md](docs/PRODUCTION_SETUP.md) — Deployment production pada VPS dengan PostgreSQL, Nginx, PM2, DNS, HTTPS, dan rollback release.
+4. [PROGRESS.md](PROGRESS.md) — Status produk dan area yang telah selesai.
 5. [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Arsitektur sistem dan batas antar komponen.
-6. [docs/ADMIN_SPEC.md](docs/ADMIN_SPEC.md) — Spesifikasi pengoperasian CMS Admin.
-7. [docs/DATA_MODEL.md](docs/DATA_MODEL.md) — Skema basis data NestJS dan TypeORM.
-8. [docs/OPERATIONS.md](docs/OPERATIONS.md) — Panduan deployment dan operasi gateway/tunnel.
+6. [docs/DATA_MODEL.md](docs/DATA_MODEL.md) — Skema basis data NestJS dan TypeORM.
+7. [docs/ADMIN_SPEC.md](docs/ADMIN_SPEC.md) — Spesifikasi pengoperasian CMS Admin.
+8. [docs/OPERATIONS.md](docs/OPERATIONS.md) — Operasional development, gateway, dan Cloudflare Tunnel untuk testing.
 9. [docs/TESTING.md](docs/TESTING.md) — Prosedur pengujian otomatis dan manual.
+10. [docs/WORK_LOG.md](docs/WORK_LOG.md) — Riwayat pekerjaan lintas sesi.
+11. [apps/backend/README.md](apps/backend/README.md) — Ringkasan API backend, autentikasi, RBAC, dan command NestJS.
 
 ## Validasi
 

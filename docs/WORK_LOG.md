@@ -17,6 +17,15 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-22 — Dokumentasi dan Hardening Deployment Production VPS
+
+- **Permintaan**: Menyusun panduan deployment nyata untuk VPS berdasarkan implementasi repository, termasuk PostgreSQL eksternal, environment production, JWT/Admin, CORS, wildcard domain, HTTPS, Nginx, PM2, update, checklist, dan setup development ringkas.
+- **Proses/Keputusan**: Audit source dan dependency menetapkan Node.js 22.13+, frontend statis tanpa build, backend NestJS `dist/main.js`, PostgreSQL/TypeORM, serta Nginx sebagai reverse proxy utama. Konfigurasi database kini mendukung TLS terverifikasi, migration startup menjadi opt-in, seed lokal ditolak pada production, backend default bind ke loopback, dan environment production wajib menyediakan origin HTTPS eksplisit, domain publik, masa berlaku JWT, storage persisten, serta host bind.
+- **File**: `docs/PRODUCTION_SETUP.md`, `docs/DEVELOPMENT_SETUP.md`, `.env.example`, dokumentasi terkait, helper/test konfigurasi backend, bootstrap backend, dan guard seed lokal.
+- **Validasi**: TDD untuk konfigurasi DB, validasi environment, dan seed guard; seluruh 15 suite/126 unit test backend lulus; build NestJS lulus; route, JavaScript, sinkronisasi tema, publikasi Event, runtime config, Prettier terfokus, dan `git diff --check` lulus.
+- **Kendala**: E2E berbasis PostgreSQL dan acceptance deployment pada VPS/DNS/TLS nyata tidak dijalankan. Konfigurasi `.mcp.json` yang tracked terdeteksi memuat URI database dan perlu rotasi/pembersihan credential terpisah tanpa menyalin nilainya ke dokumentasi.
+- **Tindak lanjut**: Tim deployment mengganti seluruh placeholder, memeriksa ledger serta migration reset destruktif, menyiapkan backup/restore, membuat akun Admin production secara terkontrol, lalu menjalankan checklist acceptance production.
+
 ### 2026-08-22 — Domain Publik Runtime Provider-Netral
 
 - **Permintaan**: Membuat domain production dapat dikonfigurasi tim client hanya melalui `PUBLIC_BASE_DOMAIN` tanpa mengedit source frontend dan tanpa ketergantungan wajib pada Cloudflare.
