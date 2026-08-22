@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Editor Detail Arsip â€” TalentaPanel</title>
+    <title>Admin-Talenta Prestasi</title>
+    <link rel="icon" type="image/png" href="../../../assets/images/favicon.png" />
     <link
       href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600;700&family=Source+Sans+3:wght@400;500;600;700&display=swap"
       rel="stylesheet"
@@ -31,8 +32,8 @@
   </head>
   <body class="admin-body">
     <aside class="admin-sidebar">
-      <a class="admin-sidebar__brand" href="../../../"
-        ><span>TP</span><strong>TalentaPanel</strong></a
+      <a class="admin-brand" href="../../../"
+        ><span>Talenta Prestasi<small>Admin Editor</small></span></a
       >
       <nav class="admin-nav">
         <p>Kelola Halaman</p>
@@ -131,6 +132,13 @@
                   <label for="detailWinnersTitle">Judul section</label
                   ><input class="form-input" id="detailWinnersTitle" />
                 </div>
+                <div class="admin-field admin-field--wide">
+                  <label for="detailWinnersDescription">Deskripsi</label
+                  ><textarea
+                    class="form-input editor-textarea"
+                    id="detailWinnersDescription"
+                  ></textarea>
+                </div>
               </div>
               <div
                 id="detailCategorySummary"
@@ -169,26 +177,26 @@
                 <div class="detail-sk-settings__head">
                   <div>
                     <strong>Banner SK</strong>
-                    <small>Banner hanya tampil bila dokumen dipilih.</small>
+                    <small
+                      >Setiap dokumen SK aktif menjadi baris banner
+                      otomatis.</small
+                    >
                   </div>
-                  <label class="admin-switch admin-switch--label"
-                    ><input id="detailShowSk" type="checkbox" /><span></span
-                    ><em>Tampilkan banner SK</em></label
-                  >
-                </div>
-                <div class="admin-form-grid">
-                  <div class="admin-field">
-                    <label for="detailSkDocument">Dokumen untuk banner SK</label
-                    ><select class="form-input" id="detailSkDocument"></select>
-                  </div>
-                  <div class="admin-field">
-                    <label for="detailSkTitle">Judul banner SK</label
+                  <label class="admin-switch"
                     ><input
-                      class="form-input"
-                      id="detailSkTitle"
-                      placeholder="SK Penetapan Pemenang"
-                    />
-                  </div>
+                      id="detailShowSk"
+                      type="checkbox"
+                      aria-label="Tampilkan Banner SK ke publik" /><span></span
+                  ></label>
+                </div>
+                <div class="admin-field">
+                  <label for="detailSkBannerTitle">Judul Banner SK</label>
+                  <input
+                    class="form-input"
+                    id="detailSkBannerTitle"
+                    maxlength="200"
+                    placeholder="SK Penetapan Pemenang"
+                  />
                 </div>
               </div>
               <div

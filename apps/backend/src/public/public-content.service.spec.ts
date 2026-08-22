@@ -121,10 +121,23 @@ describe('PublicContentService', () => {
     expect(snapshot.home.sections).toEqual([
       expect.objectContaining({ type: 'hero' }),
     ]);
+    expect(snapshot.winners.decrees).toEqual([]);
+    expect(snapshot.winners).not.toHaveProperty('decree');
+    const decreeQuery = db.query.mock.calls.find(([sql]) =>
+      sql.includes("document_role='winner_decree'"),
+    )?.[0];
+    expect(decreeQuery).toContain('default_download_label');
+    expect(decreeQuery).toContain('ORDER BY doc.sort_order,doc.id');
     expect(snapshot.archiveDetail.event).toMatchObject({
       slug: '2027-gelombang-2',
       name: 'Octal 2027 · Gelombang 2',
     });
+    const archiveDetailSettingsQuery = db.query.mock.calls.find(([sql]) =>
+      sql.includes('FROM event_detail_settings'),
+    )?.[0];
+    expect(archiveDetailSettingsQuery).toContain(
+      'winners_description AS "winnersDescription"',
+    );
     expect(
       db.query.mock.calls.every(([, params]) => params?.[0] === 'event-1'),
     ).toBe(true);
@@ -324,6 +337,95 @@ describe('PublicContentService', () => {
       calls.findIndex((sql) => sql.includes('INSERT INTO faq_categories')),
     ).toBeLessThan(
       calls.findIndex((sql) => sql.includes('INSERT INTO faq_questions')),
+    );
+  });
+
+  it('fills new document fields when restoring legacy snapshots', async () => {
+    const calls: Array<{ sql: string; parameters?: unknown[] }> = [];
+    const executor = {
+      query: jest.fn((sql: string, parameters?: unknown[]) => {
+        calls.push({ sql, parameters });
+        return Promise.resolve([]);
+      }),
+    };
+    await new WorkspaceSnapshotService({} as never).restore(
+      'event-1',
+      {
+        schemaVersion: 1,
+        eventId: 'event-1',
+        rows: {
+          event_sites: [
+            {
+              id: 'event-1',
+              name: 'Octal',
+              description: '',
+              mascot_asset_id: null,
+              fallback_icon: 'star',
+            },
+          ],
+          event_documents: [
+            {
+              id: 'document-1',
+              event_site_id: 'event-1',
+              title: 'SK lama',
+              asset_id: null,
+              category: 'SK Pemenang',
+              file_type: 'PDF',
+              is_active: true,
+              sort_order: 0,
+              document_role: 'winner_decree',
+            },
+          ],
+        },
+      },
+      executor,
+    );
+    const insert = calls.find(({ sql }) => sql.includes('INSERT INTO event_documents'));
+    expect(insert?.parameters?.[0]).toContain('"default_download_label":""');
+  });
+
+  it('fills the Banner title when restoring legacy winner settings', async () => {
+    const calls: Array<{ sql: string; parameters?: unknown[] }> = [];
+    const executor = {
+      query: jest.fn((sql: string, parameters?: unknown[]) => {
+        calls.push({ sql, parameters });
+        return Promise.resolve([]);
+      }),
+    };
+    await new WorkspaceSnapshotService({} as never).restore(
+      'event-1',
+      {
+        schemaVersion: 1,
+        eventId: 'event-1',
+        rows: {
+          event_sites: [
+            {
+              id: 'event-1',
+              name: 'Octal',
+              description: '',
+              mascot_asset_id: null,
+              fallback_icon: 'star',
+            },
+          ],
+          winner_page_settings: [
+            {
+              event_site_id: 'event-1',
+              is_active: true,
+              show_decree: true,
+              archive_active: true,
+              archive_limit: 0,
+              metadata_visibility: {},
+            },
+          ],
+        },
+      },
+      executor,
+    );
+    const insert = calls.find(({ sql }) =>
+      sql.includes('INSERT INTO winner_page_settings'),
+    );
+    expect(insert?.parameters?.[0]).toContain(
+      '"decree_title":"SK Penetapan Pemenang"',
     );
   });
 

@@ -12,6 +12,9 @@ export class WinnerPageSettings {
   @Column({ name: 'show_decree', default: true })
   showDecree!: boolean;
 
+  @Column({ name: 'decree_title', length: 200, default: 'SK Penetapan Pemenang' })
+  decreeTitle!: string;
+
   @Column({ name: 'metadata_visibility', type: 'jsonb', default: {} })
   metadataVisibility!: Record<string, boolean>;
 

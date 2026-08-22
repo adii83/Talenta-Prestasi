@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Manajemen Pemenang — TalentaPanel</title>
+    <title>Admin-Talenta Prestasi</title>
+    <link rel="icon" type="image/png" href="../../assets/images/favicon.png" />
     <meta
       name="description"
       content="Kelola kategori juara dan data pemenang lomba aktif."
@@ -38,8 +39,7 @@
     </style>
     <aside class="admin-sidebar" id="adminSidebar">
       <a class="admin-brand" href="../../"
-        ><span class="admin-brand__mark">TP</span
-        ><span>TalentaPanel<small>Event workspace</small></span></a
+        ><span>Talenta Prestasi<small>Admin Editor</small></span></a
       >
       <nav class="admin-nav" aria-label="Navigasi admin">
         <p class="admin-nav__label admin-nav__label--spaced">
@@ -137,68 +137,26 @@
                 </div>
               </div>
               <div class="wm-active-competition" id="wmActiveCompetition"></div>
-              <div class="admin-form-grid">
-                <div class="admin-field">
-                  <label for="wmSkTitle">Judul SK Pemenang</label
-                  ><input
-                    class="form-input"
-                    id="wmSkTitle"
-                    value="SK Penetapan Pemenang"
-                  />
+              <div class="editor-section-head">
+                <div>
+                  <h3>Dokumen SK Pemenang</h3>
+                  <p>
+                    Maksimal 10 PDF. Klik Tambah SK, buka Edit detail, lalu
+                    pilih Upload PDF. Pilih Ganti PDF untuk mengganti file.
+                  </p>
                 </div>
-                <div class="admin-field">
-                  <label for="wmSkFile">Upload file SK</label>
-                  <label
-                    class="btn btn--outline"
-                    style="
-                      width: 100%;
-                      display: flex;
-                      justify-content: space-between;
-                      align-items: center;
-                      margin-bottom: 8px;
-                      font-weight: normal;
-                    "
-                  >
-                    <span
-                      id="wmSkFileBtnText"
-                      style="
-                        color: var(--c-gray);
-                        overflow: hidden;
-                        text-overflow: ellipsis;
-                        white-space: nowrap;
-                      "
-                      >Pilih file PDF... (Maks 10MB)</span
-                    >
-                    <i
-                      data-lucide="upload"
-                      style="color: var(--c-primary); flex-shrink: 0"
-                    ></i>
-                    <input
-                      id="wmSkFile"
-                      type="file"
-                      accept="application/pdf"
-                      hidden
-                    />
-                  </label>
-                  <a
-                    class="btn btn--outline btn--sm"
-                    id="wmSkFileLink"
-                    href="#"
-                    target="_blank"
-                    rel="noopener"
-                    hidden
-                    ><i data-lucide="external-link"></i> Lihat file SK</a
-                  ><button
-                    type="button"
-                    class="btn btn--outline btn--danger btn--sm"
-                    id="wmSkDeleteBtn"
-                    style="width: 100%; margin-top: 8px"
-                    hidden
-                  >
-                    <i data-lucide="trash-2"></i> Hapus file SK
-                  </button>
-                </div>
+                <button
+                  class="btn btn--outline btn--sm"
+                  type="button"
+                  id="wmAddDecree"
+                >
+                  <i data-lucide="plus"></i> Tambah SK
+                </button>
               </div>
+              <div
+                id="wmDecreeList"
+                class="archive-linked-docs detail-doc-editor"
+              ></div>
             </section>
 
             <section class="admin-card" id="wm-categories">
@@ -278,6 +236,15 @@ Selamat kepada para pemenang ajang talenta nasional tahun ini.</textarea>
                 </div>
               </div>
               <div class="editor-subsection">
+                <div class="admin-field">
+                  <label for="wmSkBannerTitle">Judul Banner SK</label>
+                  <input
+                    class="form-input"
+                    id="wmSkBannerTitle"
+                    maxlength="200"
+                    placeholder="SK Penetapan Pemenang"
+                  />
+                </div>
                 <div class="editor-subsection__head">
                   <div>
                     <h3>Banner SK Pemenang</h3>

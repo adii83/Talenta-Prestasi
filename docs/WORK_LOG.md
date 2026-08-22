@@ -17,6 +17,15 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 ## Riwayat Pekerjaan
 
+### 2026-08-21 — Multi-SK Pemenang dan Banner Arsip
+
+- **Permintaan**: Mengubah SK Pemenang tunggal menjadi beberapa SK per Event, dengan label tombol Banner yang dapat dikustom, Banner Arsip otomatis, override label khusus Arsip, dan SK tetap tampil sebagai dokumen biasa pada Dokumen Terkait.
+- **Proses/Keputusan**: Mempertahankan `event_documents` sebagai sumber tunggal dengan `document_role = winner_decree`. Menambahkan label default maksimal 40 karakter dan batas maksimal 10 SK per Event. Payload Admin/Public memakai `decrees[]`; Banner Pemenang dan Banner Arsip merender banyak tombol, sedangkan Dokumen Terkait memakai tombol standar `Unduh`. Detail Arsip tidak lagi memilih satu dokumen lewat dropdown; override label Arsip disimpan per dokumen.
+- **File**: Migration/entity/service/controller backend, public content service, editor Pemenang, editor Detail Arsip, repository shared, renderer Public, CSS responsif, audit relasi, dan regression tests terkait.
+- **Validasi**: Backend unit test 11 suite / 100 test lulus; backend build lulus; Admin E2E 1 suite / 7 test lulus; `npm run check:js` lulus 46 file; audit Pemenang dan Arsip lulus; Prettier scope lulus; `git diff --check` lulus dengan peringatan normal LF/CRLF; Graphify diperbarui.
+- **Kendala**: Migration belum dijalankan pada database aktif. Global format check dan acceptance browser penuh tidak dijalankan dalam batch ini.
+- **Tindak lanjut**: Jalankan migration pada database target melalui prosedur operasional, lalu lakukan acceptance browser desktop/tablet/mobile untuk upload banyak SK, toggle, override label Arsip, Banner, Preview, dan Dokumen Terkait. Commit/push/deployment tidak dilakukan.
+
 ### 2026-08-20 — Optimistic Concurrency Workspace Event
 
 - **Tanggal/Judul**: 2026-08-20 — Optimistic Concurrency Workspace Event
@@ -172,7 +181,7 @@ Dokumen ini mencatat riwayat aktivitas, keputusan teknis, dan perbaikan file dal
 
 - **Tanggal/Judul**: 2026-08-19 — Preservasi Parameter Preview Token Media dan Adaptasi SK Banner Mobile
 - **Permintaan**: Memperbaiki ikon unggahan Arsip yang belum tampil pada Lihat preview halaman Pemenang & Arsip (dan publik bila dipublikasikan) serta memastikan tombol Unduh SK berada di bawah deskripsi khusus mobile saja, sementara tablet dan desktop tetap sejajar.
-- **Proses/Keputusan**: 
+- **Proses/Keputusan**:
   1. `TalentaMedia.url()` pada client-side kini mendeteksi parameter `preview_token` pada URL halaman dan secara otomatis meneruskannya ke URL media `/api/v1/public/media/:id?preview_token=...` sehingga permintaan gambar preview tetap tersertifikasi authorization token.
   2. `PublicService.winners()` disesuaikan agar passing flag `resolved.preview` ke `archiveSummary()`, memastikan `mascotAssetId` dan `fallbackIcon` draf dari workspace terkirim pada endpoint Pemenang preview.
   3. `main.css` disesuaikan dengan media query `@media (max-width: 639px)` agar tombol SK berada di bawah deskripsi khusus pada layar mobile, sedangkan tablet & desktop (`>= 640px`) tetap sejajar horizontal di sebelah kanan.

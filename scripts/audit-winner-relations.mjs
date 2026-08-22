@@ -34,6 +34,14 @@ const homeRepositorySource = await readFile(
   "packages/shared/js/data/repositories/home-repository.js",
   "utf8",
 );
+const mainCssSource = await readFile(
+  "apps/public-site/assets/css/main.css",
+  "utf8",
+);
+const workspaceRevisionSource = await readFile(
+  "apps/admin/js/core/workspace-revision.js",
+  "utf8",
+);
 assert.doesNotMatch(
   homeRendererSource,
   /photoAssetId\)\s*\{\s*return `\/api\/v1\/public\/media\/\$\{winner\.photoAssetId\}`/,
@@ -43,6 +51,37 @@ assert.doesNotMatch(
   winnerRendererSource,
   /photo = `\/api\/v1\/public\/media\/\$\{winner\.photoAssetId\}`/,
   "fallback photoAssetId halaman Pemenang tidak boleh relatif ke dev server",
+);
+assert.match(
+  winnerAdminApiSource,
+  /response\.data\?\.workspaceRevision \?\? response\.workspaceRevision/,
+  "API Pemenang harus membaca revision dari respons CRUD dan payload data.",
+);
+assert.match(
+  workspaceRevisionSource,
+  /remember\(eventId, response\)/,
+  "Revision global harus membaca workspaceRevision top-level dari respons mutation.",
+);
+const revisionStorage = new Map();
+const revisionContext = vm.createContext({
+  location: { origin: "https://example.test" },
+  sessionStorage: {
+    getItem: (key) => revisionStorage.get(key) || null,
+    setItem: (key, value) => revisionStorage.set(key, String(value)),
+  },
+  window: {},
+});
+vm.runInContext(workspaceRevisionSource, revisionContext, {
+  filename: "apps/admin/js/core/workspace-revision.js",
+});
+revisionContext.window.TalentaWorkspaceRevision.next("event-1", {
+  data: { id: "document-1" },
+  workspaceRevision: 7,
+});
+assert.equal(
+  revisionContext.window.TalentaWorkspaceRevision.current("event-1"),
+  7,
+  "Respons mutation harus memperbarui revision global meski data resource terpisah.",
 );
 assert.match(
   winnerAdminApiSource,
@@ -336,10 +375,38 @@ assert.equal(normalizedDirty.categories[0].name, "Juara Utama");
 assert.equal(normalizedDirty.categories[0].winners.length, 1);
 assert.equal(normalizedDirty.categories[0].winners[0].name, "Nama Bersih");
 assert.equal(
-  normalizedDirty.sk.url,
+  normalizedDirty.sk[0].url,
   "#",
   "URL SK berbahaya harus dinetralkan.",
 );
+context.__multiDecreeManager = {
+  ...baselineManager,
+  sk: [
+    {
+      documentId: "sk-1",
+      title: "SK Nasional",
+      defaultDownloadLabel: "Unduh Nasional",
+      url: "/media/sk-nasional.pdf",
+      active: true,
+    },
+    {
+      documentId: "sk-2",
+      title: "SK Provinsi",
+      defaultDownloadLabel: "Unduh Provinsi",
+      url: "/media/sk-provinsi.pdf",
+      active: true,
+    },
+  ],
+};
+const normalizedMultiDecree = clone(
+  evaluate("normalizeWinnerManagerState(__multiDecreeManager)"),
+);
+assert.equal(
+  normalizedMultiDecree.sk.length,
+  2,
+  "Normalisasi state harus mempertahankan semua SK untuk preview.",
+);
+assert.equal(normalizedMultiDecree.sk[1].url, "/media/sk-provinsi.pdf");
 
 context.__foreignWinnerManager = {
   ...baselineManager,
@@ -374,6 +441,18 @@ assert.equal(
   "Jumlah card tidak boleh melebihi Arsip yang memiliki pemenang aktif.",
 );
 assert.equal(normalizedPage.archiveTitle, "Arsip Juara");
+context.__winnerPageWithDecreeTitle = {
+  ...baselinePage,
+  decreeTitle: "  SK Resmi Olimpiade  ",
+};
+const normalizedDecreePage = clone(
+  evaluate("normalizeWinnerPageState(__winnerPageWithDecreeTitle)"),
+);
+assert.equal(
+  normalizedDecreePage.decreeTitle,
+  "SK Resmi Olimpiade",
+  "Normalisasi halaman Pemenang harus mempertahankan judul Banner SK.",
+);
 assert.equal(
   Object.hasOwn(normalizedPage, "showPhoto"),
   false,
@@ -413,6 +492,158 @@ assert.doesNotMatch(
   winnerRendererSource,
   /metadataVisibility/,
   "Renderer publik tidak boleh memakai pengaturan checkbox metadata lama.",
+);
+assert.match(
+  winnerRendererSource,
+  /data\.decrees\s*\|\|/,
+  "Renderer publik Pemenang harus menerima semua SK dari payload decrees.",
+);
+assert.match(
+  winnerRepositorySource,
+  /\.map\([\s\S]*?defaultDownloadLabel\s*\|\|\s*sk\.title/,
+  "Banner Pemenang harus merender semua SK dengan label unduhan masing-masing.",
+);
+assert.match(
+  winnerRepositorySource,
+  /\$\{categories\}\$\{sk\}\$\{buildWinnerArchiveMarkup/,
+  "Blok unduhan SK harus berada setelah seluruh kategori Pemenang dan sebelum Arsip.",
+);
+assert.match(
+  winnerRepositorySource,
+  /class="winner-decrees"[\s\S]*class="winner-decrees__title"[\s\S]*class="winner-decrees__ornament" aria-hidden="true"[\s\S]*class="winner-decrees__actions"/,
+  "Unduhan SK harus memakai satu judul, ornamen dekoratif, lalu kumpulan tombol.",
+);
+assert.match(
+  mainCssSource,
+  /\.winner-decrees__download\s*\{[^}]*min-height:\s*42px;/s,
+  "Tombol unduh SK harus memiliki tinggi compact.",
+);
+assert.match(
+  mainCssSource,
+  /\.winner-decrees__download\s*\{[^}]*width:\s*fit-content;/s,
+  "Lebar tombol unduh SK harus mengikuti panjang label.",
+);
+assert.match(
+  mainCssSource,
+  /\.winner-decrees::before[\s\S]*\.winner-decrees::after/,
+  "Card SK harus memiliki aksen gradient tipis di sisi atas dan bawah.",
+);
+assert.match(
+  mainCssSource,
+  /\.winner-decrees__download::after\s*\{[^}]*linear-gradient/s,
+  "Gradient tombol SK hanya boleh menjadi aksen tipis di ujung.",
+);
+assert.doesNotMatch(
+  mainCssSource,
+  /\.winner-decrees__download\s*\{[^}]*background:\s*linear-gradient/s,
+  "Isi tombol SK tidak boleh memakai gradient penuh.",
+);
+assert.doesNotMatch(
+  mainCssSource,
+  /\.winner-decrees__title\s*\{[^}]*text-transform:\s*uppercase/s,
+  "Judul Banner SK harus mempertahankan kapitalisasi input pengguna.",
+);
+assert.match(
+  mainCssSource,
+  /\.winner-decrees__title\s*\{[^}]*color:\s*var\(--c-ink\)/s,
+  "Judul Banner SK harus berwarna hitam.",
+);
+assert.match(
+  mainCssSource,
+  /\.winner-decrees__ornament\s*\{[^}]*color:\s*var\(--c-ink\)/s,
+  "Ornamen Banner SK harus berwarna hitam.",
+);
+assert.match(
+  mainCssSource,
+  /\.winner-decrees__ornament b\s*\{[^}]*background:\s*var\(--c-ink\)/s,
+  "Garis ornamen Banner SK harus berwarna hitam.",
+);
+assert.match(
+  mainCssSource,
+  /\.winner-decrees__download\s*\{[^}]*background:\s*var\(--c-primary\)[^}]*color:\s*var\(--c-white\)/s,
+  "Tombol Banner SK harus merah dengan teks dan ikon putih.",
+);
+assert.match(
+  winnerAdminHtml,
+  /id="wmDecreeList"/,
+  "Editor Pemenang harus menyediakan daftar multi-SK.",
+);
+assert.doesNotMatch(
+  winnerAdminHtml,
+  /id="wmSkTitle"|id="wmSkFile"/,
+  "Form SK tunggal tidak boleh tersisa.",
+);
+assert.match(
+  winnerAdminApiSource,
+  /for \(const sk of state\.sk \|\| \[\]\) await saveDecree\(sk\)/,
+  "Simpan Pemenang harus menyimpan metadata setiap SK.",
+);
+assert.match(
+  winnerAdminApiSource,
+  /defaultDownloadLabel: sk\.defaultDownloadLabel\?\.trim\(\) \|\| ""/,
+  "API Pemenang harus menyimpan label tombol Banner secara terpisah.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /data-decree-title[\s\S]*data-decree-label/,
+  "Judul dokumen dan label tombol Banner harus memiliki input terpisah.",
+);
+assert.match(winnerAdminHtml, /id="wmSkBannerTitle"/);
+assert.match(winnerAdminApiSource, /decreeTitle: page\.decreeTitle/);
+assert.match(
+  winnerRepositorySource,
+  /page\.decreeTitle \|\| "SK Penetapan Pemenang"/,
+  "Judul blok SK Pemenang harus terpisah dari judul setiap dokumen.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /detail-document-row__actions[\s\S]*detail-decree-row__edit[\s\S]*data-decree-toggle[\s\S]*aria-expanded[\s\S]*Edit detail/,
+  "Setiap baris SK harus memiliki action cluster dan tombol Edit detail yang dapat diakses.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /detail-document-row__actions[\s\S]*detail-decree-row__details/,
+  "Panel detail SK harus terpisah dari action cluster.",
+);
+assert.doesNotMatch(
+  winnerAdminManagerSource,
+  /detail-decree-row__chevron/,
+  "Baris SK tidak boleh lagi memakai chevron sebagai affordance detail.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /maxlength="40"[\s\S]*data-decree-counter/,
+  "Label SK harus dibatasi 40 karakter dengan penghitung.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /let sk = wmState\.sk\[Number\(row\.dataset\.decreeIndex\)\][\s\S]*sk = await TalentaWinnerApi\.saveDecree/,
+  "Upload PDF harus dapat mengganti state SK setelah request berhasil.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /catch \(error\)[\s\S]*Upload PDF SK gagal/,
+  "Kegagalan upload PDF harus ditampilkan kepada pengguna.",
+);
+assert.match(
+  mainCssSource,
+  /\.wm-decree-row > \.detail-document-row__actions\s*\{\s*align-self: start;/,
+  "Action Pemenang harus tetap di atas saat panel detail terbuka.",
+);
+assert.match(
+  mainCssSource,
+  /\.admin-topbar__actions\s*\{[^}]*flex-wrap:\s*nowrap;/s,
+  "Action topbar editor harus tetap satu baris pada desktop.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /wmState\.sk\[Number\(row\.dataset\.decreeIndex\)\] = sk;[\s\S]*renderDecrees\(\);[\s\S]*renderPreview\(\);/,
+  "Upload PDF harus langsung menyegarkan preview Banner.",
+);
+assert.match(
+  winnerAdminManagerSource,
+  /\[data-decree-active\].*renderPreview\(\)/s,
+  "Toggle SK harus langsung menyegarkan preview Banner.",
 );
 
 context.__publicManager = {

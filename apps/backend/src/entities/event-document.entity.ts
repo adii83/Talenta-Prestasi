@@ -39,6 +39,9 @@ export class EventDocument {
   @Column({ name: 'display_size', default: '' })
   displaySize!: string;
 
+  @Column({ name: 'default_download_label', default: '' })
+  defaultDownloadLabel!: string;
+
   @Column({ name: 'is_active', default: true })
   isActive!: boolean;
 

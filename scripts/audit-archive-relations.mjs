@@ -115,6 +115,7 @@ context.__dirtyArchiveCompetition = {
       "dokumen-asing": "Tidak boleh lolos",
     },
   },
+  skBannerTitle: "SK Resmi Arsip",
   skDocument: {
     documentId: "dokumen-asing",
     title: document.title,
@@ -137,6 +138,11 @@ assert.deepEqual(normalizedDirty.detail.documentLabelOverrides, {
   [document.id]: "Label Bersih",
 });
 assert.equal(normalizedDirty.skDocument.documentId, document.id);
+assert.equal(
+  normalizedDirty.skBannerTitle,
+  "SK Resmi Arsip",
+  "Normalisasi Detail Arsip harus mempertahankan judul Banner SK.",
+);
 assert.equal(normalizedDirty.uploadedIcon, "");
 
 context.__detailSource = normalizedDirty;
@@ -149,6 +155,11 @@ assert.equal(resolvedDetail.sk.documentId, document.id);
 
 context.__customSkCompetition = {
   ...source,
+  skBannerTitle: "Banner SK khusus Event",
+  detail: {
+    ...source.detail,
+    winnersDescription: "Deskripsi hasil dan pemenang khusus Event.",
+  },
   skDocument: {
     documentId: document.id,
     title: "Judul SK khusus Event",
@@ -163,14 +174,60 @@ const customSk = clone(
 assert.equal(customSk.documentId, document.id);
 assert.equal(customSk.title, "Judul SK khusus Event");
 assert.equal(customSk.description, "Deskripsi SK khusus Event.");
+context.__existingDecreeCompetition = {
+  ...source,
+  documents: [
+    {
+      ...document,
+      id: "existing-sk-1",
+      documentRole: "winner_decree",
+      title: "SK Existing Satu",
+      url: "/media/existing-sk-1.pdf",
+    },
+    {
+      ...document,
+      id: "existing-sk-2",
+      documentRole: "winner_decree",
+      title: "SK Existing Dua",
+      url: "/media/existing-sk-2.pdf",
+    },
+  ],
+  skDocument: null,
+};
+const existingDecrees = clone(
+  evaluate(
+    "resolveArchiveDetailState(normalizeArchiveCompetition(__existingDecreeCompetition)).sk",
+  ),
+);
+assert.equal(
+  existingDecrees.length,
+  2,
+  "Preview editor harus membawa semua dokumen SK existing milik Event Arsip.",
+);
+assert.equal(existingDecrees[1].url, "/media/existing-sk-2.pdf");
 context.__customSkState = clone(
   evaluate(
     "resolveArchiveDetailState(normalizeArchiveCompetition(__customSkCompetition))",
   ),
 );
 const customSkMarkup = evaluate("buildArchiveDetailMarkup(__customSkState)");
-assert.match(customSkMarkup, />Unduh SK<\/a>/);
-assert.doesNotMatch(customSkMarkup, /Unduh PDF/);
+assert.match(customSkMarkup, /<span>Judul SK khusus Event<\/span><\/a>/);
+assert.match(customSkMarkup, />Banner SK khusus Event<\/h3>/);
+assert.match(
+  customSkMarkup,
+  /<h2 class="t-h2">Daftar Pemenang<\/h2><p>Deskripsi hasil dan pemenang khusus Event\.<\/p>/,
+);
+assert.doesNotMatch(customSkMarkup, /Unduh PDF|>Lihat SK<\/span>/);
+assert.match(
+  customSkMarkup,
+  /winner-section[\s\S]*winner-decrees[\s\S]*<\/div><\/section>/,
+  "Blok unduhan SK Detail Arsip harus berada setelah seluruh kategori Pemenang.",
+);
+assert.match(
+  customSkMarkup,
+  /class="winner-decrees"[\s\S]*class="winner-decrees__title"[\s\S]*class="winner-decrees__actions"/,
+  "Unduhan SK Detail Arsip harus memakai satu judul di atas kumpulan tombol.",
+);
 
 const designAssetId = "11111111-1111-4111-8111-111111111111";
 context.__customWinnerCompetition = {
@@ -302,11 +359,10 @@ assert.doesNotMatch(
   /id="detailShortName"|>Nama pendek</,
   "Editor Detail Arsip tidak boleh menampilkan field Nama pendek.",
 );
-assert.match(detailHtml, /id="detailSkTitle"/);
 assert.doesNotMatch(
   detailHtml,
-  /detailSkDescription|Kategori serta pemenang historis/,
-  "Editor Detail Arsip tidak boleh menampilkan deskripsi banner SK atau deskripsi Hasil dan Pemenang.",
+  /id="detailSkDocument"|id="detailSkTitle"|detailSkDescription|Kategori serta pemenang historis/,
+  "Editor Detail Arsip tidak boleh memakai editor SK tunggal atau deskripsi banner SK.",
 );
 assert.doesNotMatch(
   archiveRepository,
@@ -348,10 +404,60 @@ assert.doesNotMatch(
 );
 assert.match(
   documentSectionHtml,
-  /class="[^"]*admin-switch[^"]*"[\s\S]*?id="detailShowSk"[\s\S]*?<em>Tampilkan banner SK<\/em>/,
+  /class="[^"]*admin-switch[^"]*"[\s\S]*?id="detailShowSk"[^>]*aria-label="Tampilkan Banner SK ke publik"/,
   "Banner SK harus memakai toggle di kelompok Dokumen Terkait.",
 );
 assert.match(documentSectionHtml, /class="detail-sk-settings"/);
+assert.doesNotMatch(
+  detailHtml,
+  /id="detailSkDocument"|id="detailSkTitle"/,
+  "Editor Detail Arsip tidak boleh memakai dropdown SK tunggal.",
+);
+assert.match(
+  detailEditor,
+  /function renderDecreeDocuments\(/,
+  "Editor Detail Arsip harus merender setiap SK pemenang otomatis.",
+);
+assert.match(
+  detailEditor,
+  /detail-document-row__actions[\s\S]*detail-decree-row__edit[\s\S]*data-decree-toggle[\s\S]*aria-expanded[\s\S]*Edit detail/,
+  "Baris SK harus memiliki action cluster dan tombol Edit detail yang dapat diakses.",
+);
+assert.match(
+  detailEditor,
+  /detail-document-row__actions--regular[\s\S]*detail-document-row__edit-slot/,
+  "Dokumen biasa harus mempertahankan slot Edit agar toggle tetap sejajar.",
+);
+assert.doesNotMatch(
+  detailEditor,
+  /detail-decree-row__chevron/,
+  "Baris SK tidak boleh lagi memakai chevron sebagai affordance detail.",
+);
+assert.match(
+  detailEditor,
+  /aria-label="Arsipkan \$\{esc\(d\.title\)\}"/,
+  "Toggle arsip SK harus memiliki aria-label tanpa teks terlihat.",
+);
+assert.match(
+  detailEditor,
+  /maxlength="40"/,
+  "Override judul SK dibatasi 40 karakter.",
+);
+assert.match(
+  detailEditor,
+  /data-decree-counter/,
+  "Override judul SK harus menampilkan penghitung karakter.",
+);
+assert.match(
+  archiveRepository,
+  /doc-card__download[\s\S]*?>Unduh<\/a>/,
+  "Semua dokumen Detail Arsip harus memakai aksi Unduh.",
+);
+assert.doesNotMatch(
+  archiveRepository,
+  /document\.documentRole[\s\S]*?Unduh SK/,
+  "SK di daftar dokumen tidak boleh mengganti label standar Unduh.",
+);
 assert.match(detailEditor, /data-detail-up/);
 assert.match(detailEditor, /data-detail-down/);
 assert.match(detailEditor, /function moveDetailDocument\(/);
@@ -366,11 +472,26 @@ assert.match(
   "Fallback SK hanya boleh memakai winner_decree milik Event yang dimuat.",
 );
 assert.match(detailApi, /documentId: document\.id/);
-assert.match(detailApi, /decreeDocumentId: event\.skDocument\?\.documentId/);
-assert.doesNotMatch(detailApi, /decreeDocumentId: event\.skDocument\?\.id/);
+assert.doesNotMatch(
+  detailApi,
+  /decreeDocumentId:/,
+  "Detail Arsip multi-SK tidak boleh menyimpan pemilihan satu dokumen Banner.",
+);
+assert.match(detailApi, /skBannerTitle: settings\.decreeTitle/);
+assert.match(detailApi, /winnersEyebrow: settings\.winnersEyebrow/);
+assert.match(detailApi, /winnersTitle: settings\.winnersTitle/);
+assert.match(detailApi, /winnersDescription: settings\.winnersDescription/);
+assert.match(detailApi, /decreeTitle: event\.skBannerTitle/);
+assert.match(detailApi, /winnersEyebrow: event\.detail\.winnersEyebrow/);
+assert.match(detailApi, /winnersTitle: event\.detail\.winnersTitle/);
 assert.match(
   detailApi,
-  /Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah\./,
+  /winnersDescription: event\.detail\.winnersDescription/,
+);
+assert.match(
+  detailApi,
+  /url: document\.assetId \? TalentaMedia\.url\(document\.assetId\) : ""/,
+  "Dokumen SK existing harus membawa URL file ke preview editor Admin.",
 );
 assert.match(detailHtml, /id="detailName"[^>]*required/);
 assert.match(detailHtml, /id="detailName"[^>]*maxlength="200"/);
@@ -422,13 +543,29 @@ assert.match(
 );
 assert.match(
   detailEditor,
-  /detailSkTitle"\)\.disabled =[\s\S]*?!comp\.skDocument\?\.documentId/,
-  "Judul SK harus nonaktif saat Event tidak memiliki SK.",
+  /detailSkBannerTitle/,
+  "Editor Detail Arsip harus menyediakan judul Banner multi-SK.",
+);
+assert.match(detailHtml, /id="detailWinnersDescription"/);
+assert.match(detailEditor, /detailWinnersDescription: det\.winnersDescription/);
+assert.match(detailEditor, /detailWinnersDescription: "winnersDescription"/);
+assert.match(
+  publicDetail,
+  /winnersEyebrow:\s*data\.settings\?\.winnersEyebrow/,
+);
+assert.match(publicDetail, /winnersTitle: data\.settings\?\.winnersTitle/);
+assert.match(
+  publicDetail,
+  /winnersDescription: data\.settings\?\.winnersDescription/,
+);
+assert.match(
+  publicDetail,
+  /skBannerTitle:[\s\S]*data\.settings\?\.decreeTitle/,
 );
 assert.doesNotMatch(
   detailEditor,
-  /const ensureSk =/,
-  "Input judul/deskripsi tidak boleh membuat banner SK tanpa dokumen.",
+  /detailSkDocument|detailSkTitle/,
+  "Editor Detail Arsip tidak boleh menyisakan kontrol SK tunggal.",
 );
 assert.match(manager, /TalentaMedia\.adminPreviewUrl\(item\.mascotAssetId/);
 assert.match(manager, /siteId: item\.id/);
@@ -474,8 +611,8 @@ assert.match(
 );
 assert.match(
   publicDetail,
-  /url: mediaUrl\(data\.decree\.url, data\.decree\.assetId\)/,
-  "SK Detail Arsip harus membawa token media Event Arsip.",
+  /url: mediaUrl\(decree\.url, decree\.assetId\)/,
+  "Semua SK Detail Arsip harus membawa token media Event Arsip.",
 );
 assert.match(publicDetail, /activateWinnerCardFallbacks\(root\)/);
 assert.match(detailEditor, /activateWinnerCardFallbacks\(root\)/);

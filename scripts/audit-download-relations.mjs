@@ -231,7 +231,29 @@ const currentEvent = {
   periodYear: 2027,
   batchNumber: 1,
 };
+const archivedEvent = {
+  id: "event-2026",
+  categoryId: "category-science",
+  name: "Olimpiade Sains",
+  periodYear: 2026,
+  batchNumber: 1,
+};
+const archivedDocuments = [
+  {
+    id: "document-2026-a",
+    title: "Panduan 2026",
+    isActive: true,
+    assetId: "asset-2026-a",
+  },
+  {
+    id: "document-2026-b",
+    title: "Jadwal 2026",
+    isActive: true,
+    assetId: "asset-2026-b",
+  },
+];
 let currentTabs = [];
+let savedDownloadBody = null;
 const downloadApiWindow = {
   parent: {
     TalentaAdminAuth: {
@@ -244,14 +266,24 @@ const downloadApiContext = vm.createContext({
   window: downloadApiWindow,
   TalentaMedia: { url: (assetId) => `/api/v1/public/media/${assetId}` },
   TalentaApi: {
-    async request(path) {
+    async request(path, options = {}) {
       if (path === "/admin/categories/category-science/events") {
-        return { data: [currentEvent] };
+        return { data: [currentEvent, archivedEvent] };
       }
       if (path === "/admin/events/event-2027/documents") {
         return { data: [] };
       }
+      if (path === "/admin/events/event-2026/documents") {
+        return { data: archivedDocuments };
+      }
+      if (path === "/admin/events/event-2026/downloads") {
+        return { data: { tabs: [] } };
+      }
       if (path === "/admin/events/event-2027/downloads") {
+        if (options.method === "PUT") {
+          savedDownloadBody = options.body;
+          return { data: { tabs: options.body.tabs } };
+        }
         return { data: { tabs: currentTabs } };
       }
       if (path === "/admin/events/event-2027/pages/download") {
@@ -294,6 +326,54 @@ assert.equal(
   customCurrentTab.configs[0]?.customTabName,
   "Panduan 2027",
   "Nama tab custom Event saat ini harus dipertahankan.",
+);
+
+currentTabs = [
+  {
+    tabId: "tab-archive",
+    sourceEventSiteId: archivedEvent.id,
+    customTabName: "Arsip Olimpiade 2026",
+    isDefault: true,
+    isActive: true,
+    documents: [
+      { documentId: archivedDocuments[1].id, isVisible: true },
+      { documentId: archivedDocuments[0].id, isVisible: true },
+    ],
+  },
+];
+const archivedTabState = await downloadApiWindow.TalentaDownloadApi.load();
+assert.equal(
+  archivedTabState.configs[0]?.competitionId,
+  archivedEvent.id,
+  "Load harus mempertahankan identitas Event sumber tab arsip.",
+);
+downloadApiWindow.TalentaDownloadCompetitions = archivedTabState.available;
+await downloadApiWindow.TalentaDownloadApi.save({
+  ...archivedTabState.page,
+  competitions: archivedTabState.configs,
+});
+assert.equal(
+  savedDownloadBody?.tabs[0]?.sourceEventSiteId,
+  archivedEvent.id,
+  "Save harus mengirim identitas Event sumber agar relasi dokumen arsip dapat disimpan.",
+);
+assert.deepEqual(
+  clone(
+    archivedTabState.archiveSources[0]?.documents.map(
+      (document) => document.id,
+    ),
+  ),
+  [archivedDocuments[1].id, archivedDocuments[0].id],
+  "Load harus memulihkan urutan dokumen sumber Event sebelumnya.",
+);
+assert.deepEqual(
+  clone(
+    savedDownloadBody?.tabs[0]?.documents.map(
+      (document) => document.documentId,
+    ),
+  ),
+  [archivedDocuments[1].id, archivedDocuments[0].id],
+  "Save harus mempertahankan urutan dokumen milik Event sumber arsip.",
 );
 
 assert.ok(
@@ -341,6 +421,13 @@ assert.ok(
     downloadEditorSource.includes("data-current-up") &&
     downloadEditorSource.includes("data-current-down"),
   "Dokumen saat ini harus mendukung pointer drag dan tombol naik/turun accessible.",
+);
+assert.ok(
+  downloadEditorSource.includes("moveArchiveDocument") &&
+    downloadEditorSource.includes("data-archive-grip") &&
+    downloadEditorSource.includes("data-archive-up") &&
+    downloadEditorSource.includes("data-archive-down"),
+  "Dokumen Event sebelumnya harus mendukung pointer drag dan tombol naik/turun accessible.",
 );
 assert.match(
   mainCss,

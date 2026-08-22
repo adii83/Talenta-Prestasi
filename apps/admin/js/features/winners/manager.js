@@ -1,12 +1,7 @@
 /* CRUD kategori juara dan pemenang lomba aktif. */
 let wmState = {
   competitionId: "",
-  sk: {
-    title: "SK Penetapan Pemenang",
-    description:
-      "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
-    url: "",
-  },
+  sk: [],
   categories: [],
 };
 let wmDisplay = loadDisplay();
@@ -65,6 +60,10 @@ async function hydrateWinners() {
       ...wmDisplay,
       ...(loaded.page || {}),
       showSk: loaded.page?.showDecree ?? wmDisplay.showSk,
+      decreeTitle:
+        loaded.page?.decreeTitle ||
+        wmDisplay.decreeTitle ||
+        "SK Penetapan Pemenang",
     });
     if (Number.isFinite(Number(loaded.page?.archiveLimit)))
       wmDisplay.archiveLimit = Number(loaded.page.archiveLimit);
@@ -173,67 +172,78 @@ function renderActiveComp() {
   );
   el.innerHTML = `<div class="wm-comp-badge"><i data-lucide="${esc(comp.icon || "trophy")}"></i><div><strong>${esc(comp.name)}</strong><small>${esc(comp.shortName)} · ${(comp.winnerCategories || []).length} kategori sumber · ${winnersCount} pemenang sumber</small></div></div>`;
 }
-function syncSk() {
-  document.getElementById("wmSkTitle").value = wmState.sk.title;
-  const btnText = document.getElementById("wmSkFileBtnText");
-  const link = document.getElementById("wmSkFileLink");
-  btnText.textContent = wmState.sk.assetId
-    ? `File SK tersimpan${wmState.sk.displaySize ? ` · ${wmState.sk.displaySize}` : ""}`
-    : "Pilih file PDF... (Maks 10MB)";
-  btnText.style.color = wmState.sk.assetId ? "var(--c-text)" : "var(--c-gray)";
-  link.hidden = !wmState.sk.url;
-  link.style.display = wmState.sk.url ? "inline-flex" : "none";
-  if (wmState.sk.url) link.href = wmState.sk.url;
-  const delBtn = document.getElementById("wmSkDeleteBtn");
-  if (delBtn) delBtn.hidden = !wmState.sk.assetId;
-}
-function bindSk() {
-  document.getElementById("wmSkTitle").oninput = (event) => {
-    wmState.sk.title = event.target.value;
-    renderPreview();
-  };
-  document.getElementById("wmSkFile").onchange = async (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    event.target.disabled = true;
-    try {
-      wmState.sk = await TalentaWinnerApi.saveDecree(wmState.sk, file);
-      syncSk();
+function renderDecrees() {
+  const root = document.getElementById("wmDecreeList");
+  if (!root) return;
+  root.innerHTML = (wmState.sk || [])
+    .map(
+      (sk, index) =>
+        `<div class="archive-linked-doc detail-document-row wm-decree-row${sk.active === false ? " is-disabled" : ""}" data-decree-index="${index}"><div class="detail-decree-row__main"><strong>${esc(sk.title || "SK Penetapan Pemenang")}</strong><small>${esc(sk.fileType || "PDF")} · ${esc(sk.displaySize || "Belum ada file")}</small></div><div class="detail-document-row__actions"><button type="button" class="btn btn--outline btn--sm detail-decree-row__edit" data-decree-toggle aria-expanded="false" aria-label="Edit detail SK"><i data-lucide="settings-2"></i>Edit detail</button><label class="admin-switch"><input type="checkbox" data-decree-active ${sk.active !== false ? "checked" : ""} aria-label="Tampilkan SK"><span></span></label><button type="button" data-decree-delete aria-label="Hapus SK"><i data-lucide="trash-2"></i></button></div><div class="detail-decree-row__details"><label class="wm-decree-field"><span>Judul dokumen</span><input class="form-input" maxlength="200" data-decree-title value="${esc(sk.title || "")}"></label><label class="wm-decree-field"><span>Label tombol Banner</span><input class="form-input" maxlength="40" data-decree-label value="${esc(sk.defaultDownloadLabel || "")}"><small><span data-decree-counter>${String(sk.defaultDownloadLabel || "").length}</span>/40</small></label><label class="btn btn--outline btn--sm">${sk.assetId ? "Ganti PDF" : "Upload PDF"}<input type="file" data-decree-file accept="application/pdf" hidden></label></div></div>`,
+    )
+    .join("");
+  root.querySelectorAll("[data-decree-index]").forEach((row) => {
+    let sk = wmState.sk[Number(row.dataset.decreeIndex)];
+    row.querySelector("[data-decree-toggle]").onclick = () => {
+      const open = row.classList.toggle("is-expanded");
+      const button = row.querySelector("[data-decree-toggle]");
+      button.setAttribute("aria-expanded", String(open));
+      button.lastChild.textContent = open ? "Tutup detail" : "Edit detail";
+    };
+    row.querySelector("[data-decree-title]").oninput = (e) => {
+      sk.title = e.target.value;
+      row.querySelector(".detail-decree-row__main > strong").textContent =
+        sk.title || "SK Penetapan Pemenang";
       renderPreview();
-      toast("File SK tersimpan dan otomatis ditambahkan ke dokumen lomba.");
-    } catch (error) {
-      toast(error.message, true);
-    } finally {
-      event.target.value = "";
-      event.target.disabled = false;
-    }
-  };
-  const delBtn = document.getElementById("wmSkDeleteBtn");
-  if (delBtn)
-    delBtn.onclick = async () => {
-      const confirmed = await adminConfirm({
-        title: "Hapus file SK?",
-        message: "File SK akan dihapus dari lomba saat ini.",
-        confirmLabel: "Ya, hapus",
-        variant: "danger",
-        icon: "file-x-2",
-      });
-      if (!confirmed) return;
+    };
+    row.querySelector("[data-decree-label]").oninput = (e) => {
+      sk.defaultDownloadLabel = e.target.value.slice(0, 40);
+      row.querySelector("[data-decree-counter]").textContent =
+        sk.defaultDownloadLabel.length;
+      renderPreview();
+    };
+    row.querySelector("[data-decree-active]").onchange = (e) => {
+      sk.active = e.target.checked;
+      row.classList.toggle("is-disabled", !sk.active);
+      renderPreview();
+    };
+    row.querySelector("[data-decree-delete]").onclick = async () => {
+      await TalentaWinnerApi.deleteDecree(sk);
+      wmState.sk.splice(Number(row.dataset.decreeIndex), 1);
+      renderDecrees();
+    };
+    row.querySelector("[data-decree-file]").onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
       try {
-        wmState.sk = await TalentaWinnerApi.saveDecree(
-          { ...wmState.sk, documentId: null },
-          null,
-        );
-        wmState.sk.assetId = null;
-        wmState.sk.url = "";
-        wmState.sk.displaySize = "";
-        syncSk();
+        const replacing = Boolean(sk.assetId);
+        sk = await TalentaWinnerApi.saveDecree(sk, file);
+        wmState.sk[Number(row.dataset.decreeIndex)] = sk;
+        renderDecrees();
         renderPreview();
-        toast("File SK berhasil dihapus.");
+        toast(
+          replacing ? "PDF SK berhasil diganti." : "PDF SK berhasil diunggah.",
+        );
       } catch (error) {
-        toast(error.message, true);
+        e.target.value = "";
+        toast(error.message || "Upload PDF SK gagal.", true);
       }
     };
+  });
+  icons();
+}
+function syncSk() {
+  renderDecrees();
+}
+function bindSk() {
+  document.getElementById("wmAddDecree")?.addEventListener("click", () => {
+    if (wmState.sk.length >= 10) return toast("Maksimal 10 SK.", true);
+    wmState.sk.push({
+      title: "SK Penetapan Pemenang",
+      active: true,
+      sortOrder: wmState.sk.length,
+    });
+    renderDecrees();
+  });
 }
 function syncDisplay() {
   const availableCount = availableWinnerArchives().length;
@@ -246,6 +256,7 @@ function syncDisplay() {
     wmPageTitle: wmDisplay.title,
     wmPageDescription: wmDisplay.description,
     wmPageAlignment: wmDisplay.alignment,
+    wmSkBannerTitle: wmDisplay.decreeTitle,
     wmShowSk: wmDisplay.showSk,
     wmArchiveActive: wmDisplay.archiveActive,
     wmArchiveTitle: wmDisplay.archiveTitle,
@@ -269,6 +280,7 @@ function bindDisplay() {
     wmPageEyebrow: "eyebrow",
     wmPageTitle: "title",
     wmPageDescription: "description",
+    wmSkBannerTitle: "decreeTitle",
     wmArchiveTitle: "archiveTitle",
     wmArchiveAction: "archiveAction",
   };

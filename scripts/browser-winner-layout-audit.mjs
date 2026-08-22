@@ -368,6 +368,72 @@ try {
     );
   }
 
+  const tabletBuiltInSizing = await evaluate(
+    client,
+    `(() => {
+      const contexts = [
+        ["wm-preview-frame--tablet", "winner-public-preview"],
+        ["winner-preview-frame--tablet", "winner-highlight-preview"],
+        ["archive-detail-preview-frame--tablet", "archive-detail-public-preview"]
+      ];
+      return contexts.map(([frameClass, rootClass]) => {
+        const frame = document.createElement("div");
+        frame.className = frameClass;
+        frame.innerHTML = '<section class="' + rootClass + '" style="width:753px"><div class="champion-card champion-card--built-in"><div class="champion-card__photo">TP</div><p class="champion-card__rank">Juara 1</p><p class="champion-card__name">Pemenang</p><p class="champion-card__school">Sekolah</p><div class="champion-card__meta"><span><span class="meta-label">Kabupaten:</span> Contoh</span></div></div></section>';
+        document.body.appendChild(frame);
+        const card = frame.querySelector(".champion-card--built-in");
+        const photo = frame.querySelector(".champion-card__photo");
+        const result = {
+          frameClass,
+          padding: parseFloat(getComputedStyle(card).paddingTop),
+          photoWidth: parseFloat(getComputedStyle(photo).width),
+          rankSize: parseFloat(getComputedStyle(frame.querySelector(".champion-card__rank")).fontSize),
+          nameSize: parseFloat(getComputedStyle(frame.querySelector(".champion-card__name")).fontSize),
+          schoolSize: parseFloat(getComputedStyle(frame.querySelector(".champion-card__school")).fontSize),
+          metaSize: parseFloat(getComputedStyle(frame.querySelector(".champion-card__meta")).fontSize),
+          labelSize: parseFloat(getComputedStyle(frame.querySelector(".meta-label")).fontSize)
+        };
+        frame.remove();
+        return result;
+      });
+    })()`,
+  );
+  tabletBuiltInSizing.forEach(
+    ({
+      frameClass,
+      padding,
+      photoWidth,
+      rankSize,
+      nameSize,
+      schoolSize,
+      metaSize,
+      labelSize,
+    }) => {
+      assert(
+        Math.abs(padding - 10) <= 0.1,
+        `${frameClass}: padding kartu bawaan tidak mengikuti preview tablet (${padding}px)`,
+      );
+      assert.equal(
+        photoWidth,
+        40,
+        `${frameClass}: foto kartu bawaan tidak mengikuti preview tablet`,
+      );
+      assert.equal(
+        rankSize,
+        8,
+        `${frameClass}: ukuran peringkat terlalu besar`,
+      );
+      assert.equal(nameSize, 11, `${frameClass}: ukuran nama terlalu besar`);
+      assert.equal(
+        schoolSize,
+        9,
+        `${frameClass}: ukuran sekolah terlalu besar`,
+      );
+      assert.equal(metaSize, 9, `${frameClass}: ukuran metadata terlalu besar`);
+      assert.equal(labelSize, 8, `${frameClass}: ukuran label terlalu besar`);
+    },
+  );
+
   const controlLayout = await evaluate(
     client,
     `(() => {
@@ -544,11 +610,7 @@ try {
     2 * 1024 * 1024,
     "Batas sumber desain bukan 2 MB",
   );
-  assert.equal(
-    compression.target,
-    400 * 1024,
-    "Target kompresi bukan 400 KB",
-  );
+  assert.equal(compression.target, 400 * 1024, "Target kompresi bukan 400 KB");
   assert.equal(
     compression.outputLimit,
     500 * 1024,

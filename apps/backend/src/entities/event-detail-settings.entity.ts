@@ -45,6 +45,25 @@ export class EventDetailSettings {
   @Column({ name: 'winners_active', default: true })
   winnersActive!: boolean;
 
+  @Column({
+    name: 'winners_eyebrow',
+    type: 'varchar',
+    length: 120,
+    default: 'Hasil Ajang Talenta',
+  })
+  winnersEyebrow!: string;
+
+  @Column({
+    name: 'winners_title',
+    type: 'varchar',
+    length: 200,
+    default: 'Daftar Pemenang',
+  })
+  winnersTitle!: string;
+
+  @Column({ name: 'winners_description', type: 'text', default: '' })
+  winnersDescription!: string;
+
   @Column({ name: 'documents_active', default: true })
   documentsActive!: boolean;
 
@@ -56,7 +75,7 @@ export class EventDetailSettings {
   eventSite!: EventSite;
 
   @ManyToOne(() => EventDocument, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'decree_document_id' })
+  @JoinColumn({ name: 'decree_document_id', referencedColumnName: 'id' })
   decreeDocument!: EventDocument | null;
 
   @OneToMany(() => ArchiveCategorySettings, (s) => s.detailSettings)

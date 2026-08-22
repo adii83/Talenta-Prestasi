@@ -141,11 +141,12 @@ function syncForm() {
     detailActive: comp.active,
     detailName: archiveDisplayName(comp),
     detailDescription: comp.description || "",
-    detailSkTitle: comp.skDocument?.title || "SK Penetapan Pemenang",
     detailWinnersActive: det.winnersActive,
     detailWinnersEyebrow: det.winnersEyebrow,
     detailWinnersTitle: det.winnersTitle,
+    detailWinnersDescription: det.winnersDescription,
     detailShowSk: det.showSk,
+    detailSkBannerTitle: comp.skBannerTitle || "SK Penetapan Pemenang",
     detailDocumentsActive: det.documentsActive,
     detailDocumentsEyebrow: det.documentsEyebrow,
     detailDocumentsTitle: det.documentsTitle,
@@ -155,24 +156,8 @@ function syncForm() {
     if (!e) return;
     e.type === "checkbox" ? (e.checked = v) : (e.value = v);
   });
-  renderSkSelect();
-  document.getElementById("detailSkTitle").disabled =
-    !comp.skDocument?.documentId;
   renderCategorySummary();
   renderDocumentList();
-}
-
-function renderSkSelect() {
-  const sel = document.getElementById("detailSkDocument");
-  const docs = (comp.documents || []).filter((d) => d.active !== false);
-  sel.innerHTML =
-    '<option value="">— Tidak ada SK —</option>' +
-    docs
-      .map(
-        (d) =>
-          `<option value="${esc(d.id)}" ${comp.skDocument?.documentId === d.id ? "selected" : ""}>${esc(d.title)}</option>`,
-      )
-      .join("");
 }
 
 function renderCategorySummary() {
@@ -205,6 +190,18 @@ function moveDetailDocument(index, direction) {
   markDetailDirty();
 }
 
+function documentOrderMarkup(d, index, total) {
+  return `<div class="detail-document-row__order"><button type="button" data-detail-up ${index === 0 ? "disabled" : ""} aria-label="Naikkan urutan ${esc(d.title)}" title="Naikkan urutan"><i data-lucide="arrow-up"></i></button><span>${String(index + 1).padStart(2, "0")}</span><button type="button" data-detail-down ${index === total - 1 ? "disabled" : ""} aria-label="Turunkan urutan ${esc(d.title)}" title="Turunkan urutan"><i data-lucide="arrow-down"></i></button></div>`;
+}
+function renderDecreeDocuments(d, index, total, det) {
+  const shown = d.active !== false && !det.hiddenDocumentIds.includes(d.id);
+  const label = det.documentLabelOverrides[d.id] || "";
+  return `<div class="archive-linked-doc detail-document-row detail-decree-row" data-doc-id="${esc(d.id)}" data-document-index="${index}">${documentOrderMarkup(d, index, total)}<div class="detail-decree-row__main"><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><div class="detail-decree-row__details"><input class="form-input" maxlength="40" data-decree-label value="${esc(label)}" placeholder="Label override"><small><span data-decree-counter>${label.length}</span>/40</small><label class="btn btn--outline btn--sm">${d.assetId ? "Ganti PDF" : "Upload PDF"}<input type="file" data-document-upload accept="application/pdf" hidden></label></div></div><div class="detail-document-row__actions"><button type="button" class="btn btn--outline btn--sm detail-decree-row__edit" data-decree-toggle aria-expanded="false" aria-label="Edit detail ${esc(d.title)}"><i data-lucide="settings-2"></i>Edit detail</button><label class="admin-switch"><input type="checkbox" data-decree-visibility ${shown ? "checked" : ""} aria-label="Arsipkan ${esc(d.title)}"><span></span></label><button type="button" data-reset-label title="Kembalikan nama asli" aria-label="Kembalikan label ${esc(d.title)}"><i data-lucide="rotate-ccw"></i></button></div></div>`;
+}
+function renderRegularDocument(d, index, total, det) {
+  const shown = d.active !== false && !det.hiddenDocumentIds.includes(d.id);
+  return `<div class="archive-linked-doc detail-document-row" data-doc-id="${esc(d.id)}" data-document-index="${index}">${documentOrderMarkup(d, index, total)}<div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><label class="btn btn--outline btn--sm">${d.assetId ? "Ganti PDF" : "Upload PDF"}<input type="file" data-document-upload accept="application/pdf" hidden></label></div><div class="detail-document-row__actions detail-document-row__actions--regular"><span class="detail-document-row__edit-slot" aria-hidden="true"></span><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><button type="button" data-reset-label title="Kembalikan nama asli" aria-label="Kembalikan label ${esc(d.title)}"><i data-lucide="rotate-ccw"></i></button></div></div>`;
+}
 function renderDocumentList() {
   const root = document.getElementById("detailDocumentList");
   const docs = comp.documents || [];
@@ -216,16 +213,17 @@ function renderDocumentList() {
   }
   const det = comp.detail;
   root.innerHTML = docs
-    .map((d, index) => {
-      const shown = d.active !== false && !det.hiddenDocumentIds.includes(d.id);
-      return `<div class="archive-linked-doc detail-document-row" data-doc-id="${esc(d.id)}" data-document-index="${index}"><div class="detail-document-row__order"><button type="button" data-detail-up ${index === 0 ? "disabled" : ""} aria-label="Naikkan urutan ${esc(d.title)}" title="Naikkan urutan"><i data-lucide="arrow-up"></i></button><span>${String(index + 1).padStart(2, "0")}</span><button type="button" data-detail-down ${index === docs.length - 1 ? "disabled" : ""} aria-label="Turunkan urutan ${esc(d.title)}" title="Turunkan urutan"><i data-lucide="arrow-down"></i></button></div><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><input class="form-input" value="${esc(det.documentLabelOverrides[d.id] || "")}" placeholder="Label custom (opsional)"><label class="btn btn--outline btn--sm">${d.assetId ? "Ganti PDF" : "Upload PDF"}<input type="file" data-document-upload accept="application/pdf" hidden></label></div><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><button type="button" data-reset-label title="Kembalikan nama asli" aria-label="Kembalikan label ${esc(d.title)}"><i data-lucide="rotate-ccw"></i></button></div>`;
-    })
+    .map((d, index) =>
+      d.documentRole === "winner_decree"
+        ? renderDecreeDocuments(d, index, docs.length, det)
+        : renderRegularDocument(d, index, docs.length, det),
+    )
     .join("");
   root.querySelectorAll(".archive-linked-doc").forEach((row) => {
     const docId = row.dataset.docId,
       index = Number(row.dataset.documentIndex),
       check = row.querySelector("[type=checkbox]"),
-      input = row.querySelector(".form-input");
+      input = row.querySelector("[data-decree-label]");
     const up = row.querySelector("[data-detail-up]");
     const down = row.querySelector("[data-detail-down]");
     up.onclick = () => moveDetailDocument(index, -1);
@@ -246,13 +244,23 @@ function renderDocumentList() {
         : [...new Set([...comp.detail.hiddenDocumentIds, docId])];
       renderPreview();
     };
-    input.oninput = () => {
-      comp.detail.documentLabelOverrides[docId] = input.value;
-      renderPreview();
-    };
+    if (input) {
+      input.oninput = () => {
+        comp.detail.documentLabelOverrides[docId] = input.value.slice(0, 40);
+        row.querySelector("[data-decree-counter]").textContent =
+          input.value.length;
+        renderPreview();
+      };
+    }
+    row.querySelector("[data-decree-toggle]")?.addEventListener("click", () => {
+      const expanded = row.classList.toggle("is-expanded");
+      const button = row.querySelector("[data-decree-toggle]");
+      button.setAttribute("aria-expanded", expanded);
+      button.lastChild.textContent = expanded ? "Tutup detail" : "Edit detail";
+    });
     row.querySelector("[data-reset-label]").onclick = () => {
       delete comp.detail.documentLabelOverrides[docId];
-      input.value = "";
+      if (input) input.value = "";
       renderPreview();
     };
     row.querySelector("[data-document-upload]").onchange = async (event) => {
@@ -300,6 +308,7 @@ function bindForm() {
   const detTexts = {
     detailWinnersEyebrow: "winnersEyebrow",
     detailWinnersTitle: "winnersTitle",
+    detailWinnersDescription: "winnersDescription",
     detailDocumentsEyebrow: "documentsEyebrow",
     detailDocumentsTitle: "documentsTitle",
   };
@@ -322,22 +331,8 @@ function bindForm() {
     det.showSk = e.target.checked;
     renderPreview();
   };
-  const skTitle = document.getElementById("detailSkTitle");
-  skTitle.oninput = () => {
-    if (!comp.skDocument?.documentId) return;
-    comp.skDocument.title = skTitle.value;
-    renderPreview();
-  };
-  document.getElementById("detailSkDocument").onchange = (e) => {
-    const d = (comp.documents || []).find((x) => x.id === e.target.value);
-    comp.skDocument = d
-      ? {
-          ...d,
-          documentId: d.id,
-          title: skTitle.value || "SK Penetapan Pemenang",
-        }
-      : null;
-    skTitle.disabled = !d;
+  document.getElementById("detailSkBannerTitle").oninput = (e) => {
+    comp.skBannerTitle = e.target.value;
     renderPreview();
   };
   document.querySelectorAll("[data-detail-preview]").forEach(
@@ -438,12 +433,16 @@ function renderLegacyPreview() {
       (c) =>
         c.active !== false && (c.winners || []).some((w) => w.active !== false),
     );
-    if (cats.length || comp.skDocument) {
+    const decrees = (comp.documents || []).filter(
+      (d) =>
+        d.documentRole === "winner_decree" &&
+        d.active !== false &&
+        !det.hiddenDocumentIds.includes(d.id),
+    );
+    if (cats.length || decrees.length) {
       html += `<section class="section"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${esc(det.winnersEyebrow)}</p><h2 class="t-h2">${esc(det.winnersTitle)}</h2></div>`;
-      /* SK Banner */
-      if (det.showSk && comp.skDocument) {
-        const sk = comp.skDocument;
-        html += `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${esc(sk.title || "SK Penetapan Pemenang")}</h3></div></div><a href="#" class="btn btn--primary" style="border:1px solid rgba(255,255,255,0.2)"><i data-lucide="download" style="width:16px;height:16px"></i> Unduh SK</a></div>`;
+      if (det.showSk) {
+        html += `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${esc(comp.skBannerTitle || "SK Penetapan Pemenang")}</h3></div></div><div class="sk-banner__actions">${decrees.map((sk) => `<a href="#" class="btn btn--primary" style="border:1px solid rgba(255,255,255,0.2)"><i data-lucide="download" style="width:16px;height:16px"></i> ${esc(det.documentLabelOverrides[sk.id] || sk.defaultDownloadLabel || sk.title)}</a>`).join("")}</div></div>`;
       }
       /* Winner groups */
       if (cats.length) {
@@ -471,7 +470,7 @@ function renderLegacyPreview() {
       html += `<section class="section section--soft"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${esc(det.documentsEyebrow)}</p><h2 class="t-h2">${esc(det.documentsTitle)}</h2></div><div class="doc-list">`;
       docs.forEach((d) => {
         const label = det.documentLabelOverrides[d.id] || d.title;
-        html += `<article class="doc-card"><div class="doc-card__icon"><i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5"></i></div><div class="doc-card__info"><p class="doc-card__name">${esc(label)} <span class="doc-card__tag">${esc(d.category)}</span></p><p class="doc-card__size">${esc(d.type)} · <span class="t-mono">${esc(d.size)}</span></p></div><div class="doc-card__download"><a href="#" class="btn btn--outline btn--sm"><i data-lucide="download" style="width:14px;height:14px"></i> Unduh</a></div></article>`;
+        html += `<article class="doc-card"><div class="doc-card__icon"><i data-lucide="file-text" style="width:20px;height:20px;stroke-width:1.5"></i></div><div class="doc-card__info"><p class="doc-card__name">${esc(label)} <span class="doc-card__tag">${esc(d.category)}</span></p><p class="doc-card__size">${esc(d.type)} · <span class="t-mono">${esc(d.size)}</span></p></div><div class="doc-card__download"><a href="#" class="btn btn--outline btn--sm"><i data-lucide="download" style="width:14px;height:14px"></i> ${d.documentRole === "winner_decree" ? "Unduh SK" : "Unduh"}</a></div></article>`;
       });
       html += `</div></div></section>`;
     }

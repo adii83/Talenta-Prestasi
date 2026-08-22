@@ -231,7 +231,7 @@ export class ResetCategoryEventSchema1786500000000
         winners_active boolean NOT NULL DEFAULT true,
         documents_active boolean NOT NULL DEFAULT true,
         metadata_visibility jsonb NOT NULL DEFAULT '{}',
-        FOREIGN KEY (decree_document_id, event_site_id) REFERENCES event_documents(id, event_site_id) ON DELETE SET NULL
+        FOREIGN KEY (decree_document_id, event_site_id) REFERENCES event_documents(id, event_site_id) ON DELETE SET NULL (decree_document_id)
       )`);
 
     // ── Archive settings ───────────────────────────────────────────
@@ -274,6 +274,7 @@ export class ResetCategoryEventSchema1786500000000
         event_site_id uuid PRIMARY KEY REFERENCES event_sites(id) ON DELETE CASCADE,
         is_active boolean NOT NULL DEFAULT true,
         show_decree boolean NOT NULL DEFAULT true,
+        decree_title varchar(200) NOT NULL DEFAULT 'SK Penetapan Pemenang',
         metadata_visibility jsonb NOT NULL DEFAULT '{}',
         archive_active boolean NOT NULL DEFAULT true,
         archive_limit int NOT NULL DEFAULT 3

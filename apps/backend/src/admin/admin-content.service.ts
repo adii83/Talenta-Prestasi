@@ -19,6 +19,7 @@ type Doc = {
   fileType?: string;
   displaySize?: string;
   assetId?: string;
+  defaultDownloadLabel?: string;
   isActive?: boolean;
   sortOrder?: number;
   expectedRevision?: number;
@@ -76,6 +77,7 @@ type Page = {
   description?: string;
   alignment?: string;
   showDecree?: boolean;
+  decreeTitle?: string;
   metadataVisibility?: Record<string, boolean>;
   archiveActive?: boolean;
   archiveLimit?: number;
@@ -95,7 +97,7 @@ export class AdminContentService {
     const settings =
       (
         await this.db.query(
-          `SELECT archive_display_name AS "archiveDisplayName",decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",decree_description AS "decreeDescription",is_active AS "isActive",winners_active AS "winnersActive",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM event_detail_settings WHERE event_site_id=$1`,
+          `SELECT archive_display_name AS "archiveDisplayName",decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",decree_description AS "decreeDescription",is_active AS "isActive",winners_active AS "winnersActive",winners_eyebrow AS "winnersEyebrow",winners_title AS "winnersTitle",winners_description AS "winnersDescription",documents_active AS "documentsActive",metadata_visibility AS "metadataVisibility" FROM event_detail_settings WHERE event_site_id=$1`,
           [eventId],
         )
       )[0] ?? null;
@@ -126,6 +128,9 @@ export class AdminContentService {
       decreeDescription?: string;
       isActive: boolean;
       winnersActive: boolean;
+      winnersEyebrow?: string;
+      winnersTitle?: string;
+      winnersDescription?: string;
       documentsActive: boolean;
       metadataVisibility: Record<string, boolean>;
       categories: { categoryId: string; isVisible: boolean }[];
@@ -161,7 +166,7 @@ export class AdminContentService {
       }
       const hasArchiveDisplayName = typeof input.archiveDisplayName === 'string';
       await manager.query(
-        `INSERT INTO event_detail_settings(event_site_id,archive_display_name,decree_document_id,decree_title,decree_description,is_active,winners_active,documents_active,metadata_visibility) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(event_site_id) DO UPDATE SET archive_display_name=CASE WHEN $10 THEN EXCLUDED.archive_display_name ELSE event_detail_settings.archive_display_name END,decree_document_id=EXCLUDED.decree_document_id,decree_title=EXCLUDED.decree_title,decree_description=EXCLUDED.decree_description,is_active=EXCLUDED.is_active,winners_active=EXCLUDED.winners_active,documents_active=EXCLUDED.documents_active,metadata_visibility=EXCLUDED.metadata_visibility`,
+        `INSERT INTO event_detail_settings(event_site_id,archive_display_name,decree_document_id,decree_title,decree_description,is_active,winners_active,winners_eyebrow,winners_title,winners_description,documents_active,metadata_visibility) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT(event_site_id) DO UPDATE SET archive_display_name=CASE WHEN $13 THEN EXCLUDED.archive_display_name ELSE event_detail_settings.archive_display_name END,decree_document_id=EXCLUDED.decree_document_id,decree_title=EXCLUDED.decree_title,decree_description=EXCLUDED.decree_description,is_active=EXCLUDED.is_active,winners_active=EXCLUDED.winners_active,winners_eyebrow=EXCLUDED.winners_eyebrow,winners_title=EXCLUDED.winners_title,winners_description=EXCLUDED.winners_description,documents_active=EXCLUDED.documents_active,metadata_visibility=EXCLUDED.metadata_visibility`,
         [
           eventId,
           hasArchiveDisplayName ? input.archiveDisplayName?.trim() : null,
@@ -170,6 +175,9 @@ export class AdminContentService {
           input.decreeDescription?.trim() || DEFAULT_DECREE_DESCRIPTION,
           input.isActive,
           input.winnersActive,
+          input.winnersEyebrow?.trim() || 'Hasil Ajang Talenta',
+          input.winnersTitle?.trim() || 'Daftar Pemenang',
+          input.winnersDescription?.trim() || '',
           input.documentsActive,
           input.metadataVisibility,
           hasArchiveDisplayName,
@@ -232,30 +240,20 @@ export class AdminContentService {
 
   async decree(eventId: string, userId: string) {
     await this.eventAccess(eventId, userId, false);
-    const rows = await this.db.query(
-      `SELECT COALESCE(NULLIF(settings.decree_title,''),document.title,$2) AS title,
-              COALESCE(NULLIF(settings.decree_description,''),$3) AS description,
-              document.id AS "documentId",document.asset_id AS "assetId",
-              document.file_type AS "fileType",document.display_size AS "displaySize"
-         FROM event_sites event
-         LEFT JOIN event_detail_settings settings ON settings.event_site_id=event.id
-         LEFT JOIN event_documents document
-           ON document.id=settings.decree_document_id
-          AND document.event_site_id=event.id
-        WHERE event.id=$1`,
-      [eventId, DEFAULT_DECREE_TITLE, DEFAULT_DECREE_DESCRIPTION],
+    const decrees = await this.db.query(
+      `SELECT document.id AS "documentId",document.title,
+              document.default_download_label AS "defaultDownloadLabel",
+              document.asset_id AS "assetId",document.file_type AS "fileType",
+              document.display_size AS "displaySize",document.is_active AS "isActive",
+              document.sort_order AS "sortOrder"
+         FROM event_documents document
+        WHERE document.event_site_id=$1 AND document.document_role='winner_decree'
+        ORDER BY document.sort_order,document.id`,
+      [eventId],
     );
-    const row = rows[0] ?? {
-      title: DEFAULT_DECREE_TITLE,
-      description: DEFAULT_DECREE_DESCRIPTION,
-      documentId: null,
-      assetId: null,
-      fileType: 'PDF',
-      displaySize: '',
-    };
     const workspaceRevision = await readWorkspaceRevision(this.db, eventId);
     return {
-      data: { ...row, workspaceRevision },
+      data: { decrees, workspaceRevision },
       workspaceRevision,
       errors: [],
     };
@@ -382,7 +380,7 @@ export class AdminContentService {
   async list(table: Table, eventId: string, userId: string) {
     await this.eventAccess(eventId, userId, false);
     const columns = {
-      event_documents: `id,title,category,document_role AS "documentRole",file_type AS "fileType",display_size AS "displaySize",asset_id AS "assetId",is_active AS "isActive",sort_order AS "sortOrder"`,
+      event_documents: `id,title,category,document_role AS "documentRole",file_type AS "fileType",display_size AS "displaySize",default_download_label AS "defaultDownloadLabel",asset_id AS "assetId",is_active AS "isActive",sort_order AS "sortOrder"`,
       winner_categories: `id,name,rank_prefix AS "rankPrefix",icon,is_active AS "isActive",sort_order AS "sortOrder"`,
       winners: `id,category_id AS "categoryId",display_mode AS "displayMode",design_asset_id AS "designAssetId",full_name AS "fullName",rank_label AS "rankLabel",school,exam_number AS "examNumber",district,regency,province,photo_asset_id AS "photoAssetId",is_active AS "isActive",sort_order AS "sortOrder"`,
     }[table];
@@ -395,10 +393,21 @@ export class AdminContentService {
 
   async createDocument(e: string, u: string, d: Doc) {
     return this.write(e, u, 'create', 'document', async (m) => {
+      if (d.documentRole === 'winner_decree') {
+        const count = await m.query(
+          `SELECT COUNT(*)::int AS count FROM event_documents WHERE event_site_id=$1 AND document_role='winner_decree'`,
+          [e],
+        );
+        if (Number(count[0]?.count ?? 0) >= 10)
+          throw new BadRequestException('Maksimal 10 SK Pemenang per Event');
+      }
+      const label = d.defaultDownloadLabel?.trim() ?? '';
+      if (label.length > 40)
+        throw new BadRequestException('Label tombol SK maksimal 40 karakter');
       await this.assetOwnership(d.assetId, e, m);
       return (
         await m.query(
-          `INSERT INTO event_documents(event_site_id,title,category,document_role,file_type,display_size,asset_id,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+          `INSERT INTO event_documents(event_site_id,title,category,document_role,file_type,display_size,default_download_label,asset_id,is_active,sort_order) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
           [
             e,
             d.title.trim(),
@@ -406,6 +415,7 @@ export class AdminContentService {
             d.documentRole ?? '',
             d.fileType ?? 'PDF',
             d.displaySize ?? '',
+            label,
             d.assetId ?? null,
             d.isActive ?? true,
             d.sortOrder ?? 0,
@@ -421,10 +431,13 @@ export class AdminContentService {
       'update',
       'document',
       async (m) => {
+        const label = d.defaultDownloadLabel?.trim() ?? '';
+        if (label.length > 40)
+          throw new BadRequestException('Label tombol SK maksimal 40 karakter');
         await this.assetOwnership(d.assetId, e, m);
         return (
           await m.query(
-            `UPDATE event_documents SET title=$3,category=$4,document_role=$5,file_type=$6,display_size=$7,asset_id=$8,is_active=$9,sort_order=$10 WHERE id=$1 AND event_site_id=$2 RETURNING *`,
+            `UPDATE event_documents SET title=$3,category=$4,document_role=$5,file_type=$6,display_size=$7,default_download_label=$8,asset_id=$9,is_active=$10,sort_order=$11 WHERE id=$1 AND event_site_id=$2 RETURNING *`,
             [
               id,
               e,
@@ -433,6 +446,7 @@ export class AdminContentService {
               d.documentRole ?? '',
               d.fileType ?? 'PDF',
               d.displaySize ?? '',
+              label,
               d.assetId ?? null,
               d.isActive ?? true,
               d.sortOrder ?? 0,
@@ -617,7 +631,7 @@ export class AdminContentService {
       ),
       pageType === 'winners'
         ? this.db.query(
-            `SELECT show_decree AS "showDecree",metadata_visibility AS "metadataVisibility",archive_active AS "archiveActive",archive_limit AS "archiveLimit" FROM winner_page_settings WHERE event_site_id=$1`,
+            `SELECT show_decree AS "showDecree",decree_title AS "decreeTitle",metadata_visibility AS "metadataVisibility",archive_active AS "archiveActive",archive_limit AS "archiveLimit" FROM winner_page_settings WHERE event_site_id=$1`,
             [eventId],
           )
         : Promise.resolve([]),
@@ -654,11 +668,12 @@ export class AdminContentService {
       );
       if (pageType === 'winners')
         await manager.query(
-          `INSERT INTO winner_page_settings(event_site_id,is_active,show_decree,metadata_visibility,archive_active,archive_limit) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(event_site_id) DO UPDATE SET is_active=EXCLUDED.is_active,show_decree=EXCLUDED.show_decree,metadata_visibility=EXCLUDED.metadata_visibility,archive_active=EXCLUDED.archive_active,archive_limit=EXCLUDED.archive_limit`,
+          `INSERT INTO winner_page_settings(event_site_id,is_active,show_decree,decree_title,metadata_visibility,archive_active,archive_limit) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT(event_site_id) DO UPDATE SET is_active=EXCLUDED.is_active,show_decree=EXCLUDED.show_decree,decree_title=EXCLUDED.decree_title,metadata_visibility=EXCLUDED.metadata_visibility,archive_active=EXCLUDED.archive_active,archive_limit=EXCLUDED.archive_limit`,
           [
             eventId,
             d.isActive ?? true,
             d.showDecree ?? true,
+            d.decreeTitle?.trim() || DEFAULT_DECREE_TITLE,
             d.metadataVisibility ?? {},
             d.archiveActive ?? true,
             Math.max(0, Math.min(12, d.archiveLimit ?? 3)),

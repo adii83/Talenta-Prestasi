@@ -150,7 +150,8 @@ function releaseHeroImagePreview() {
   replaceHeroImagePreviewUrl("");
   [...(state.hero.buttons || []), ...(state.schedule.cards || [])].forEach(
     (item) => {
-      TalentaMedia.revokePreviewUrl(item.uploadedIconPreview);
+      if (item.uploadedIconPreview)
+        TalentaMedia.revokePreviewUrl(item.uploadedIconPreview);
       item.uploadedIconPreview = "";
     },
   );
@@ -163,7 +164,8 @@ async function hydrateUploadedIconPreviews() {
   ];
   await Promise.all(
     items.map(async (item) => {
-      TalentaMedia.revokePreviewUrl(item.uploadedIconPreview);
+      if (item.uploadedIconPreview)
+        TalentaMedia.revokePreviewUrl(item.uploadedIconPreview);
       const icon = item.uploadedIconAssetId
         ? await TalentaMedia.adminPreviewUrl(item.uploadedIconAssetId, {
             siteId,

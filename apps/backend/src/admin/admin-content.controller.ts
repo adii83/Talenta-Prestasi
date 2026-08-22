@@ -47,6 +47,7 @@ class DocumentDto {
   @IsOptional() @IsString() @MaxLength(20) fileType?: string;
   @IsOptional() @IsString() @MaxLength(40) displaySize?: string;
   @IsOptional() @IsUUID() assetId?: string;
+  @IsOptional() @IsString() @MaxLength(40) defaultDownloadLabel?: string;
   @IsOptional() @IsBoolean() isActive?: boolean;
   @IsOptional() @IsInt() @Min(0) sortOrder?: number;
   @IsInt() @Min(1) expectedRevision!: number;
@@ -84,6 +85,7 @@ class PageDto {
   @IsOptional() @IsString() @MaxLength(5000) description?: string;
   @IsOptional() @IsIn(['left', 'center']) alignment?: string;
   @IsOptional() @IsBoolean() showDecree?: boolean;
+  @IsOptional() @IsString() @MaxLength(200) decreeTitle?: string;
   @IsOptional() @IsObject() metadataVisibility?: Record<string, boolean>;
   @IsOptional() @IsBoolean() archiveActive?: boolean;
   @IsOptional() @IsInt() @Min(0) archiveLimit?: number;
@@ -105,7 +107,7 @@ class DetailCategoryDto {
 class DetailDocumentDto {
   @IsUUID() documentId!: string;
   @IsBoolean() isVisible!: boolean;
-  @IsString() @MaxLength(200) labelOverride!: string;
+  @IsString() @MaxLength(40) labelOverride!: string;
 }
 class DetailSettingsDto {
   @IsOptional() @IsString() @MinLength(1) @MaxLength(200) archiveDisplayName?: string;
@@ -115,6 +117,9 @@ class DetailSettingsDto {
   @IsOptional() @IsString() @MaxLength(1000) decreeDescription?: string;
   @IsBoolean() isActive!: boolean;
   @IsBoolean() winnersActive!: boolean;
+  @IsOptional() @IsString() @MaxLength(120) winnersEyebrow?: string;
+  @IsOptional() @IsString() @MaxLength(200) winnersTitle?: string;
+  @IsOptional() @IsString() @MaxLength(5000) winnersDescription?: string;
   @IsBoolean() documentsActive!: boolean;
   @IsObject() metadataVisibility!: Record<string, boolean>;
   @ValidateNested({ each: true })

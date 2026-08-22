@@ -156,6 +156,71 @@ describe('AdminService category flow', () => {
     expect(dataSource.transaction).not.toHaveBeenCalled();
   });
 
+  it('persists archived download documents against their source Event', async () => {
+    const eventId = '44444444-4444-4444-8444-444444444444';
+    const sourceEventId = '55555555-5555-4555-8555-555555555555';
+    const documentId = '66666666-6666-4666-8666-666666666666';
+    const tabId = '77777777-7777-4777-8777-777777777777';
+    const userId = '33333333-3333-4333-8333-333333333333';
+    const manager = {
+      query: jest.fn((sql: string) => {
+        if (sql.includes('INSERT INTO download_tabs')) return Promise.resolve([{ id: tabId }]);
+        if (sql.includes('FROM event_documents d'))
+          return Promise.resolve([{ id: documentId, eventSiteId: sourceEventId }]);
+        return Promise.resolve([]);
+      }),
+    };
+    const queryBuilder = {
+      innerJoin: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      getOne: jest.fn().mockResolvedValue({ id: eventId }),
+    };
+    const dataSource = {
+      query: jest.fn((sql: string) => {
+        if (sql.includes('SELECT event.id')) return Promise.resolve([{ id: eventId }]);
+        if (sql.includes('FROM download_tabs')) return Promise.resolve([]);
+        if (sql.includes('workspace_revision'))
+          return Promise.resolve([{ workspaceRevision: 1 }]);
+        return Promise.resolve([]);
+      }),
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+    const service = new AdminService(
+      {} as never,
+      { createQueryBuilder: jest.fn(() => queryBuilder) } as never,
+      dataSource as never,
+      { get: jest.fn() } as unknown as ConfigService,
+    );
+
+    await service.putDownloads(eventId, userId, [
+      {
+        sourceEventSiteId: sourceEventId,
+        customTabName: 'Olimpiade 2026',
+        isDefault: true,
+        isActive: true,
+        documents: [{ documentId, isVisible: true, labelOverride: '' }],
+      },
+    ]);
+
+    const tabInsert = manager.query.mock.calls.find(([sql]) =>
+      sql.includes('INSERT INTO download_tabs'),
+    );
+    const documentInsert = manager.query.mock.calls.find(([sql]) =>
+      sql.includes('INSERT INTO download_document_settings'),
+    );
+    expect(tabInsert?.[1]).toContain(sourceEventId);
+    expect(documentInsert?.[1]?.[2]).toBe(eventId);
+    const documentValidation = manager.query.mock.calls.find(([sql]) =>
+      sql.includes('FROM event_documents d'),
+    );
+    expect(documentValidation?.[1]).toEqual([
+      documentId,
+      sourceEventId,
+      eventId,
+    ]);
+  });
+
   it('validates and canonicalizes the Hero media reference before saving home', async () => {
     const eventId = '44444444-4444-4444-8444-444444444444';
     const userId = '33333333-3333-4333-8333-333333333333';

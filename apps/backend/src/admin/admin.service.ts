@@ -783,6 +783,7 @@ export class AdminService {
     const rows = await this.dataSource.query<
       {
         tabId: string;
+        sourceEventSiteId: string;
         customTabName: string;
         isDefault: boolean;
         isActive: boolean;
@@ -795,7 +796,7 @@ export class AdminService {
         }[];
       }[]
     >(
-      `SELECT dt.id AS "tabId",dt.custom_tab_name AS "customTabName",dt.is_default AS "isDefault",dt.is_active AS "isActive",dt.sort_order AS "sortOrder",
+      `SELECT dt.id AS "tabId",dt.source_event_site_id AS "sourceEventSiteId",dt.custom_tab_name AS "customTabName",dt.is_default AS "isDefault",dt.is_active AS "isActive",dt.sort_order AS "sortOrder",
        COALESCE(jsonb_agg(jsonb_build_object('documentId',dds.document_id,'isVisible',dds.is_visible,'labelOverride',dds.label_override,'sortOrder',dds.sort_order) ORDER BY dds.sort_order,dds.document_id) FILTER (WHERE dds.document_id IS NOT NULL),'[]') AS documents
        FROM download_tabs dt LEFT JOIN download_document_settings dds ON dds.download_tab_id=dt.id
        WHERE dt.event_site_id=$1 GROUP BY dt.id ORDER BY dt.sort_order,dt.id`,
@@ -814,6 +815,7 @@ export class AdminService {
     eventId: string,
     userId: string,
     tabs: {
+      sourceEventSiteId: string;
       customTabName: string;
       isDefault: boolean;
       isActive: boolean;
@@ -836,24 +838,36 @@ export class AdminService {
       ]);
       for (const [tabOrder, tab] of tabs.entries()) {
         const rowResult = await manager.query<{ id: string }[]>(
-          `INSERT INTO download_tabs(event_site_id,custom_tab_name,is_default,is_active,sort_order) VALUES($1,$2,$3,$4,$5) RETURNING id`,
+          `INSERT INTO download_tabs(event_site_id,source_event_site_id,custom_tab_name,is_default,is_active,sort_order)
+           SELECT $1,source.id,$3,$4,$5,$6
+           FROM event_sites source
+           JOIN event_sites current ON current.id=$1
+           WHERE source.id=$2 AND source.category_id=current.category_id
+             AND source.deleted_at IS NULL
+           RETURNING id`,
           [
             eventId,
+            tab.sourceEventSiteId,
             tab.customTabName.trim(),
             tab.isDefault,
             tab.isActive,
             tabOrder,
           ],
         );
+        if (!rowResult[0])
+          throw new BadRequestException(
+            'Download source event does not belong to this event category',
+          );
         for (const [docOrder, doc] of tab.documents.entries()) {
           const docOwned = await manager.query<
             { id: string; eventSiteId: string }[]
           >(
             `SELECT d.id, d.event_site_id AS "eventSiteId" FROM event_documents d
-             JOIN event_sites current_event ON current_event.id=$2
+             JOIN event_sites current_event ON current_event.id=$3
              JOIN event_sites doc_event ON doc_event.id=d.event_site_id
-             WHERE d.id=$1 AND doc_event.category_id=current_event.category_id`,
-            [doc.documentId, eventId],
+             WHERE d.id=$1 AND d.event_site_id=$2
+               AND doc_event.category_id=current_event.category_id`,
+            [doc.documentId, tab.sourceEventSiteId, eventId],
           );
           if (!docOwned[0])
             throw new BadRequestException(

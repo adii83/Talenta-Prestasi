@@ -11,11 +11,9 @@
         call(`/admin/events/${eventId}/detail-settings`),
       ]);
     const settings = detailConfig.settings || {};
-    const decreeDocument =
-      documents.find((item) => item.id === settings.decreeDocumentId) ||
-      documents.find(
-        (item) => item.isActive && item.documentRole === "winner_decree",
-      );
+    const decreeDocuments = documents.filter(
+      (item) => item.isActive && item.documentRole === "winner_decree",
+    );
     const categoryVisibility = new Map(
       detailConfig.categories.map((item) => [item.categoryId, item.isVisible]),
     );
@@ -63,12 +61,16 @@
     return {
       ...event,
       archiveDisplayName: settings.archiveDisplayName,
+      skBannerTitle: settings.decreeTitle || "SK Penetapan Pemenang",
       status: event.isActive ? "active" : "archive",
       active: !event.deletedAt,
       detail: {
         ...archiveDetailDefaults(),
         active: settings.isActive ?? true,
         winnersActive: settings.winnersActive ?? true,
+        winnersEyebrow: settings.winnersEyebrow || "Hasil Ajang Talenta",
+        winnersTitle: settings.winnersTitle || "Daftar Pemenang",
+        winnersDescription: settings.winnersDescription || "",
         documentsActive: settings.documentsActive ?? true,
         showSk: metadata.showSk ?? true,
         showPhoto: metadata.showPhoto ?? true,
@@ -105,15 +107,13 @@
           (winner) => winner.categoryId === category.id,
         ),
       })),
-      skDocument: decreeDocument
-        ? {
-            ...decreeDocument,
-            documentId: decreeDocument.id,
-            title: settings.decreeTitle || "SK Penetapan Pemenang",
-            description:
-              settings.decreeDescription ||
-              "Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.",
-          }
+      skDocuments: decreeDocuments.map((document) => ({
+        ...document,
+        documentId: document.id,
+        url: document.assetId ? TalentaMedia.url(document.assetId) : "",
+      })),
+      skDocument: decreeDocuments[0]
+        ? { ...decreeDocuments[0], documentId: decreeDocuments[0].id }
         : null,
     };
   }
@@ -128,11 +128,12 @@
       body: {
         archiveDisplayName: event.archiveDisplayName,
         description: event.description || "",
-        decreeDocumentId: event.skDocument?.documentId,
-        decreeTitle: event.skDocument?.title,
-        decreeDescription: event.skDocument?.description,
+        decreeTitle: event.skBannerTitle || "SK Penetapan Pemenang",
         isActive: event.detail.active,
         winnersActive: event.detail.winnersActive,
+        winnersEyebrow: event.detail.winnersEyebrow,
+        winnersTitle: event.detail.winnersTitle,
+        winnersDescription: event.detail.winnersDescription || "",
         documentsActive: event.detail.documentsActive,
         metadataVisibility: {
           showSk: event.detail.showSk,

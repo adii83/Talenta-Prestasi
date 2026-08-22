@@ -1,10 +1,17 @@
 (() => {
   const getEvent = () => window.parent?.TalentaAdminAuth?.currentEvent?.();
-  const call = async (path, options) =>
-    (await TalentaApi.request(path, options)).data;
+  const call = async (path, options) => {
+    const response = await TalentaApi.request(path, options);
+    const revision =
+      response.data?.workspaceRevision ?? response.workspaceRevision;
+    if (revision != null) workspaceRevision = revision;
+    return response.data;
+  };
   let eventId = "";
   let originalCategoryIds = new Set();
   let originalWinnerIds = new Set();
+  let originalDecreeIds = new Set();
+  let workspaceRevision = null;
   const defaultDecree = {
     title: "SK Penetapan Pemenang",
     description:
@@ -111,6 +118,10 @@
       call(`/admin/events/${event.id}/decree`),
     ]);
     const categories = currentData.winnerCategories;
+    workspaceRevision = decree.workspaceRevision || null;
+    originalDecreeIds = new Set(
+      (decree.decrees || []).map((item) => item.documentId),
+    );
     originalCategoryIds = new Set(categories.map((item) => item.id));
     originalWinnerIds = new Set(
       categories.flatMap((category) => category.winners).map((item) => item.id),
@@ -119,14 +130,19 @@
       competition: event,
       state: {
         competitionId: event.id,
-        sk: {
-          ...defaultDecree,
-          ...decree,
-          url: decree.assetId ? TalentaMedia.url(decree.assetId) : "",
-        },
+        sk: (decree.decrees || []).map((item) => ({
+          ...item,
+          title: item.title || defaultDecree.title,
+          defaultDownloadLabel: item.defaultDownloadLabel || "",
+          url: item.assetId ? TalentaMedia.url(item.assetId) : "",
+          active: item.isActive !== false,
+        })),
         categories,
       },
-      page,
+      page: {
+        ...page,
+        decreeTitle: page.decreeTitle || defaultDecree.title,
+      },
       archives,
     };
   }
@@ -134,23 +150,45 @@
   async function saveDecree(sk, file) {
     let asset;
     if (file) asset = await TalentaMedia.upload(file, { kind: "document" });
-    const isDelete = !file && (sk.documentId === null || sk.assetId === null);
-    const decree = await call(`/admin/events/${eventId}/decree`, {
-      method: "PUT",
-      body: {
-        title: sk.title || defaultDecree.title,
-        description: sk.description || defaultDecree.description,
-        assetId: isDelete ? undefined : asset?.assetId,
-        fileType: asset ? "PDF" : undefined,
-        displaySize: asset ? formatSize(asset.byteSize) : undefined,
-        deleteFile: isDelete,
-      },
-    });
-    return {
-      ...defaultDecree,
-      ...decree,
-      url: decree.assetId ? TalentaMedia.url(decree.assetId) : "",
+    const body = {
+      title: sk.title?.trim() || defaultDecree.title,
+      category: "SK Pemenang",
+      documentRole: "winner_decree",
+      fileType: asset ? "PDF" : sk.fileType || "PDF",
+      displaySize: asset ? formatSize(asset.byteSize) : sk.displaySize || "",
+      defaultDownloadLabel: sk.defaultDownloadLabel?.trim() || "",
+      assetId: asset?.assetId ?? sk.assetId ?? null,
+      isActive: sk.active !== false,
+      sortOrder: sk.sortOrder || 0,
+      expectedRevision: workspaceRevision,
     };
+    if (sk.documentId)
+      await call(`/admin/events/${eventId}/documents/${sk.documentId}`, {
+        method: "PATCH",
+        body,
+      });
+    else {
+      const created = await call(`/admin/events/${eventId}/documents`, {
+        method: "POST",
+        body,
+      });
+      sk.documentId = created.id;
+    }
+    return {
+      ...sk,
+      ...body,
+      url: body.assetId ? TalentaMedia.url(body.assetId) : "",
+    };
+  }
+
+  async function deleteDecree(sk) {
+    if (!sk.documentId) return;
+    await call(
+      `/admin/events/${eventId}/documents/${sk.documentId}?expectedRevision=${workspaceRevision}`,
+      {
+        method: "DELETE",
+      },
+    );
   }
 
   async function save(state, page) {
@@ -262,6 +300,7 @@
         description: page.description,
         alignment: page.alignment,
         showDecree: page.showSk,
+        decreeTitle: page.decreeTitle,
         archiveActive: page.archiveActive,
         archiveLimit: page.archiveLimit,
       },
@@ -270,7 +309,24 @@
     originalWinnerIds = new Set(
       state.categories.flatMap((item) => item.winners).map((item) => item.id),
     );
-    return { sk: await saveDecree(state.sk) };
+    const currentDecreeIds = new Set(
+      (state.sk || []).map((item) => item.documentId),
+    );
+    for (const id of [...originalDecreeIds].filter(
+      (id) => !currentDecreeIds.has(id),
+    ))
+      await call(
+        `/admin/events/${eventId}/documents/${id}?expectedRevision=${workspaceRevision}`,
+        { method: "DELETE" },
+      );
+    for (const sk of state.sk || []) await saveDecree(sk);
+    wmState.sk = state.sk || [];
+    return { sk: state.sk || [] };
   }
-  window.TalentaWinnerApi = Object.freeze({ load, save, saveDecree });
+  window.TalentaWinnerApi = Object.freeze({
+    load,
+    save,
+    saveDecree,
+    deleteDecree,
+  });
 })();

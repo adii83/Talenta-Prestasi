@@ -77,7 +77,7 @@ async function navigate(client, url) {
     `(async () => {
       const started = Date.now();
       while (Date.now() - started < 10000) {
-        if (document.readyState === "complete" && document.querySelector(".sk-banner"))
+        if (document.readyState === "complete" && document.querySelector(".winner-decrees"))
           return true;
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -93,14 +93,13 @@ async function inspect(client) {
       const banner = document.querySelector("#archiveDetailPublicRoot .lomba-banner");
       const title = banner.querySelector(".lomba-banner__title");
       const description = banner.querySelector(".lomba-banner__desc");
-      const sk = document.querySelector("#archiveDetailPublicRoot .sk-banner");
-      const left = sk.querySelector(".sk-banner__left");
-      const content = sk.querySelector(".sk-banner__content");
-      const skDescription = content.querySelector("p");
-      const button = sk.querySelector("a.btn");
+      const sk = document.querySelector("#archiveDetailPublicRoot .winner-decrees");
+      const skTitle = sk.querySelector(".winner-decrees__title");
+      const actions = sk.querySelector(".winner-decrees__actions");
+      const button = sk.querySelector(".winner-decrees__download");
       title.textContent = "Olimpiade Sains dan Teknologi Pelajar Indonesia 2025 · Gelombang Nasional 12";
       description.textContent = "Dokumentasi lengkap hasil ajang talenta untuk peserta, sekolah, pendamping, dan instansi pendidikan dari seluruh wilayah Indonesia.";
-      skDescription.textContent = "Unduh dokumen resmi SK Pemenang untuk kebutuhan administrasi peserta, sekolah, pendamping, dan instansi pendidikan.";
+      skTitle.textContent = "SK Penetapan Pemenang Olimpiade Sains dan Teknologi Pelajar Indonesia";
       const rect = element => {
         const value = element.getBoundingClientRect();
         return {
@@ -111,7 +110,6 @@ async function inspect(client) {
           width: value.width
         };
       };
-      const skStyle = getComputedStyle(sk);
       return {
         viewport: document.documentElement.clientWidth,
         scrollWidth: document.documentElement.scrollWidth,
@@ -121,12 +119,11 @@ async function inspect(client) {
         titleBottom: title.getBoundingClientRect().bottom,
         descriptionBottom: description.getBoundingClientRect().bottom,
         bannerBottom: banner.getBoundingClientRect().bottom,
-        leftDirection: getComputedStyle(left).flexDirection,
-        contentAlign: getComputedStyle(content).textAlign,
+        actionsJustify: getComputedStyle(actions).justifyContent,
+        titleAlign: getComputedStyle(skTitle).textAlign,
         buttonText: button.textContent.trim().replace(/\\s+/g, " "),
-        skPaddingRight: Number.parseFloat(skStyle.paddingRight),
         sk: rect(sk),
-        skDescription: rect(skDescription),
+        skTitle: rect(skTitle),
         button: rect(button)
       };
     })()`,
@@ -189,31 +186,20 @@ try {
       layout.descriptionBottom <= layout.bannerBottom + 1,
       `${width}px: deskripsi melewati banner`,
     );
-    assert.equal(layout.leftDirection, "row");
-    assert(
-      ["left", "start"].includes(layout.contentAlign),
-      `${width}px: teks banner SK harus rata kiri`,
-    );
+    assert.equal(layout.actionsJustify, "center");
+    assert.equal(layout.titleAlign, "center");
     assert.equal(layout.buttonText, "Unduh SK");
     assert(
       layout.button.width < layout.sk.width - 32,
       `${width}px: tombol Unduh SK tidak boleh selebar banner`,
     );
     assert(
-      Math.abs(
-        layout.button.right - (layout.sk.right - layout.skPaddingRight),
-      ) <= 2,
-      `${width}px: tombol Unduh SK harus datang dari sisi kanan`,
+      layout.button.top > layout.skTitle.bottom,
+      `${width}px: tombol Unduh SK harus berada di bawah judul`,
     );
-    if (width <= 639) {
-      assert(
-        layout.button.top > layout.skDescription.bottom,
-        `${width}px: tombol Unduh SK harus berada di bawah judul dan deskripsi pada viewport mobile`,
-      );
-    }
   }
   console.log(
-    "Audit layout Arsip lulus: banner adaptif, teks kiri, dan tombol Unduh SK di bawah deskripsi dari sisi kanan tervalidasi pada 1440/768/390/320px.",
+    "Audit layout Arsip lulus: banner adaptif dan tombol Unduh SK compact di bawah judul tervalidasi pada 1440/768/390/320px.",
   );
 } finally {
   client?.close();

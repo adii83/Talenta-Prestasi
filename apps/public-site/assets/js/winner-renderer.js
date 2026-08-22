@@ -51,23 +51,22 @@
             ),
           })),
         })),
-        sk: data.decree
-          ? {
-              ...data.decree,
-              title: data.decree.title || "SK Penetapan Pemenang",
-              description: data.decree.description || "",
-              url: (() => {
-                let url = "";
-                if (data.decree.url)
-                  url = TalentaPublic.mediaUrl(data.decree.url);
-                else if (data.decree.assetId)
-                  url = TalentaPublic.mediaUrl(
-                    `/api/v1/public/media/${data.decree.assetId}`,
-                  );
-                return url;
-              })(),
-            }
-          : null,
+        sk: (data.decrees || (data.decree ? [data.decree] : []))
+          .map((decree) => ({
+            ...decree,
+            title: decree.title || "SK Penetapan Pemenang",
+            defaultDownloadLabel:
+              decree.defaultDownloadLabel || decree.title || "Unduh SK",
+            description: decree.description || "",
+            url: decree.url
+              ? TalentaPublic.mediaUrl(decree.url)
+              : decree.assetId
+                ? TalentaPublic.mediaUrl(
+                    `/api/v1/public/media/${decree.assetId}`,
+                  )
+                : "",
+          }))
+          .filter((decree) => decree.url),
       },
       page: {
         ...baseline.page,
@@ -78,6 +77,10 @@
         description: data.page?.description || baseline.page.description,
         alignment: data.page?.alignment || baseline.page.alignment,
         showSk: data.settings?.showDecree ?? baseline.page.showSk,
+        decreeTitle:
+          data.settings?.decreeTitle ||
+          baseline.page.decreeTitle ||
+          "SK Penetapan Pemenang",
         ...visibility,
         archiveActive:
           data.settings?.archiveActive ?? baseline.page.archiveActive,

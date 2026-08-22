@@ -11,9 +11,6 @@ import {
 import { EventSite } from './event-site.entity';
 import { DownloadDocumentSettings } from './download-document-settings.entity';
 
-// ponytail: was DownloadCompetition bridging EventSite↔Competition.
-// Now simplified: each tab references documents from the same event.
-// If multi-event download tabs needed later, add sourceEventSiteId FK.
 @Entity('download_tabs')
 @Unique('uq_download_tab_owner', ['id', 'eventSiteId'])
 @Index('uq_default_download_per_event', ['eventSiteId'], {
@@ -23,6 +20,8 @@ import { DownloadDocumentSettings } from './download-document-settings.entity';
 export class DownloadTab {
   @PrimaryGeneratedColumn('uuid') id!: string;
   @Column({ name: 'event_site_id', type: 'uuid' }) eventSiteId!: string;
+  @Column({ name: 'source_event_site_id', type: 'uuid', nullable: true })
+  sourceEventSiteId!: string | null;
   @Column({ name: 'custom_tab_name', default: '' }) customTabName!: string;
   @Column({ name: 'is_default', default: false }) isDefault!: boolean;
   @Column({ name: 'is_active', default: true }) isActive!: boolean;
@@ -30,6 +29,9 @@ export class DownloadTab {
   @ManyToOne(() => EventSite, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'event_site_id' })
   eventSite!: EventSite;
+  @ManyToOne(() => EventSite, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'source_event_site_id' })
+  sourceEventSite!: EventSite;
   @OneToMany(() => DownloadDocumentSettings, (item) => item.downloadTab)
   documentSettings!: DownloadDocumentSettings[];
 }

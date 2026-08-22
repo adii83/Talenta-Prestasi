@@ -11,11 +11,17 @@
   function apiState(data) {
     const visibility = data.settings?.metadataVisibility || {};
     return {
-      competition: data.event,
+      competition: {
+        ...data.event,
+        skBannerTitle: data.settings?.decreeTitle || "SK Penetapan Pemenang",
+      },
       detail: {
         ...archiveDetailDefaults(),
         active: data.settings?.isActive ?? true,
         winnersActive: data.settings?.winnersActive ?? true,
+        winnersEyebrow: data.settings?.winnersEyebrow || "Hasil Ajang Talenta",
+        winnersTitle: data.settings?.winnersTitle || "Daftar Pemenang",
+        winnersDescription: data.settings?.winnersDescription || "",
         documentsActive: data.settings?.documentsActive ?? true,
         showSk: visibility.showSk ?? true,
       },
@@ -46,30 +52,35 @@
         url: mediaUrl(document.url, document.assetId),
       })),
       sk: (() => {
-        if (data.decree && (data.decree.url || data.decree.assetId)) {
-          return {
-            title:
-              data.decree.title ||
-              data.settings?.decreeTitle ||
-              "SK Penetapan Pemenang",
-            url: mediaUrl(data.decree.url, data.decree.assetId),
-            type: data.decree.fileType || "PDF",
-            size: data.decree.displaySize || "-",
-          };
-        }
+        const decrees = data.decrees || (data.decree ? [data.decree] : []);
+        const resolved = decrees
+          .map((decree) => ({
+            ...decree,
+            title: decree.title || "SK Penetapan Pemenang",
+            defaultDownloadLabel:
+              decree.defaultDownloadLabel || decree.title || "Unduh SK",
+            url: mediaUrl(decree.url, decree.assetId),
+            type: decree.fileType || decree.type || "PDF",
+            size: decree.displaySize || decree.size || "-",
+          }))
+          .filter((decree) => decree.url);
+        if (resolved.length) return resolved;
         const document = (data.documents || []).find(
           (item) => item.id === data.settings?.decreeDocumentId,
         );
-        if (!document) return null;
-        return {
-          title:
-            data.settings?.decreeTitle ||
-            document.title ||
-            "SK Penetapan Pemenang",
-          url: mediaUrl(document.url, document.assetId),
-          type: document.fileType || "PDF",
-          size: document.displaySize || "-",
-        };
+        if (!document) return [];
+        return [
+          {
+            title:
+              data.settings?.decreeTitle ||
+              document.title ||
+              "SK Penetapan Pemenang",
+            defaultDownloadLabel: "Unduh SK",
+            url: mediaUrl(document.url, document.assetId),
+            type: document.fileType || "PDF",
+            size: document.displaySize || "-",
+          },
+        ];
       })(),
     };
   }
@@ -115,12 +126,15 @@
       settings: {
         isActive: state.detail.active,
         winnersActive: state.detail.winnersActive,
+        winnersEyebrow: state.detail.winnersEyebrow,
+        winnersTitle: state.detail.winnersTitle,
+        winnersDescription: state.detail.winnersDescription,
         documentsActive: state.detail.documentsActive,
         metadataVisibility: {
           showSk: state.detail.showSk,
         },
         decreeDocumentId: state.sk?.documentId,
-        decreeTitle: state.sk?.title,
+        decreeTitle: state.competition.skBannerTitle,
       },
       categories: state.categories.map((category) => ({
         ...category,

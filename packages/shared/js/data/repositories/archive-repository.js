@@ -52,6 +52,7 @@ function archiveDetailDefaults() {
     winnersActive: true,
     winnersEyebrow: "Hasil Ajang Talenta",
     winnersTitle: "Daftar Pemenang",
+    winnersDescription: "",
     showSk: true,
     documentsActive: true,
     documentsEyebrow: "Dokumen",
@@ -140,6 +141,9 @@ function normalizeArchiveCompetition(source) {
       id: archiveString(document.id),
       title: archiveString(document.title, "Dokumen"),
       category: archiveString(document.category, "Dokumen"),
+      documentRole: archiveString(document.documentRole, "general"),
+      defaultDownloadLabel: archiveString(document.defaultDownloadLabel),
+      assetId: archiveString(document.assetId) || null,
       type: archiveString(document.type, "PDF"),
       size: archiveString(document.size),
       url: archiveSafeUrl(document.url || ""),
@@ -185,6 +189,7 @@ function normalizeArchiveCompetition(source) {
       "Hasil Ajang Talenta",
     ),
     winnersTitle: archiveString(detailSource.winnersTitle, "Daftar Pemenang"),
+    winnersDescription: archiveString(detailSource.winnersDescription),
     showSk: detailSource.showSk !== false,
     documentsActive: detailSource.documentsActive !== false,
     documentsEyebrow: archiveString(detailSource.documentsEyebrow, "Dokumen"),
@@ -242,6 +247,7 @@ function normalizeArchiveCompetition(source) {
     iconAlt: archiveString(source.iconAlt),
     description: archiveString(source.description),
     active: source.active !== false,
+    skBannerTitle: archiveString(source.skBannerTitle, "SK Penetapan Pemenang"),
     detail,
     winnerCategories,
     documents,
@@ -382,6 +388,17 @@ function getPublicArchiveCompetitionById(id) {
 }
 
 function getArchiveSkDocument(competition) {
+  const decrees = (competition?.documents || [])
+    .filter((document) => document.documentRole === "winner_decree")
+    .map((document) => ({
+      ...document,
+      ...(document.id === competition.skDocument?.documentId
+        ? competition.skDocument
+        : {}),
+      documentId: document.id,
+    }));
+  if (decrees.length > 1) return decrees;
+  if (decrees.length === 1) return decrees[0];
   if (!competition?.skDocument) return null;
   const linked = competition.documents?.find(
     (document) => document.id === competition.skDocument.documentId,
@@ -470,9 +487,16 @@ function buildArchiveDetailMarkup(source, options = {}) {
   const { competition, detail, categories, documents, sk } = source;
   const archiveHref =
     typeof options.archiveHref === "function" ? options.archiveHref() : "#";
+  const decrees = (Array.isArray(sk) ? sk : [sk]).filter(
+    (decree) => decree?.title && decree?.url,
+  );
+  const decreeMarkup = decrees.length
+    ? `<section class="winner-decrees"><h3 class="winner-decrees__title">${archiveEscape(competition.skBannerTitle || "SK Penetapan Pemenang")}</h3><span class="winner-decrees__ornament" aria-hidden="true"><i></i><i></i><i></i><b></b></span><div class="winner-decrees__actions">${decrees.map((decree) => `<a href="${archiveEscape(archiveSafeUrl(decree.url || ""))}" class="winner-decrees__download" target="_blank" rel="noopener"><i data-lucide="file-down"></i><span>${archiveEscape(decree.defaultDownloadLabel || decree.title)}</span></a>`).join("")}</div></section>`
+    : "";
   const winnersSection =
-    detail.winnersActive && (categories.length || (detail.showSk && sk))
-      ? `<section class="section" id="pemenang"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${archiveEscape(detail.winnersEyebrow)}</p><h2 class="t-h2">${archiveEscape(detail.winnersTitle)}</h2></div>${detail.showSk && sk ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2"></i></div><div class="sk-banner__content"><h3>${archiveEscape(sk.title)}</h3></div></div><a href="${archiveEscape(archiveSafeUrl(sk.url || ""))}" class="btn btn--primary"><i data-lucide="download"></i>Unduh SK</a></div>` : ""}${categories.length ? `<div class="winner-section">${categories.map((category) => `<section class="winner-group"><h3 class="winner-group__title"><i data-lucide="${archiveEscape(category.icon || "trophy")}"></i>${archiveEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildArchiveWinnerCardMarkup(winner)).join("")}</div></section>`).join("")}</div>` : '<div class="public-empty-state public-empty-state--compact"><p>Belum ada pemenang yang dipublikasikan.</p></div>'}</div></section>`
+    detail.winnersActive &&
+    (categories.length || (detail.showSk && decrees.length))
+      ? `<section class="section" id="pemenang"><div class="container"><div class="section__header section__header--left"><p class="t-eyebrow">${archiveEscape(detail.winnersEyebrow)}</p><h2 class="t-h2">${archiveEscape(detail.winnersTitle)}</h2>${detail.winnersDescription ? `<p>${archiveEscape(detail.winnersDescription)}</p>` : ""}</div>${categories.length ? `<div class="winner-section">${categories.map((category) => `<section class="winner-group"><h3 class="winner-group__title"><i data-lucide="${archiveEscape(category.icon || "trophy")}"></i>${archiveEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildArchiveWinnerCardMarkup(winner)).join("")}</div></section>`).join("")}</div>` : '<div class="public-empty-state public-empty-state--compact"><p>Belum ada pemenang yang dipublikasikan.</p></div>'}${detail.showSk ? decreeMarkup : ""}</div></section>`
       : "";
   const documentsSection =
     detail.documentsActive && documents.length

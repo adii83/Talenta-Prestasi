@@ -191,7 +191,7 @@
         "",
         `${location.pathname}?page=${name}`,
       );
-    document.title = `${r.title} — TalentaPanel`;
+    document.title = "Admin-Talenta Prestasi";
     document.getElementById("routeTitle").textContent = r.title;
     document.getElementById("routeBreadcrumb").textContent = r.crumb;
     document

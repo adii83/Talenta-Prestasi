@@ -278,6 +278,34 @@ function renderPicker() {
     : `<option value="">${allComps.length ? "Semua Arsip sudah ditambahkan" : "Belum ada Event sebelumnya"}</option>`;
   document.getElementById("addArchiveCompetition").disabled = !available.length;
 }
+function moveArchiveDocument(competitionId, fromIndex, toIndex, options = {}) {
+  const comp = archive(competitionId);
+  if (!comp?.documents) return false;
+  if (
+    fromIndex < 0 ||
+    fromIndex >= comp.documents.length ||
+    toIndex < 0 ||
+    toIndex >= comp.documents.length ||
+    fromIndex === toIndex
+  )
+    return false;
+  const [moved] = comp.documents.splice(fromIndex, 1);
+  comp.documents.splice(toIndex, 0, moved);
+  renderCompetitions();
+  renderPreview();
+  if (options.focusControl) {
+    document
+      .querySelector(
+        `[data-competition-id="${competitionId}"] [data-archive-document="${moved.id}"] [data-archive-${options.focusControl}]`,
+      )
+      ?.focus();
+  }
+  toast(
+    `Urutan "${moved.title}" diubah ke posisi ${toIndex + 1}. Simpan perubahan untuk memperbarui halaman Unduh.`,
+  );
+  return true;
+}
+
 function renderCompetitions() {
   normalize(state);
   const root = document.getElementById("downloadCompetitionEditor");
@@ -291,7 +319,8 @@ function renderCompetitions() {
     const comp = archive(cfg.competitionId),
       el = document.createElement("article");
     el.className = "download-period-card archive-link-card";
-    el.innerHTML = `<div class="download-period-card__order"><button type="button" data-up ${archiveIndex === 0 ? "disabled" : ""}><i data-lucide="chevron-up"></i></button><span>${String(archiveIndex + 1).padStart(2, "0")}</span><button type="button" data-down ${archiveIndex === archiveConfigs.length - 1 ? "disabled" : ""}><i data-lucide="chevron-down"></i></button></div><div class="archive-link-card__main"><span class="archive-source-badge"><i data-lucide="database"></i> Dari Event sebelumnya</span><strong>${esc(comp.name)}</strong><div class="admin-field"><label>Nama tab di halaman Unduh</label><input class="form-input" value="${esc(cfg.customTabName || comp.shortName)}"></div><button type="button" class="archive-doc-toggle" data-doc-toggle><i data-lucide="files"></i> ${comp.documents.length} dokumen bawaan <i data-lucide="chevron-down"></i></button></div><label class="download-default"><input type="radio" name="defaultCompetition" ${cfg.isDefault ? "checked" : ""} ${!cfg.active ? "disabled" : ""}> Tab default</label><label class="admin-switch"><input type="checkbox" ${cfg.active ? "checked" : ""}><span></span><em>${cfg.active ? "Aktif" : "Nonaktif"}</em></label><button type="button" class="repeat-row__delete"><i data-lucide="unlink"></i></button><div class="archive-linked-docs" hidden>${comp.documents.map((d) => docEditor(cfg, d)).join("")}</div>`;
+    el.dataset.competitionId = cfg.competitionId;
+    el.innerHTML = `<div class="download-period-card__order"><button type="button" data-up ${archiveIndex === 0 ? "disabled" : ""}><i data-lucide="chevron-up"></i></button><span>${String(archiveIndex + 1).padStart(2, "0")}</span><button type="button" data-down ${archiveIndex === archiveConfigs.length - 1 ? "disabled" : ""}><i data-lucide="chevron-down"></i></button></div><div class="archive-link-card__main"><span class="archive-source-badge"><i data-lucide="database"></i> Dari Event sebelumnya</span><strong>${esc(comp.name)}</strong><div class="admin-field"><label>Nama tab di halaman Unduh</label><input class="form-input" value="${esc(cfg.customTabName || comp.shortName)}"></div><button type="button" class="archive-doc-toggle" data-doc-toggle><i data-lucide="files"></i> ${comp.documents.length} dokumen bawaan <i data-lucide="chevron-down"></i></button></div><label class="download-default"><input type="radio" name="defaultCompetition" ${cfg.isDefault ? "checked" : ""} ${!cfg.active ? "disabled" : ""}> Tab default</label><label class="admin-switch"><input type="checkbox" ${cfg.active ? "checked" : ""}><span></span><em>${cfg.active ? "Aktif" : "Nonaktif"}</em></label><button type="button" class="repeat-row__delete"><i data-lucide="unlink"></i></button><div class="archive-linked-docs" hidden>${comp.documents.map((d, index) => docEditor(cfg, d, index, comp.documents.length)).join("")}</div>`;
     el.querySelector(".form-input").oninput = (e) => {
       cfg.customTabName = e.target.value;
       renderPreview();
@@ -317,10 +346,102 @@ function renderCompetitions() {
       const docs = el.querySelector(".archive-linked-docs");
       docs.hidden = !docs.hidden;
     };
+    let activeDocumentPointer = null;
     el.querySelectorAll("[data-document]").forEach((row) => {
       const id = row.dataset.document,
+        documentIndex = Number(row.dataset.documentIndex),
         check = row.querySelector("[type=checkbox]"),
         input = row.querySelector(".form-input");
+      row.querySelector("[data-archive-up]").onclick = () =>
+        moveArchiveDocument(
+          cfg.competitionId,
+          documentIndex,
+          documentIndex - 1,
+          {
+            focusControl: "up",
+          },
+        );
+      row.querySelector("[data-archive-down]").onclick = () =>
+        moveArchiveDocument(
+          cfg.competitionId,
+          documentIndex,
+          documentIndex + 1,
+          {
+            focusControl: "down",
+          },
+        );
+      const grip = row.querySelector("[data-archive-grip]");
+      grip.onkeydown = (event) => {
+        if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return;
+        event.preventDefault();
+        moveArchiveDocument(
+          cfg.competitionId,
+          documentIndex,
+          documentIndex + (event.key === "ArrowUp" ? -1 : 1),
+          { focusControl: "grip" },
+        );
+      };
+      grip.onpointerdown = (event) => {
+        if (event.button !== undefined && event.button !== 0) return;
+        activeDocumentPointer = {
+          pointerId: event.pointerId,
+          startY: event.clientY,
+          sourceIndex: documentIndex,
+          targetIndex: documentIndex,
+          moved: false,
+        };
+        grip.setPointerCapture(event.pointerId);
+      };
+      grip.onpointermove = (event) => {
+        if (
+          !activeDocumentPointer ||
+          activeDocumentPointer.pointerId !== event.pointerId
+        )
+          return;
+        if (Math.abs(event.clientY - activeDocumentPointer.startY) > 6)
+          activeDocumentPointer.moved = true;
+        if (!activeDocumentPointer.moved) return;
+        event.preventDefault();
+        const rows = Array.from(el.querySelectorAll("[data-document]"));
+        let targetIndex = activeDocumentPointer.sourceIndex;
+        rows.forEach((candidateRow, index) => {
+          const rect = candidateRow.getBoundingClientRect();
+          if (event.clientY > rect.top + rect.height / 2) targetIndex = index;
+        });
+        activeDocumentPointer.targetIndex = Math.max(
+          0,
+          Math.min(rows.length - 1, targetIndex),
+        );
+        rows.forEach((candidateRow, index) =>
+          candidateRow.classList.toggle(
+            "download-document-row--drag-target",
+            index === activeDocumentPointer.targetIndex &&
+              index !== activeDocumentPointer.sourceIndex,
+          ),
+        );
+      };
+      const cleanupPointer = (event) => {
+        if (
+          !activeDocumentPointer ||
+          activeDocumentPointer.pointerId !== event.pointerId
+        )
+          return;
+        const pointer = activeDocumentPointer;
+        activeDocumentPointer = null;
+        try {
+          if (grip.hasPointerCapture(event.pointerId))
+            grip.releasePointerCapture(event.pointerId);
+        } catch (_error) {}
+        if (pointer.moved && pointer.targetIndex !== pointer.sourceIndex)
+          moveArchiveDocument(
+            cfg.competitionId,
+            pointer.sourceIndex,
+            pointer.targetIndex,
+            { focusControl: "grip" },
+          );
+      };
+      grip.onpointerup = cleanupPointer;
+      grip.onpointercancel = cleanupPointer;
       check.onchange = () => {
         cfg.hiddenDocumentIds = check.checked
           ? cfg.hiddenDocumentIds.filter((x) => x !== id)
@@ -625,9 +746,9 @@ function renderCurrentDocuments() {
   });
   lucide.createIcons();
 }
-function docEditor(cfg, d) {
+function docEditor(cfg, d, index, total) {
   const shown = !cfg.hiddenDocumentIds.includes(d.id);
-  return `<div class="archive-linked-doc" data-document="${d.id}"><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><input class="form-input" value="${esc(cfg.documentLabelOverrides[d.id] || "")}" placeholder="Nama custom (opsional)"></div><button type="button" data-reset-label title="Kembalikan nama asli"><i data-lucide="rotate-ccw"></i></button></div>`;
+  return `<div class="archive-linked-doc" data-document="${d.id}" data-archive-document="${d.id}" data-document-index="${index}"><button type="button" class="repeat-row__grip" data-archive-grip aria-label="Seret untuk mengubah urutan ${esc(d.title)} (posisi ${index + 1} dari ${total})"><i data-lucide="grip-vertical"></i></button><label class="admin-switch"><input type="checkbox" ${shown ? "checked" : ""}><span></span><em>${shown ? "Tampil" : "Sembunyi"}</em></label><div><strong>${esc(d.title)}</strong><small>${esc(d.category)} · ${d.type} · ${d.size}</small><input class="form-input" value="${esc(cfg.documentLabelOverrides[d.id] || "")}" placeholder="Nama custom (opsional)"></div><div class="download-document-row__order-actions"><button type="button" class="repeat-row__order-btn" data-archive-up ${index === 0 ? "disabled" : ""} aria-label="Naikkan urutan ${esc(d.title)}" title="Naikkan urutan"><i data-lucide="arrow-up"></i></button><button type="button" class="repeat-row__order-btn" data-archive-down ${index === total - 1 ? "disabled" : ""} aria-label="Turunkan urutan ${esc(d.title)}" title="Turunkan urutan"><i data-lucide="arrow-down"></i></button></div><button type="button" data-reset-label title="Kembalikan nama asli"><i data-lucide="rotate-ccw"></i></button></div>`;
 }
 function moveArchive(configs, index, direction) {
   const target = index + direction;

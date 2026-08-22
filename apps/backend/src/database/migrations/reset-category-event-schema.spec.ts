@@ -5,6 +5,9 @@ import { AddEventPeriodIdentity1786672800000 } from './1786672800000-AddEventPer
 import { AddEventLogoSettings1786759200000 } from './1786759200000-AddEventLogoSettings';
 import { AddWinnerDisplayMode1786845600000 } from './1786845600000-AddWinnerDisplayMode';
 import { AddWorkspaceRevision1787270400000 } from './1787270400000-AddWorkspaceRevision';
+import { AddWinnerDecreeLabels1787356800000 } from './1787356800000-AddWinnerDecreeLabels';
+import { AddWinnerDecreeBannerTitle1787443200000 } from './1787443200000-AddWinnerDecreeBannerTitle';
+import { FixEventDetailDecreeForeignKeyColumns1787616000000 } from './1787616000000-FixEventDetailDecreeForeignKeyColumns';
 import { ResetCategoryEventSchema1786500000000 } from './1786500000000-ResetCategoryEventSchema';
 
 describe('ResetCategoryEventSchema migration', () => {
@@ -189,5 +192,119 @@ describe('ResetCategoryEventSchema migration', () => {
       'ADD "workspace_revision" integer NOT NULL DEFAULT 1',
     );
     expect(queries[1]).toContain('DROP COLUMN "workspace_revision"');
+  });
+
+  it('adds an independent winner decree Banner title', async () => {
+    const queries: string[] = [];
+    const runner = {
+      query: jest.fn((sql: string) => {
+        queries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    };
+    const migration = new AddWinnerDecreeBannerTitle1787443200000();
+
+    await migration.up(runner as never);
+    await migration.down(runner as never);
+
+    expect(queries[0]).toContain(
+      "ADD COLUMN decree_title varchar(200) NOT NULL DEFAULT 'SK Penetapan Pemenang'",
+    );
+    expect(queries[1]).toContain('DROP COLUMN decree_title');
+  });
+
+  it('keeps the applied description migration immutable and adds headings separately', () => {
+    const descriptionPath = join(
+      __dirname,
+      '1787702400000-AddArchiveWinnerDescription.ts',
+    );
+    const headingsPath = join(
+      __dirname,
+      '1787788800000-AddArchiveWinnerHeadings.ts',
+    );
+    expect(existsSync(descriptionPath)).toBe(true);
+    expect(existsSync(headingsPath)).toBe(true);
+    const description = readFileSync(descriptionPath, 'utf8');
+    const headings = readFileSync(headingsPath, 'utf8');
+
+    expect(description).toContain(
+      "ADD COLUMN winners_description text NOT NULL DEFAULT ''",
+    );
+    expect(description).not.toContain('winners_eyebrow');
+    expect(description).not.toContain('winners_title');
+    expect(headings).toContain(
+      "ADD COLUMN winners_eyebrow varchar(120) NOT NULL DEFAULT 'Hasil Ajang Talenta'",
+    );
+    expect(headings).toContain(
+      "ADD COLUMN winners_title varchar(200) NOT NULL DEFAULT 'Daftar Pemenang'",
+    );
+    expect(headings).not.toContain('DROP TABLE event_detail_settings');
+    expect(headings).not.toContain('DROP SCHEMA');
+  });
+
+  it('adds a stable source Event identity to Download tabs', () => {
+    const path = join(
+      __dirname,
+      '1787875200000-AddDownloadTabSourceEvent.ts',
+    );
+    expect(existsSync(path)).toBe(true);
+    const source = readFileSync(path, 'utf8');
+
+    expect(source).toContain('ADD COLUMN source_event_site_id uuid');
+    expect(source).not.toContain('SET source_event_site_id=event_site_id');
+    expect(source).not.toContain('ALTER COLUMN source_event_site_id SET NOT NULL');
+    expect(source).toContain('REFERENCES event_sites(id) ON DELETE CASCADE');
+    expect(source).not.toContain('DROP TABLE download_tabs');
+    expect(source).not.toContain('DROP SCHEMA');
+  });
+
+  it('uses a nullable single-column legacy decree foreign key', async () => {
+    const upQueries: string[] = [];
+    const downQueries: string[] = [];
+    const migration = new FixEventDetailDecreeForeignKeyColumns1787616000000();
+
+    await migration.up({
+      query: jest.fn((sql: string) => {
+        upQueries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    } as never);
+    await migration.down({
+      query: jest.fn((sql: string) => {
+        downQueries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    } as never);
+
+    const up = upQueries.join('\n');
+    expect(up).toContain(
+      'FOREIGN KEY (decree_document_id, event_site_id)',
+    );
+    expect(up).toContain('REFERENCES event_documents(id, event_site_id)');
+    expect(up).toContain('ON DELETE SET NULL (decree_document_id)');
+    expect(downQueries.join('\n')).toContain('ON DELETE SET NULL');
+    expect(downQueries.join('\n')).not.toContain(
+      'ON DELETE SET NULL (decree_document_id)',
+    );
+  });
+
+  it('adds a bounded default download label for multiple winner decrees', async () => {
+    const queries: string[] = [];
+    const runner = {
+      query: jest.fn((sql: string) => {
+        queries.push(sql.trim());
+        return Promise.resolve();
+      }),
+    };
+    const migration = new AddWinnerDecreeLabels1787356800000();
+
+    await migration.up(runner as never);
+    await migration.down(runner as never);
+
+    expect(queries[0]).toContain(
+      "ADD COLUMN default_download_label varchar(40) NOT NULL DEFAULT ''",
+    );
+    expect(queries[0]).not.toContain('DROP TABLE event_documents');
+    expect(queries[1]).toContain('DROP COLUMN default_download_label');
   });
 });

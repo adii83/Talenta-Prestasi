@@ -198,6 +198,18 @@ export class WorkspaceSnapshotService {
           navbar_logo_size: row.navbar_logo_size ?? 36,
         }));
       }
+      if (spec.table === 'event_documents' && rows.length) {
+        rows = rows.map((row) => ({
+          ...row,
+          default_download_label: row.default_download_label ?? '',
+        }));
+      }
+      if (spec.table === 'winner_page_settings' && rows.length) {
+        rows = rows.map((row) => ({
+          ...row,
+          decree_title: row.decree_title ?? 'SK Penetapan Pemenang',
+        }));
+      }
       if (rows.length)
         await executor.query(
           `INSERT INTO ${spec.table} SELECT * FROM jsonb_populate_recordset(NULL::${spec.table},$1::jsonb)`,

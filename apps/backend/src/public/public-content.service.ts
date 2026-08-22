@@ -100,7 +100,7 @@ export class PublicContentService {
          JOIN event_sites event ON event.id=tab.event_site_id
          JOIN competition_categories category ON category.id=event.category_id
          LEFT JOIN download_document_settings dds ON dds.download_tab_id=tab.id AND dds.is_visible=true
-         LEFT JOIN event_documents d ON d.id=dds.document_id AND d.is_active=true
+         LEFT JOIN event_documents d ON d.id=dds.document_id AND (tab.source_event_site_id IS NULL OR d.event_site_id=tab.source_event_site_id) AND d.is_active=true
          WHERE tab.event_site_id=$1 AND tab.is_active=true
          GROUP BY tab.id,category.name ORDER BY tab.is_default DESC,tab.sort_order,tab.id`,
         [eventId],
@@ -132,7 +132,7 @@ export class PublicContentService {
         [eventId],
       ),
       executor.query(
-        `SELECT is_active AS "isActive",show_decree AS "showDecree",
+        `SELECT is_active AS "isActive",show_decree AS "showDecree",decree_title AS "decreeTitle",
                 metadata_visibility AS "metadataVisibility",archive_active AS "archiveActive",
                 archive_limit AS "archiveLimit"
          FROM winner_page_settings WHERE event_site_id=$1`,
@@ -142,7 +142,9 @@ export class PublicContentService {
         `SELECT archive_display_name AS "archiveDisplayName",
                 decree_document_id AS "decreeDocumentId",decree_title AS "decreeTitle",
                 decree_description AS "decreeDescription",is_active AS "isActive",
-                winners_active AS "winnersActive",documents_active AS "documentsActive",
+                winners_active AS "winnersActive",winners_eyebrow AS "winnersEyebrow",
+                winners_title AS "winnersTitle",winners_description AS "winnersDescription",
+                documents_active AS "documentsActive",
                 metadata_visibility AS "metadataVisibility"
          FROM event_detail_settings WHERE event_site_id=$1`,
         [eventId],
@@ -158,7 +160,7 @@ export class PublicContentService {
                 CASE WHEN d.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||d.asset_id::text END AS url
          FROM event_documents d
          LEFT JOIN archive_document_settings setting ON setting.document_id=d.id AND setting.event_site_id=d.event_site_id
-         WHERE d.event_site_id=$1 AND d.is_active=true AND COALESCE(setting.is_visible,true)=true
+         WHERE d.event_site_id=$1 AND d.is_active=true
          ORDER BY COALESCE(setting.sort_order,d.sort_order),d.id`,
         [eventId],
       ),
@@ -180,14 +182,26 @@ export class PublicContentService {
       mascotAssetId: site.mascotAssetId,
       fallbackIcon: site.fallbackIcon,
     };
-    const decree = await executor.query(
-      `SELECT COALESCE(NULLIF(st.decree_title,''),doc.title,'SK Penetapan Pemenang') AS title,
-              COALESCE(NULLIF(st.decree_description,''),'Unduh dokumen resmi SK Pemenang untuk keperluan administrasi sekolah.') AS description,
-              doc.id AS "documentId",doc.file_type AS "fileType",doc.display_size AS "displaySize",
+    const decrees = await executor.query(
+      `SELECT doc.id AS "documentId",doc.title,
+              doc.default_download_label AS "defaultDownloadLabel",
+              doc.file_type AS "fileType",doc.display_size AS "displaySize",
               CASE WHEN doc.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||doc.asset_id::text END AS url
-       FROM event_detail_settings st
-       LEFT JOIN event_documents doc ON doc.id=st.decree_document_id AND doc.event_site_id=st.event_site_id
-       WHERE st.event_site_id=$1`,
+         FROM event_documents doc
+        WHERE doc.event_site_id=$1 AND doc.document_role='winner_decree' AND doc.is_active=true
+        ORDER BY doc.sort_order,doc.id`,
+      [eventId],
+    );
+    const archiveDecrees = await executor.query(
+      `SELECT doc.id AS "documentId",doc.title,
+              COALESCE(NULLIF(setting.label_override,''),NULLIF(doc.default_download_label,''),doc.title) AS label,
+              doc.file_type AS "fileType",doc.display_size AS "displaySize",
+              CASE WHEN doc.asset_id IS NULL THEN NULL ELSE '/api/v1/public/media/'||doc.asset_id::text END AS url
+         FROM event_documents doc
+         LEFT JOIN archive_document_settings setting ON setting.document_id=doc.id AND setting.event_site_id=doc.event_site_id
+        WHERE doc.event_site_id=$1 AND doc.document_role='winner_decree' AND doc.is_active=true
+          AND COALESCE(setting.is_visible,true)=true
+        ORDER BY COALESCE(setting.sort_order,doc.sort_order),doc.id`,
       [eventId],
     );
 
@@ -222,7 +236,7 @@ export class PublicContentService {
         categories: winnerCategories,
         page: winnerPages[0] ?? null,
         settings: winnerSettings[0] ?? {},
-        decree: decree[0] ?? null,
+        decrees,
       },
       archivePage: { site: siteDto, page: archivePages[0] ?? null },
       archiveDetail: {
@@ -233,7 +247,7 @@ export class PublicContentService {
         settings: detailSettings[0] ?? null,
         categories: winnerCategories,
         documents,
-        decree: decree[0] ?? null,
+        decrees: archiveDecrees,
       },
     };
   }

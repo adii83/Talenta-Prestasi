@@ -117,14 +117,17 @@
     const availableList = [source, ...archiveSources];
     const configs = config.tabs.map((tab, index) => {
       const matchingComp =
+        availableList.find((c) => c.id === tab.sourceEventSiteId) ||
         availableList.find(
           (c) =>
-            c.name === tab.customTabName ||
-            c.shortName === tab.customTabName ||
-            c.id === tab.tabId,
+            c.name === tab.customTabName || c.shortName === tab.customTabName,
         ) ||
         availableList[index] ||
         availableList[0];
+      matchingComp.documents = restoreDocumentOrder(
+        matchingComp.documents || [],
+        tab,
+      );
       const savedTabName = tab.customTabName?.trim() || "";
       const isLegacyCurrentName =
         matchingComp?.id === current.id &&
@@ -174,6 +177,7 @@
         available[0];
       const compDocuments = comp?.documents || [];
       return {
+        sourceEventSiteId: comp?.id || current.id,
         customTabName: config.customTabName || comp?.name || "",
         isDefault: config.isDefault,
         isActive: config.active,

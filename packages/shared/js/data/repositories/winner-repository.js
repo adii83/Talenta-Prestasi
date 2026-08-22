@@ -109,6 +109,7 @@ function winnerPageBaseline() {
       "Selamat kepada para pemenang ajang talenta nasional tahun ini.",
     alignment: "left",
     showSk: true,
+    decreeTitle: "SK Penetapan Pemenang",
     archiveActive: true,
     archiveTitle: "Pemenang Ajang Talenta Sebelumnya",
     archiveAction: "Lihat Pemenang",
@@ -169,14 +170,16 @@ function normalizeWinnerManagerState(source) {
     version: 1,
     competitionId: baseline.competitionId,
     categories,
-    sk: {
-      title: winnerString(source.sk?.title, baseline.sk.title),
-      description: winnerString(
-        source.sk?.description,
-        baseline.sk.description,
-      ),
-      url: winnerSafeUrl(source.sk?.url || baseline.sk.url),
-    },
+    sk: (Array.isArray(source.sk) ? source.sk : [source.sk || baseline.sk]).map(
+      (sk) => ({
+        ...sk,
+        title: winnerString(sk?.title, baseline.sk.title),
+        description: winnerString(sk?.description, baseline.sk.description),
+        defaultDownloadLabel: winnerString(sk?.defaultDownloadLabel),
+        url: winnerSafeUrl(sk?.url || baseline.sk.url),
+        active: sk?.active !== false,
+      }),
+    ),
   };
 }
 
@@ -196,6 +199,7 @@ function normalizeWinnerPageState(source) {
     description: winnerString(state.description, baseline.description),
     alignment: state.alignment === "center" ? "center" : "left",
     showSk: state.showSk !== false,
+    decreeTitle: winnerString(state.decreeTitle, baseline.decreeTitle),
     archiveActive: state.archiveActive !== false,
     archiveTitle: winnerString(state.archiveTitle, baseline.archiveTitle),
     archiveAction: winnerString(state.archiveAction, baseline.archiveAction),
@@ -355,12 +359,16 @@ function buildWinnerArchiveMarkup(page, archives, options = {}) {
 function buildWinnerPageMarkup(source, options = {}) {
   const { manager, page, archives = [] } = source;
   const headerClass = page.alignment === "left" ? " section__header--left" : "";
-  const sk =
-    page.showSk && manager.sk?.title && manager.sk?.url
-      ? `<div class="sk-banner"><div class="sk-banner__left"><div class="sk-banner__icon"><i data-lucide="file-check-2" style="width:24px;height:24px"></i></div><div class="sk-banner__content"><h3>${winnerEscape(manager.sk.title)}</h3></div></div><a href="${winnerEscape(winnerSafeUrl(manager.sk.url))}" class="btn btn--primary" style="border:1px solid rgba(255,255,255,.2)"${manager.sk.url ? ' target="_blank" rel="noopener"' : ""}><i data-lucide="download" style="width:16px;height:16px"></i> Unduh PDF</a></div>`
-      : "";
+  const decrees = page.showSk
+    ? (Array.isArray(manager.sk) ? manager.sk : [manager.sk]).filter(
+        (sk) => sk?.title && sk?.url,
+      )
+    : [];
+  const sk = decrees.length
+    ? `<section class="winner-decrees"><h2 class="winner-decrees__title">${winnerEscape(page.decreeTitle || "SK Penetapan Pemenang")}</h2><span class="winner-decrees__ornament" aria-hidden="true"><i></i><i></i><i></i><b></b></span><div class="winner-decrees__actions">${decrees.map((sk) => `<a href="${winnerEscape(winnerSafeUrl(sk.url))}" class="winner-decrees__download" target="_blank" rel="noopener"><i data-lucide="file-down"></i><span>${winnerEscape(sk.defaultDownloadLabel || sk.title)}</span></a>`).join("")}</div></section>`
+    : "";
   const categories = manager.categories.length
     ? `<div class="winner-section">${manager.categories.map((category) => `<div class="winner-group"><h3 class="winner-group__title"><i data-lucide="${winnerEscape(category.icon || "trophy")}" style="width:20px;height:20px;stroke-width:1.75;color:var(--c-primary)"></i>${winnerEscape(category.name)}<span class="badge badge--gold">${category.winners.length} Pemenang</span></h3><div class="champion-grid">${category.winners.map((winner) => buildWinnerCardMarkup(winner, page, options)).join("")}</div></div>`).join("")}</div>`
     : '<div class="public-empty-state"><i data-lucide="trophy"></i><h2 class="t-h3">Belum ada pemenang</h2><p>Data pemenang belum dipublikasikan.</p></div>';
-  return `<div class="container"><div class="section__header${headerClass}"><p class="t-eyebrow">${winnerEscape(page.eyebrow)}</p><h1 class="t-h1">${winnerEscape(page.title)}</h1><p>${winnerEscape(page.description)}</p></div>${sk}${categories}${buildWinnerArchiveMarkup(page, archives, options)}</div>`;
+  return `<div class="container"><div class="section__header${headerClass}"><p class="t-eyebrow">${winnerEscape(page.eyebrow)}</p><h1 class="t-h1">${winnerEscape(page.title)}</h1><p>${winnerEscape(page.description)}</p></div>${categories}${sk}${buildWinnerArchiveMarkup(page, archives, options)}</div>`;
 }

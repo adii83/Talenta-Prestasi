@@ -128,6 +128,7 @@ class DownloadDocumentDto {
   @IsString() @MaxLength(200) labelOverride!: string;
 }
 class DownloadTabDto {
+  @IsUUID() sourceEventSiteId!: string;
   @IsString() @MaxLength(160) customTabName!: string;
   @IsBoolean() isDefault!: boolean;
   @IsBoolean() isActive!: boolean;

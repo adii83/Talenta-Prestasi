@@ -49,6 +49,12 @@
     if (/^https?:\/\//i.test(source)) {
       try {
         const parsed = new URL(source);
+        if (
+          /^localhost(?::\d+)?$/i.test(parsed.host) &&
+          parsed.pathname.startsWith("/api/")
+        )
+          return new URL(parsed.pathname + parsed.search + parsed.hash, base)
+            .href;
         if (/^\/api\/v1\/public\/media\/[0-9a-f-]+$/i.test(parsed.pathname))
           return TalentaPublic.mediaUrl(
             `${parsed.pathname}${parsed.search}${parsed.hash}`,

@@ -24,6 +24,9 @@ describe('AdminContentService event access', () => {
     expect(db.query.mock.calls[1][0]).toContain(
       'archive_display_name AS "archiveDisplayName"',
     );
+    expect(db.query.mock.calls[1][0]).toContain(
+      'winners_description AS "winnersDescription"',
+    );
   });
 
   it('persists an archive display name without updating canonical Event name', async () => {
@@ -48,6 +51,9 @@ describe('AdminContentService event access', () => {
       'user-1',
       {
         archiveDisplayName: '  Nama Arsip Tanpa Tahun  ',
+        winnersEyebrow: '  Hasil Resmi  ',
+        winnersTitle: '  Para Juara  ',
+        winnersDescription: '  Ringkasan hasil Event  ',
         isActive: true,
         winnersActive: true,
         documentsActive: true,
@@ -61,7 +67,13 @@ describe('AdminContentService event access', () => {
       sql.includes('INSERT INTO event_detail_settings'),
     );
     expect(upsert?.[0]).toContain('archive_display_name');
+    expect(upsert?.[0]).toContain('winners_eyebrow');
+    expect(upsert?.[0]).toContain('winners_title');
+    expect(upsert?.[0]).toContain('winners_description');
     expect(upsert?.[1]).toContain('Nama Arsip Tanpa Tahun');
+    expect(upsert?.[1]).toContain('Hasil Resmi');
+    expect(upsert?.[1]).toContain('Para Juara');
+    expect(upsert?.[1]).toContain('Ringkasan hasil Event');
     expect(
       manager.query.mock.calls.some(([sql]) =>
         sql.includes('UPDATE event_sites SET name='),
@@ -238,6 +250,79 @@ describe('AdminContentService event access', () => {
     expect(db.query.mock.calls[0][0]).toContain(
       "membership.role IN ('owner','admin','editor')",
     );
+  });
+});
+
+describe('AdminContentService winner decrees', () => {
+  const eventId = '11111111-1111-4111-8111-111111111111';
+  const userId = '22222222-2222-4222-8222-222222222222';
+
+  it('returns every winner decree in display order', async () => {
+    const decrees = [
+      { documentId: 'decree-1', title: 'SK Utama', defaultDownloadLabel: 'Unduh SK' },
+      { documentId: 'decree-2', title: 'SK Nasional', defaultDownloadLabel: '' },
+    ];
+    const db = {
+      query: jest
+        .fn()
+        .mockResolvedValueOnce([{ id: eventId }])
+        .mockResolvedValueOnce(decrees)
+        .mockResolvedValueOnce([{ workspaceRevision: 4 }]),
+    };
+    const service = new AdminContentService(db as never);
+
+    const result = await service.decree(eventId, userId);
+
+    expect(result.data.decrees).toEqual(decrees);
+    expect(db.query.mock.calls[1][0]).toContain("document_role='winner_decree'");
+    expect(db.query.mock.calls[1][0]).toContain('ORDER BY document.sort_order,document.id');
+  });
+
+  it('includes the default Banner label in document CRUD', async () => {
+    const manager = {
+      query: jest.fn(async (sql: string) => {
+        if (sql.includes('COUNT(*)')) return [{ count: 0 }];
+        if (sql.includes('INSERT INTO event_documents')) return [{ id: 'decree-1' }];
+        return [];
+      }),
+    };
+    const db = {
+      query: jest.fn().mockResolvedValue([{ id: eventId }]),
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+    const service = new AdminContentService(db as never);
+
+    await service.createDocument(eventId, userId, {
+      title: 'SK Utama',
+      documentRole: 'winner_decree',
+      defaultDownloadLabel: 'Unduh SK Utama',
+    } as never);
+
+    const insert = manager.query.mock.calls.find(([sql]) =>
+      sql.includes('INSERT INTO event_documents'),
+    );
+    expect(insert?.[0]).toContain('default_download_label');
+    expect(insert?.[1]).toContain('Unduh SK Utama');
+  });
+
+  it('rejects an eleventh winner decree', async () => {
+    const manager = {
+      query: jest.fn(async (sql: string) =>
+        sql.includes('COUNT(*)') ? [{ count: '10' }] : [],
+      ),
+    };
+    const db = {
+      query: jest.fn().mockResolvedValue([{ id: eventId }]),
+      transaction: jest.fn((callback) => callback(manager)),
+    };
+    const service = new AdminContentService(db as never);
+
+    await expect(
+      service.createDocument(eventId, userId, {
+        title: 'SK Kesebelas',
+        documentRole: 'winner_decree',
+      }),
+    ).rejects.toThrow('Maksimal 10 SK Pemenang per Event');
   });
 });
 
